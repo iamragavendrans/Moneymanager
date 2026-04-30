@@ -65,6 +65,11 @@ const mockData = {
   ]
 };
 
+const defaultShops: Shop[] = [
+  { id: "shop_1", name: "Amazon", mode: "online", mapLocation: "" },
+  { id: "shop_2", name: "Swiggy", mode: "online", mapLocation: "" },
+];
+
 export const Instruments = () => {
   const { transactions } = useFinance();
   const [activeTab, setActiveTab] = useState<TabId | null>(null);
