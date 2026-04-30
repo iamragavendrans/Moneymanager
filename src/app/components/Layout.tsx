@@ -131,14 +131,14 @@ export const Layout = () => {
 
       {/* Mobile Bottom Nav */}
       <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 pb-safe z-30">
-        <div className="flex items-center justify-around h-16 px-2">
-          {navItems.slice(0, 4).map((item) => (
+        <div className="grid grid-cols-5 items-center h-16 px-1">
+          {navItems.map((item) => (
             <NavLink
               key={item.path}
               to={item.path}
               className={({ isActive }) =>
                 cn(
-                  "flex flex-col items-center justify-center w-full h-full space-y-1 transition-colors",
+                  "flex flex-col items-center justify-center w-full h-full space-y-1 transition-colors px-0.5",
                   isActive ? "text-indigo-600" : "text-slate-500 hover:text-slate-900"
                 )
               }
