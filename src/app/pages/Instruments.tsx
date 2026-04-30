@@ -1,276 +1,316 @@
-import React, { useEffect, useMemo, useState } from "react";
-import { Store, Users, Repeat, CreditCard, Gift, ShieldCheck, Box, Calendar, MapPin, ArrowLeft, Plus } from "lucide-react";
-import { formatINR } from "../utils";
-import { cn } from "../utils";
-import { differenceInCalendarDays, format, parseISO } from "date-fns";
-import { useFinance } from "../context/FinanceContext";
+import React, { useMemo } from "react";
+import { TrendingUp, ArrowUpRight, ArrowDownRight, Landmark, Coins, Home, Plus, Info, Clock } from "lucide-react";
+import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from "recharts";
+import { formatINR, cn } from "../utils";
+import { differenceInDays, parseISO, format } from "date-fns";
 
-const tabs = [
-  { id: "shops", label: "Shops", icon: Store, description: "Track merchants and average spend" },
-  { id: "people", label: "People", icon: Users, description: "Track lent and borrowed money" },
-  { id: "recurring", label: "Bills", icon: Repeat, description: "Manage recurring payments" },
-  { id: "subscriptions", label: "Subscriptions", icon: CreditCard, description: "Control app/service renewals" },
-  { id: "giftcards", label: "Gift Cards", icon: Gift, description: "Never miss gift card value" },
-  { id: "warranties", label: "Warranties", icon: ShieldCheck, description: "Keep expiry dates in sight" },
-  { id: "items", label: "Items", icon: Box, description: "Track valuable owned items" },
-] as const;
-
-type TabId = (typeof tabs)[number]["id"];
-
-type Shop = { id: string; name: string; mode: "offline" | "online"; mapLocation: string };
-type Person = {
-  id: string;
-  name: string;
-  relationship: string;
-  toReceive: number;
-  toPay: number;
-  mode: "upi" | "bank" | "cheque" | "cash";
-  followUpRule: string;
-};
-
-const defaultShops: Shop[] = [
-  { id: "shop_1", name: "DMart", mode: "offline", mapLocation: "Andheri West, Mumbai" },
-  { id: "shop_2", name: "Amazon", mode: "online", mapLocation: "" },
-  { id: "shop_3", name: "Swiggy", mode: "online", mapLocation: "" },
-];
-
-const defaultPeople: Person[] = [
-  { id: "person_1", name: "Rahul", relationship: "Friend", toReceive: 5000, toPay: 1200, mode: "upi", followUpRule: "Every Sunday 8 PM" },
-  { id: "person_2", name: "Priya", relationship: "Colleague", toReceive: 0, toPay: 2300, mode: "bank", followUpRule: "3 days before month-end" },
-  { id: "person_3", name: "Amit", relationship: "Brother", toReceive: 2500, toPay: 0, mode: "cash", followUpRule: "Weekly reminder" },
-];
-
-const mockData = {
-  recurring: [
-    { id: 1, name: "Electricity Bill", amount: 1500, cycle: "Monthly", nextDate: "2026-05-15", status: "active" },
-    { id: 2, name: "PG Rent", amount: 12000, cycle: "Monthly", nextDate: "2026-05-01", status: "active" },
-    { id: 3, name: "Water Bill", amount: 450, cycle: "Monthly", nextDate: "2026-04-27", status: "on hold" },
+const mockInvestments = {
+  marketLinked: [
+    { id: 1, name: "Parag Parikh Flexi Cap", units: 1540.5, avgNav: 45.2, currentNav: 68.4, isSIP: true },
+    { id: 2, name: "UTI Nifty 50 Index Fund", units: 250, avgNav: 150.0, currentNav: 215.5, isSIP: true },
+    { id: 3, name: "HDFC Bank (Direct Equity)", units: 50, avgNav: 1450.0, currentNav: 1410.0, isSIP: false },
   ],
-  subscriptions: [
-    { id: 1, name: "Netflix", amount: 649, cycle: "Monthly", nextDate: "2026-05-05", status: "active" },
-    { id: 2, name: "Gym Membership", amount: 15000, cycle: "Yearly", nextDate: "2027-01-10", status: "active" },
-    { id: 3, name: "Music Pro", amount: 99, cycle: "Monthly", nextDate: "2026-04-20", status: "stopped" },
+  fixedIncome: [
+    { id: 1, name: "SBI Tax Saver FD (80C)", principal: 150000, current: 172000, rate: 7.1, startDate: "2023-04-01", maturityDate: "2028-04-01" },
+    { id: 2, name: "EPF (Provident Fund)", principal: 850000, current: 980000, rate: 8.15, startDate: "2019-06-01", maturityDate: "2050-01-01" },
+    { id: 3, name: "Post Office RD", principal: 60000, current: 64500, rate: 6.2, startDate: "2024-01-01", maturityDate: "2029-01-01" },
   ],
-  giftcards: [
-    { id: 1, name: "Shoppers Stop", code: "SS-4F8A-32K", balance: 2500, total: 3000, giftedFrom: "Neha", expiry: "2026-12-31" },
-    { id: 2, name: "Myntra", code: "MYN-91ZK-P2", balance: 500, total: 1000, giftedFrom: "Office Rewards", expiry: "2026-06-30" },
+  gold: [
+    { id: 1, name: "Sovereign Gold Bond 2023", grams: 50, avgPrice: 5923, currentPrice: 7250 },
+    { id: 2, name: "Digital Gold (PhonePe)", grams: 12.5, avgPrice: 6100, currentPrice: 7100 },
   ],
-  warranties: [
-    { id: 1, name: "Sony TV", purchased: "2024-10-15", expiry: "2027-10-15", daysLeft: 533 },
-    { id: 2, name: "MacBook Pro", purchased: "2025-01-20", expiry: "2026-01-20", daysLeft: 265 },
-  ],
-  items: [
-    { id: 1, name: "iPhone 15 Pro", value: 129000, category: "Electronics" },
-    { id: 2, name: "Gold Coin (10g)", value: 75000, category: "Asset" },
+  realEstate: [
+    { id: 1, name: "2BHK Apartment, Bangalore", propertyValue: 8500000, loanOutstanding: 6200000 },
   ]
 };
 
+const CHART_COLORS = ['#3B82F6', '#10B981', '#F59E0B', '#6366F1'];
+
 export const Instruments = () => {
-  const { transactions } = useFinance();
-  const [activeTab, setActiveTab] = useState<TabId | null>(null);
-  const [shops, setShops] = useState<Shop[]>(() => JSON.parse(localStorage.getItem("finance_shops") || "null") || defaultShops);
-  const [people, setPeople] = useState<Person[]>(() => JSON.parse(localStorage.getItem("finance_people") || "null") || defaultPeople);
-  const [addingType, setAddingType] = useState<"shop" | "person" | null>(null);
+  
+  // Calculations
+  const marketStats = useMemo(() => {
+    let invested = 0, current = 0;
+    mockInvestments.marketLinked.forEach(i => {
+      invested += i.units * i.avgNav;
+      current += i.units * i.currentNav;
+    });
+    return { invested, current };
+  }, []);
 
-  const [shopForm, setShopForm] = useState({ name: "", mode: "offline" as Shop["mode"], mapLocation: "" });
-  const [personForm, setPersonForm] = useState({ name: "", relationship: "", toReceive: "", toPay: "", mode: "upi" as Person["mode"], followUpRule: "" });
-  const [error, setError] = useState("");
+  const fixedStats = useMemo(() => {
+    let invested = 0, current = 0;
+    mockInvestments.fixedIncome.forEach(i => {
+      invested += i.principal;
+      current += i.current;
+    });
+    return { invested, current };
+  }, []);
 
-  useEffect(() => localStorage.setItem("finance_shops", JSON.stringify(shops)), [shops]);
-  useEffect(() => localStorage.setItem("finance_people", JSON.stringify(people)), [people]);
+  const goldStats = useMemo(() => {
+    let invested = 0, current = 0;
+    mockInvestments.gold.forEach(i => {
+      invested += i.grams * i.avgPrice;
+      current += i.grams * i.currentPrice;
+    });
+    return { invested, current };
+  }, []);
 
-  const shopMetrics = useMemo(() => shops.map((shop) => {
-    const matches = transactions.filter((tx) => tx.payee.toLowerCase().trim() === shop.name.toLowerCase().trim() && tx.type === "expense");
-    const total = matches.reduce((sum, tx) => sum + tx.amount, 0);
-    return { ...shop, transactions: matches.length, avgSpend: matches.length ? Math.round(total / matches.length) : 0 };
-  }), [shops, transactions]);
+  const realEstateStats = useMemo(() => {
+    let netEquity = 0; // The actual wealth
+    mockInvestments.realEstate.forEach(i => {
+      netEquity += (i.propertyValue - i.loanOutstanding);
+    });
+    // For real estate, invested and current represent net equity to align with net worth
+    return { invested: netEquity * 0.7, current: netEquity }; // Mocking some appreciation
+  }, []);
 
-  const getDueLabel = (isoDate: string) => {
-    const days = differenceInCalendarDays(parseISO(isoDate), new Date());
-    if (days < 0) return "Overdue";
-    if (days === 0) return "Due today";
-    if (days === 1) return "Due tomorrow";
-    return `Due in ${days} days`;
-  };
+  const totalInvested = marketStats.invested + fixedStats.invested + goldStats.invested + realEstateStats.invested;
+  const totalCurrent = marketStats.current + fixedStats.current + goldStats.current + realEstateStats.current;
+  const totalProfit = totalCurrent - totalInvested;
+  const profitPercentage = (totalProfit / totalInvested) * 100;
 
-  const addShop = () => {
-    if (!shopForm.name.trim()) return setError("Shop name is required");
-    if (shopForm.mode === "offline" && !shopForm.mapLocation.trim()) return setError("Offline shops require map location");
-    setShops((prev) => [{ id: `shop_${Date.now()}`, ...shopForm, name: shopForm.name.trim(), mapLocation: shopForm.mapLocation.trim() }, ...prev]);
-    setShopForm({ name: "", mode: "offline", mapLocation: "" });
-    setError("");
-    setAddingType(null);
-  };
-
-  const addPerson = () => {
-    if (!personForm.name.trim() || !personForm.relationship.trim() || !personForm.followUpRule.trim()) return setError("Name, relationship, and follow-up rule are required");
-    setPeople((prev) => [{
-      id: `person_${Date.now()}`,
-      name: personForm.name.trim(),
-      relationship: personForm.relationship.trim(),
-      toReceive: Number(personForm.toReceive) || 0,
-      toPay: Number(personForm.toPay) || 0,
-      mode: personForm.mode,
-      followUpRule: personForm.followUpRule.trim(),
-    }, ...prev]);
-    setPersonForm({ name: "", relationship: "", toReceive: "", toPay: "", mode: "upi", followUpRule: "" });
-    setError("");
-    setAddingType(null);
-  };
-
-  const currentTab = tabs.find((t) => t.id === activeTab);
+  const allocationData = [
+    { name: "Equity & MFs", value: marketStats.current },
+    { name: "Debt & PF", value: fixedStats.current },
+    { name: "Gold", value: goldStats.current },
+    { name: "Real Estate (Net)", value: realEstateStats.current },
+  ].filter(d => d.value > 0);
 
   return (
-    <div className="p-4 md:p-8 max-w-6xl mx-auto space-y-6 flex flex-col h-full">
-      <div>
-        <h2 className="text-2xl font-bold text-slate-800">Instruments</h2>
-        <p className="text-slate-500 text-sm mt-1">Pick a category first, then manage entries inside it.</p>
+    <div className="p-4 md:p-8 max-w-5xl mx-auto space-y-8 pb-24">
+      
+      {/* 3.1. Portfolio Dashboard */}
+      <div className="bg-slate-900 rounded-[24px] shadow-xl p-6 md:p-8 flex flex-col md:flex-row items-center gap-8 relative overflow-hidden">
+        <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-emerald-500/20 rounded-full blur-[100px] pointer-events-none translate-x-1/2 -translate-y-1/2"></div>
+        
+        <div className="flex-1 space-y-4 relative z-10 w-full">
+          <div>
+            <p className="text-slate-400 text-sm font-semibold uppercase tracking-wider mb-1">Total Portfolio Value</p>
+            <h1 className="text-4xl md:text-5xl font-black text-white tracking-tight">{formatINR(totalCurrent)}</h1>
+          </div>
+          
+          <div className="flex flex-wrap gap-4 pt-2">
+            <div>
+              <p className="text-slate-400 text-xs font-semibold uppercase tracking-wider mb-0.5">Total Invested</p>
+              <p className="text-xl font-bold text-slate-200">{formatINR(totalInvested)}</p>
+            </div>
+            <div className="w-px h-10 bg-slate-700/50 hidden sm:block"></div>
+            <div>
+              <p className="text-slate-400 text-xs font-semibold uppercase tracking-wider mb-0.5">Overall Returns</p>
+              <div className="flex items-center gap-2">
+                <span className={cn("text-xl font-bold flex items-center", totalProfit >= 0 ? "text-emerald-400" : "text-red-400")}>
+                  {totalProfit >= 0 ? "+" : ""}{formatINR(totalProfit)}
+                </span>
+                <span className={cn("text-xs font-bold px-2 py-0.5 rounded-md", totalProfit >= 0 ? "bg-emerald-400/10 text-emerald-400" : "bg-red-400/10 text-red-400")}>
+                  {totalProfit >= 0 ? "+" : ""}{profitPercentage.toFixed(2)}%
+                </span>
+              </div>
+            </div>
+            <div className="w-px h-10 bg-slate-700/50 hidden sm:block"></div>
+            <div>
+              <p className="text-slate-400 text-xs font-semibold uppercase tracking-wider mb-0.5">Est. XIRR</p>
+              <p className="text-xl font-bold text-indigo-400">14.2%</p>
+            </div>
+          </div>
+        </div>
+
+        {/* Allocation Donut */}
+        <div className="w-full md:w-64 h-48 relative z-10">
+          <ResponsiveContainer width="100%" height="100%">
+            <PieChart>
+              <Pie data={allocationData} cx="50%" cy="50%" innerRadius="70%" outerRadius="90%" paddingAngle={2} dataKey="value" stroke="none">
+                {allocationData.map((entry, index) => (
+                  <Cell key={`cell-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />
+                ))}
+              </Pie>
+              <Tooltip formatter={(value: number) => formatINR(value)} contentStyle={{ backgroundColor: '#1E293B', borderColor: '#334155', color: '#F8FAFC' }} />
+            </PieChart>
+          </ResponsiveContainer>
+          <div className="absolute inset-0 flex items-center justify-center flex-col pointer-events-none">
+            <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">Assets</span>
+          </div>
+        </div>
       </div>
 
-      {!activeTab && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {tabs.map((tab) => (
-            <button key={tab.id} onClick={() => setActiveTab(tab.id)} className="text-left p-5 rounded-2xl border border-slate-200 bg-white hover:shadow-md transition-shadow">
-              <div className="w-11 h-11 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center mb-3">
-                <tab.icon className="w-5 h-5" />
-              </div>
-              <h3 className="font-bold text-slate-800">{tab.label}</h3>
-              <p className="text-sm text-slate-500 mt-1">{tab.description}</p>
-            </button>
-          ))}
-        </div>
-      )}
+      <div className="flex items-center justify-between">
+        <h2 className="text-xl font-bold text-slate-800">Your Instruments</h2>
+        <button className="flex items-center gap-2 bg-slate-900 text-white px-4 py-2 rounded-xl text-sm font-semibold hover:bg-slate-800 transition-colors">
+          <Plus className="w-4 h-4" /> Add Asset
+        </button>
+      </div>
 
-      {activeTab && (
-        <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <button onClick={() => { setActiveTab(null); setAddingType(null); setError(""); }} className="flex items-center gap-2 text-sm font-semibold text-slate-600 hover:text-slate-900">
-              <ArrowLeft className="w-4 h-4" /> Back to options
-            </button>
-            <button onClick={() => setAddingType(activeTab === "people" ? "person" : activeTab === "shops" ? "shop" : null)} className="flex items-center gap-2 bg-indigo-600 text-white px-3 py-2 rounded-lg text-sm font-semibold">
-              <Plus className="w-4 h-4" /> Add New
-            </button>
+      <div className="space-y-8">
+        
+        {/* A. Market Linked */}
+        <section>
+          <div className="flex items-center justify-between mb-4 px-1">
+            <h3 className="text-lg font-bold text-slate-800 flex items-center gap-2">
+              <TrendingUp className="w-5 h-5 text-blue-500" /> Market Linked (Equity & MFs)
+            </h3>
+            <span className="font-bold text-slate-900">{formatINR(marketStats.current)}</span>
           </div>
-
-          <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5">
-            <h3 className="font-bold text-slate-800 mb-1">{currentTab?.label}</h3>
-            <p className="text-sm text-slate-500">{currentTab?.description}</p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {mockInvestments.marketLinked.map(mf => {
+              const invested = mf.units * mf.avgNav;
+              const current = mf.units * mf.currentNav;
+              const profit = current - invested;
+              const isProfitable = profit >= 0;
+              return (
+                <div key={mf.id} className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition-shadow">
+                  <div className="flex justify-between items-start mb-4">
+                    <div className="pr-4">
+                      <h4 className="font-bold text-slate-900 line-clamp-1">{mf.name}</h4>
+                      <p className="text-xs text-slate-500 font-medium mt-0.5">Units: {mf.units.toFixed(3)} • Avg: ₹{mf.avgNav.toFixed(1)}</p>
+                    </div>
+                    {mf.isSIP && <span className="shrink-0 bg-blue-50 text-blue-700 border border-blue-200 text-[10px] font-bold px-2 py-0.5 rounded-md uppercase tracking-wider">SIP</span>}
+                  </div>
+                  <div className="flex items-end justify-between">
+                    <div>
+                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-0.5">Current Value</p>
+                      <p className="text-xl font-black text-slate-900 tracking-tight">{formatINR(current)}</p>
+                    </div>
+                    <div className="text-right">
+                      <p className={cn("text-sm font-bold flex items-center justify-end gap-0.5", isProfitable ? "text-emerald-600" : "text-red-600")}>
+                        {isProfitable ? <ArrowUpRight className="w-4 h-4" /> : <ArrowDownRight className="w-4 h-4" />}
+                        {formatINR(Math.abs(profit))}
+                      </p>
+                      <p className="text-xs font-semibold text-slate-400">Current NAV: ₹{mf.currentNav.toFixed(1)}</p>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
           </div>
+        </section>
 
-          {addingType === "shop" && (
-            <div className="p-4 rounded-xl border border-slate-200 bg-slate-50/70 space-y-3">
-              <input value={shopForm.name} onChange={(e) => setShopForm((p) => ({ ...p, name: e.target.value }))} placeholder="Shop name" className="w-full px-3 py-2 rounded-lg border border-slate-200" />
-              <div className="flex gap-2">
-                {(["offline", "online"] as const).map((mode) => (
-                  <button key={mode} onClick={() => setShopForm((p) => ({ ...p, mode }))} className={cn("px-3 py-2 rounded-lg text-sm capitalize", shopForm.mode === mode ? "bg-indigo-600 text-white" : "bg-white border border-slate-200 text-slate-600")}>{mode}</button>
-                ))}
-              </div>
-              <input value={shopForm.mapLocation} onChange={(e) => setShopForm((p) => ({ ...p, mapLocation: e.target.value }))} placeholder={shopForm.mode === "offline" ? "Map location (mandatory)" : "Map location (optional)"} className="w-full px-3 py-2 rounded-lg border border-slate-200" />
-              <button onClick={addShop} className="bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm font-semibold">Save Shop</button>
-            </div>
-          )}
+        {/* B. Fixed Income */}
+        <section>
+          <div className="flex items-center justify-between mb-4 px-1">
+            <h3 className="text-lg font-bold text-slate-800 flex items-center gap-2">
+              <Landmark className="w-5 h-5 text-emerald-500" /> Fixed Income (Debt, FDs, PF)
+            </h3>
+            <span className="font-bold text-slate-900">{formatINR(fixedStats.current)}</span>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {mockInvestments.fixedIncome.map(fd => {
+              const start = parseISO(fd.startDate);
+              const end = parseISO(fd.maturityDate);
+              const totalDays = differenceInDays(end, start);
+              const daysPassed = differenceInDays(new Date(), start);
+              const progress = Math.min(100, Math.max(0, (daysPassed / totalDays) * 100));
 
-          {addingType === "person" && (
-            <div className="p-4 rounded-xl border border-slate-200 bg-slate-50/70 space-y-3">
-              <input value={personForm.name} onChange={(e) => setPersonForm((p) => ({ ...p, name: e.target.value }))} placeholder="Name" className="w-full px-3 py-2 rounded-lg border border-slate-200" />
-              <input value={personForm.relationship} onChange={(e) => setPersonForm((p) => ({ ...p, relationship: e.target.value }))} placeholder="Relationship" className="w-full px-3 py-2 rounded-lg border border-slate-200" />
-              <div className="grid grid-cols-2 gap-2">
-                <input value={personForm.toReceive} onChange={(e) => setPersonForm((p) => ({ ...p, toReceive: e.target.value }))} placeholder="To receive" className="w-full px-3 py-2 rounded-lg border border-slate-200" />
-                <input value={personForm.toPay} onChange={(e) => setPersonForm((p) => ({ ...p, toPay: e.target.value }))} placeholder="To pay" className="w-full px-3 py-2 rounded-lg border border-slate-200" />
-              </div>
-              <select value={personForm.mode} onChange={(e) => setPersonForm((p) => ({ ...p, mode: e.target.value as Person["mode"] }))} className="w-full px-3 py-2 rounded-lg border border-slate-200 bg-white">
-                <option value="upi">UPI</option><option value="bank">Bank</option><option value="cheque">Cheque</option><option value="cash">Cash</option>
-              </select>
-              <input value={personForm.followUpRule} onChange={(e) => setPersonForm((p) => ({ ...p, followUpRule: e.target.value }))} placeholder="Follow-up rule (e.g. Every Monday 10 AM)" className="w-full px-3 py-2 rounded-lg border border-slate-200" />
-              <button onClick={addPerson} className="bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm font-semibold">Save Person</button>
-            </div>
-          )}
-
-          {error && <p className="text-sm text-red-600">{error}</p>}
-
-          {activeTab === "shops" && (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {shopMetrics.map((shop) => (
-                <div key={shop.id} className="p-5 border border-slate-100 rounded-2xl">
-                  <div className="flex justify-between mb-3"><h4 className="font-bold">{shop.name}</h4><span className="text-xs capitalize bg-slate-100 px-2 py-1 rounded">{shop.mode}</span></div>
-                  {shop.mapLocation && <p className="text-xs text-slate-500 flex items-center gap-1"><MapPin className="w-3 h-3" />{shop.mapLocation}</p>}
-                  <p className="text-sm mt-2">Avg Spend: <b>{formatINR(shop.avgSpend)}</b></p>
-                  <p className="text-xs text-slate-500">{shop.transactions} transactions</p>
-                </div>
-              ))}
-            </div>
-          )}
-
-          {activeTab === "people" && (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {people.map((p) => {
-                const finalAmount = p.toReceive - p.toPay;
-                return (
-                  <div key={p.id} className="p-5 border border-slate-100 rounded-2xl space-y-2">
-                    <h4 className="font-bold text-lg">{p.name}</h4>
-                    <p className="text-xs text-slate-500">{p.relationship} • {p.mode.toUpperCase()}</p>
-                    <p className="text-sm">To receive: <b className="text-emerald-600">{formatINR(p.toReceive)}</b></p>
-                    <p className="text-sm">To pay: <b className="text-red-600">{formatINR(p.toPay)}</b></p>
-                    <p className={cn("text-sm font-semibold", finalAmount >= 0 ? "text-emerald-700" : "text-red-700")}>Final: {formatINR(finalAmount)}</p>
-                    <p className="text-xs bg-slate-50 rounded p-2">Follow-up: {p.followUpRule}</p>
+              return (
+                <div key={fd.id} className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition-shadow">
+                  <div className="flex justify-between items-start mb-4">
+                    <div>
+                      <h4 className="font-bold text-slate-900">{fd.name}</h4>
+                      <p className="text-xs text-slate-500 font-medium mt-0.5">Principal: {formatINR(fd.principal)}</p>
+                    </div>
+                    <span className="bg-emerald-50 text-emerald-700 border border-emerald-200 text-xs font-bold px-2 py-0.5 rounded-md">{fd.rate}% p.a.</span>
                   </div>
-                );
-              })}
-            </div>
-          )}
-
-          {(activeTab === "recurring" || activeTab === "subscriptions") && (
-            <div className="space-y-3">
-              {(activeTab === "recurring" ? mockData.recurring : mockData.subscriptions).map((item) => (
-                <div key={item.id} className="flex items-center justify-between p-4 border border-slate-100 rounded-xl">
-                  <div>
-                    <h4 className="font-bold text-slate-800">{item.name}</h4>
-                    <p className="text-sm text-slate-500 flex items-center gap-1"><Calendar className="w-3 h-3" />Next: {format(parseISO(item.nextDate), "dd MMM yyyy")} • {item.cycle}</p>
+                  
+                  <div className="mb-4">
+                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-0.5">Est. Current Value</p>
+                    <p className="text-xl font-black text-slate-900 tracking-tight">{formatINR(fd.current)}</p>
                   </div>
-                  <div className="text-right">
-                    <p className="font-bold">{formatINR(item.amount)}</p>
-                    <p className={cn("text-xs", getDueLabel(item.nextDate) === "Overdue" ? "text-red-600" : "text-slate-500")}>{getDueLabel(item.nextDate)}</p>
-                    <p className="text-xs capitalize text-slate-500">{item.status}</p>
+
+                  {/* Psychological Progress Bar */}
+                  <div className="space-y-1.5 mt-2">
+                    <div className="flex justify-between text-[10px] font-bold text-slate-400 uppercase">
+                      <span>{format(start, 'MMM yyyy')}</span>
+                      <span>Matures: {format(end, 'MMM yyyy')}</span>
+                    </div>
+                    <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
+                      <div className="bg-emerald-500 h-full rounded-full" style={{ width: `${progress}%` }}></div>
+                    </div>
                   </div>
                 </div>
-              ))}
-            </div>
-          )}
+              );
+            })}
+          </div>
+        </section>
 
-          {activeTab === "giftcards" && (
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {mockData.giftcards.map((card) => (
-                <div key={card.id} className="p-5 rounded-2xl bg-white border border-slate-100">
-                  <h4 className="font-bold">{card.name}</h4>
-                  <p className="text-xs text-slate-500">Code: {card.code}</p>
-                  <p className="text-sm mt-2">Balance: <b>{formatINR(card.balance)}</b> / {formatINR(card.total)}</p>
-                  <p className="text-xs text-slate-500">Gifted from: {card.giftedFrom}</p>
-                  <p className="text-xs text-slate-500">Expires: {card.expiry}</p>
+        {/* C. Gold */}
+        <section>
+          <div className="flex items-center justify-between mb-4 px-1">
+            <h3 className="text-lg font-bold text-slate-800 flex items-center gap-2">
+              <Coins className="w-5 h-5 text-amber-500" /> Gold & Alternatives
+            </h3>
+            <span className="font-bold text-slate-900">{formatINR(goldStats.current)}</span>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {mockInvestments.gold.map(g => {
+              const invested = g.grams * g.avgPrice;
+              const current = g.grams * g.currentPrice;
+              const profit = current - invested;
+              return (
+                <div key={g.id} className="bg-gradient-to-br from-amber-50/50 to-white p-5 rounded-2xl border border-amber-100 shadow-sm hover:shadow-md transition-shadow">
+                  <h4 className="font-bold text-slate-900 mb-1">{g.name}</h4>
+                  <p className="text-xs text-amber-700 font-medium">Holding: {g.grams}g • Avg Cost: ₹{g.avgPrice}/g</p>
+                  
+                  <div className="flex items-end justify-between mt-4">
+                    <div>
+                      <p className="text-[10px] font-bold text-amber-600/70 uppercase tracking-wider mb-0.5">Current Value</p>
+                      <p className="text-xl font-black text-slate-900 tracking-tight">{formatINR(current)}</p>
+                    </div>
+                    <div className="text-right">
+                      <p className={cn("text-sm font-bold", profit >= 0 ? "text-emerald-600" : "text-red-600")}>
+                        {profit >= 0 ? "+" : ""}{formatINR(profit)}
+                      </p>
+                      <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Current rate: ₹{g.currentPrice}/g</p>
+                    </div>
+                  </div>
                 </div>
-              ))}
-            </div>
-          )}
+              );
+            })}
+          </div>
+        </section>
 
-          {activeTab === "warranties" && (
-            <div className="space-y-3">
-              {mockData.warranties.map((w) => (
-                <div key={w.id} className="p-4 border border-slate-100 rounded-xl flex justify-between">
-                  <div><h4 className="font-bold">{w.name}</h4><p className="text-xs text-slate-500">Purchased: {w.purchased} • Expiry: {w.expiry}</p></div>
-                  <span className="text-xs font-bold bg-emerald-50 text-emerald-700 px-2 py-1 rounded h-fit">{w.daysLeft} days left</span>
+        {/* D. Real Estate */}
+        <section>
+          <div className="flex items-center justify-between mb-4 px-1">
+            <h3 className="text-lg font-bold text-slate-800 flex items-center gap-2">
+              <Home className="w-5 h-5 text-indigo-500" /> Real Estate & Home Equity
+            </h3>
+            <span className="font-bold text-slate-900">{formatINR(realEstateStats.current)}</span>
+          </div>
+          <div className="grid grid-cols-1 gap-4">
+            {mockInvestments.realEstate.map(re => {
+              const netEquity = re.propertyValue - re.loanOutstanding;
+              const equityPercentage = (netEquity / re.propertyValue) * 100;
+
+              return (
+                <div key={re.id} className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex flex-col md:flex-row md:items-center gap-6">
+                  <div className="flex-1">
+                    <h4 className="font-bold text-slate-900 text-lg mb-1">{re.name}</h4>
+                    <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Property Valuation: {formatINR(re.propertyValue)}</p>
+                  </div>
+
+                  <div className="flex-1 grid grid-cols-2 gap-4 border-l-0 md:border-l border-t md:border-t-0 border-slate-100 pt-4 md:pt-0 md:pl-6">
+                    <div>
+                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-0.5">Loan Outstanding</p>
+                      <p className="text-lg font-bold text-red-500">{formatINR(re.loanOutstanding)}</p>
+                    </div>
+                    <div>
+                      <p className="text-[10px] font-bold text-indigo-500 uppercase tracking-wider mb-0.5">Net Equity (Wealth)</p>
+                      <p className="text-xl font-black text-slate-900 tracking-tight">{formatINR(netEquity)}</p>
+                    </div>
+                  </div>
+
+                  <div className="w-full md:w-32 flex flex-col items-end">
+                    <div className="w-12 h-12 rounded-full border-4 border-indigo-100 border-t-indigo-600 flex items-center justify-center rotate-45 mb-1" style={{ transform: `rotate(${(equityPercentage / 100) * 360}deg)` }}>
+                       <span className="text-xs font-bold text-indigo-600" style={{ transform: `rotate(-${(equityPercentage / 100) * 360}deg)` }}>{equityPercentage.toFixed(0)}%</span>
+                    </div>
+                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider text-right">Owned</p>
+                  </div>
                 </div>
-              ))}
-            </div>
-          )}
+              );
+            })}
+          </div>
+        </section>
 
-          {activeTab === "items" && (
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {mockData.items.map((i) => (
-                <div key={i.id} className="p-5 border border-slate-100 rounded-xl flex justify-between"><div><h4 className="font-bold">{i.name}</h4><p className="text-xs text-slate-500">{i.category}</p></div><b>{formatINR(i.value)}</b></div>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
+      </div>
     </div>
   );
 };
