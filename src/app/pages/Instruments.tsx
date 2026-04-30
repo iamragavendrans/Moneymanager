@@ -1,7 +1,9 @@
-import React, { useState } from "react";
-import { Store, Users, Repeat, CreditCard, Gift, ShieldCheck, Box, Calendar } from "lucide-react";
+import React, { useEffect, useMemo, useState } from "react";
+import { Store, Users, Repeat, CreditCard, Gift, ShieldCheck, Box, Calendar, MapPin } from "lucide-react";
 import { formatINR } from "../utils";
 import { cn } from "../utils";
+import { differenceInCalendarDays, format, parseISO } from "date-fns";
+import { useFinance } from "../context/FinanceContext";
 
 const tabs = [
   { id: "shops", label: "Shops", icon: Store },
@@ -11,13 +13,16 @@ const tabs = [
   { id: "giftcards", label: "Gift Cards", icon: Gift },
   { id: "warranties", label: "Warranties", icon: ShieldCheck },
   { id: "items", label: "Items", icon: Box },
-];
+] as const;
+
+type Shop = {
+  id: string;
+  name: string;
+  mode: "offline" | "online";
+  mapLocation: string;
+};
 
 const mockData = {
-  shops: [
-    { id: 1, name: "Amazon", type: "Online", avgSpend: 4500, transactions: 12 },
-    { id: 2, name: "Swiggy", type: "Food Delivery", avgSpend: 850, transactions: 24 },
-  ],
   people: [
     { id: 1, name: "Rahul", type: "Lent", amount: 5000, due: "Next week" },
     { id: 2, name: "Priya", type: "Owe", amount: 1200, due: "Tomorrow" },
@@ -44,8 +49,67 @@ const mockData = {
   ]
 };
 
+const defaultShops: Shop[] = [
+  { id: "shop_1", name: "Amazon", mode: "online", mapLocation: "" },
+  { id: "shop_2", name: "Swiggy", mode: "online", mapLocation: "" },
+];
+
 export const Instruments = () => {
+  const { transactions } = useFinance();
   const [activeTab, setActiveTab] = useState(tabs[0].id);
+  const [shops, setShops] = useState<Shop[]>(() => {
+    const saved = localStorage.getItem("finance_shops");
+    return saved ? JSON.parse(saved) : defaultShops;
+  });
+  const [shopForm, setShopForm] = useState({ name: "", mode: "offline" as Shop["mode"], mapLocation: "" });
+  const [shopError, setShopError] = useState("");
+
+  useEffect(() => {
+    localStorage.setItem("finance_shops", JSON.stringify(shops));
+  }, [shops]);
+
+  const shopMetrics = useMemo(() => {
+    return shops.map((shop) => {
+      const matches = transactions.filter((tx) => tx.payee.toLowerCase().trim() === shop.name.toLowerCase().trim() && tx.type === "expense");
+      const totalSpend = matches.reduce((sum, tx) => sum + tx.amount, 0);
+      const txCount = matches.length;
+      return {
+        ...shop,
+        transactions: txCount,
+        avgSpend: txCount > 0 ? Math.round(totalSpend / txCount) : 0,
+      };
+    });
+  }, [shops, transactions]);
+
+  const handleAddShop = () => {
+    if (!shopForm.name.trim()) {
+      setShopError("Shop name is required");
+      return;
+    }
+    if (shopForm.mode === "offline" && !shopForm.mapLocation.trim()) {
+      setShopError("Location is mandatory for offline shops");
+      return;
+    }
+    setShops((prev) => [
+      {
+        id: `shop_${Date.now()}`,
+        name: shopForm.name.trim(),
+        mode: shopForm.mode,
+        mapLocation: shopForm.mapLocation.trim(),
+      },
+      ...prev,
+    ]);
+    setShopError("");
+    setShopForm({ name: "", mode: "offline", mapLocation: "" });
+  };
+
+  const getDueLabel = (isoDate: string) => {
+    const days = differenceInCalendarDays(parseISO(isoDate), new Date());
+    if (days < 0) return "Overdue";
+    if (days === 0) return "Due today";
+    if (days === 1) return "Due tomorrow";
+    return `Due in ${days} days`;
+  };
 
   return (
     <div className="p-4 md:p-8 max-w-6xl mx-auto space-y-6 flex flex-col h-full">
@@ -53,10 +117,10 @@ export const Instruments = () => {
         <div>
           <h2 className="text-2xl font-bold text-slate-800">Instruments</h2>
           <p className="text-slate-500 text-sm mt-1">Manage your non-account financial assets and obligations.</p>
+          <p className="text-slate-400 text-xs mt-1">Track dues, people and subscriptions in one place so nothing slips.</p>
         </div>
       </div>
 
-      {/* Scrollable Tabs */}
       <div className="flex overflow-x-auto pb-2 -mx-4 px-4 md:mx-0 md:px-0 space-x-2 scrollbar-hide shrink-0">
         {tabs.map((tab) => {
           const isActive = activeTab === tab.id;
@@ -66,8 +130,8 @@ export const Instruments = () => {
               onClick={() => setActiveTab(tab.id)}
               className={cn(
                 "flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold transition-all shrink-0 border",
-                isActive 
-                  ? "bg-indigo-600 text-white border-indigo-600 shadow-sm" 
+                isActive
+                  ? "bg-indigo-600 text-white border-indigo-600 shadow-sm"
                   : "bg-white text-slate-600 border-slate-200 hover:border-indigo-200 hover:bg-indigo-50"
               )}
             >
@@ -78,159 +142,81 @@ export const Instruments = () => {
         })}
       </div>
 
-      {/* Tab Content */}
       <div className="flex-1 min-h-[400px] bg-white rounded-2xl border border-slate-100 shadow-sm p-6">
-        
-        {/* Shops */}
         {activeTab === "shops" && (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {mockData.shops.map(shop => (
-              <div key={shop.id} className="p-5 border border-slate-100 rounded-2xl hover:shadow-md transition-shadow group">
-                <div className="flex items-center justify-between mb-4">
-                  <div className="w-12 h-12 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center group-hover:bg-indigo-600 group-hover:text-white transition-colors">
-                    <Store className="w-6 h-6" />
-                  </div>
-                  <span className="text-xs font-bold text-slate-500 bg-slate-100 px-2 py-1 rounded-md">{shop.type}</span>
+          <div className="space-y-6">
+            <div className="p-4 rounded-xl border border-slate-200 bg-slate-50/70">
+              <h3 className="font-bold text-slate-800 mb-3">Add Shop</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <input
+                  value={shopForm.name}
+                  onChange={(e) => setShopForm((prev) => ({ ...prev, name: e.target.value }))}
+                  placeholder="Shop name"
+                  className="px-3 py-2 rounded-lg border border-slate-200 bg-white"
+                />
+                <div className="flex gap-2 rounded-lg border border-slate-200 bg-white p-1">
+                  {(["offline", "online"] as const).map((mode) => (
+                    <button
+                      key={mode}
+                      onClick={() => setShopForm((prev) => ({ ...prev, mode }))}
+                      className={cn("flex-1 py-2 text-sm rounded-md font-semibold capitalize", shopForm.mode === mode ? "bg-indigo-600 text-white" : "text-slate-600")}
+                    >
+                      {mode}
+                    </button>
+                  ))}
                 </div>
-                <h4 className="font-bold text-lg text-slate-800 mb-1">{shop.name}</h4>
-                <p className="text-sm text-slate-500">Avg Spend: <span className="font-semibold text-slate-700">{formatINR(shop.avgSpend)}</span></p>
-                <p className="text-xs text-slate-400 mt-2">{shop.transactions} transactions recorded</p>
+                <div className="md:col-span-2">
+                  <input
+                    value={shopForm.mapLocation}
+                    onChange={(e) => setShopForm((prev) => ({ ...prev, mapLocation: e.target.value }))}
+                    placeholder={shopForm.mode === "offline" ? "Map location (mandatory for offline)" : "Map location (optional for online)"}
+                    className="w-full px-3 py-2 rounded-lg border border-slate-200 bg-white"
+                  />
+                </div>
               </div>
-            ))}
-          </div>
-        )}
+              {shopError && <p className="text-sm text-red-600 mt-2">{shopError}</p>}
+              <button onClick={handleAddShop} className="mt-3 bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm font-semibold">Save Shop</button>
+            </div>
 
-        {/* People */}
-        {activeTab === "people" && (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {mockData.people.map(person => (
-              <div key={person.id} className="p-5 border border-slate-100 rounded-2xl hover:shadow-md transition-shadow flex flex-col justify-between">
-                <div>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {shopMetrics.map((shop) => (
+                <div key={shop.id} className="p-5 border border-slate-100 rounded-2xl hover:shadow-md transition-shadow group">
                   <div className="flex items-center justify-between mb-4">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-full bg-slate-100 text-slate-600 flex items-center justify-center font-bold">
-                        {person.name.charAt(0)}
-                      </div>
-                      <h4 className="font-bold text-lg text-slate-800">{person.name}</h4>
+                    <div className="w-12 h-12 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center group-hover:bg-indigo-600 group-hover:text-white transition-colors">
+                      <Store className="w-6 h-6" />
                     </div>
-                    <span className={cn(
-                      "text-xs font-bold px-2 py-1 rounded-md",
-                      person.type === "Lent" ? "bg-emerald-50 text-emerald-600" : "bg-red-50 text-red-600"
-                    )}>
-                      {person.type === "Lent" ? "You're owed" : "You owe"}
-                    </span>
+                    <span className="text-xs font-bold text-slate-500 bg-slate-100 px-2 py-1 rounded-md capitalize">{shop.mode}</span>
                   </div>
-                  <h3 className={cn(
-                    "text-2xl font-bold tracking-tight mb-1",
-                    person.type === "Lent" ? "text-emerald-600" : "text-red-600"
-                  )}>
-                    {formatINR(person.amount)}
-                  </h3>
+                  <h4 className="font-bold text-lg text-slate-800 mb-1">{shop.name}</h4>
+                  {shop.mapLocation && <p className="text-xs text-slate-500 mb-2 flex items-center gap-1"><MapPin className="w-3 h-3" /> {shop.mapLocation}</p>}
+                  <p className="text-sm text-slate-500">Avg Spend: <span className="font-semibold text-slate-700">{formatINR(shop.avgSpend)}</span></p>
+                  <p className="text-xs text-slate-400 mt-2">{shop.transactions} transactions recorded</p>
                 </div>
-                <p className="text-sm font-medium text-slate-500 mt-4 flex items-center gap-1.5 bg-slate-50 p-2 rounded-lg">
-                  <Calendar className="w-4 h-4" /> Due: {person.due}
-                </p>
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
         )}
 
-        {/* Similar maps for other tabs can be fleshed out, using basic list for remaining */}
+        {activeTab === "people" && <div className="text-slate-600">People workflow next.</div>}
         {(activeTab === "recurring" || activeTab === "subscriptions") && (
           <div className="space-y-3">
-            <div className="flex items-center justify-between mb-4 bg-slate-50 p-4 rounded-xl border border-slate-100">
-               <div>
-                 <p className="text-sm font-semibold text-slate-500">Upcoming {activeTab === "recurring" ? "Bills" : "Subscriptions"}</p>
-                 <h3 className="text-xl font-bold text-slate-800">{formatINR(
-                   (activeTab === "recurring" ? mockData.recurring : mockData.subscriptions).reduce((acc, curr) => acc + curr.amount, 0)
-                 )} <span className="text-sm font-medium text-slate-500">/ Total</span></h3>
-               </div>
-               <button className="text-indigo-600 text-sm font-bold bg-indigo-50 px-3 py-1.5 rounded-lg">Add New</button>
-            </div>
-            
             {(activeTab === "recurring" ? mockData.recurring : mockData.subscriptions).map(item => (
               <div key={item.id} className="flex items-center justify-between p-4 border border-slate-100 rounded-xl hover:bg-slate-50 transition-colors">
-                <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center">
-                    {activeTab === "recurring" ? <Repeat className="w-5 h-5" /> : <CreditCard className="w-5 h-5" />}
-                  </div>
-                  <div>
-                    <h4 className="font-bold text-slate-800">{item.name}</h4>
-                    <p className="text-sm text-slate-500 flex items-center gap-1 mt-0.5">
-                      <Calendar className="w-3 h-3" /> Next: {item.nextDate} • {item.cycle}
-                    </p>
-                  </div>
+                <div>
+                  <h4 className="font-bold text-slate-800">{item.name}</h4>
+                  <p className="text-sm text-slate-500">Next: {format(parseISO(item.nextDate), "dd MMM yyyy")} • {item.cycle}</p>
                 </div>
                 <div className="text-right">
                   <p className="font-bold text-slate-800 text-lg">{formatINR(item.amount)}</p>
-                  {('status' in item) && <span className="text-xs font-bold text-emerald-600">Active</span>}
+                  <p className={cn("text-xs font-semibold", getDueLabel(item.nextDate) === "Overdue" ? "text-red-600" : "text-slate-500")}>{getDueLabel(item.nextDate)}</p>
                 </div>
               </div>
             ))}
           </div>
         )}
-
-        {activeTab === "giftcards" && (
-           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-             {mockData.giftcards.map(card => (
-               <div key={card.id} className="bg-gradient-to-br from-indigo-600 to-purple-600 rounded-2xl p-6 text-white shadow-sm relative overflow-hidden">
-                 <div className="absolute right-0 bottom-0 opacity-10">
-                   <Gift className="w-32 h-32 -mb-8 -mr-8" />
-                 </div>
-                 <div className="relative z-10">
-                   <p className="text-indigo-100 font-medium text-sm mb-1">{card.name}</p>
-                   <h3 className="text-3xl font-bold tracking-tight mb-6">{formatINR(card.balance)}</h3>
-                   <div className="flex justify-between items-center text-sm font-medium">
-                     <span className="bg-white/20 px-2 py-1 rounded">Exp: {card.expiry}</span>
-                     <button className="text-white hover:text-indigo-100 underline decoration-indigo-300 underline-offset-2">Use Now</button>
-                   </div>
-                 </div>
-               </div>
-             ))}
-           </div>
-        )}
-
-        {activeTab === "warranties" && (
-          <div className="space-y-3">
-             {mockData.warranties.map(item => (
-               <div key={item.id} className="flex items-center justify-between p-4 border border-slate-100 rounded-xl hover:bg-slate-50 transition-colors">
-                  <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 rounded-xl bg-slate-100 text-slate-600 flex items-center justify-center">
-                      <ShieldCheck className="w-5 h-5" />
-                    </div>
-                    <div>
-                      <h4 className="font-bold text-slate-800">{item.name}</h4>
-                      <p className="text-sm text-slate-500">Purchased: {item.purchased} • Expires: {item.expiry}</p>
-                    </div>
-                  </div>
-                  <div className="text-right">
-                    <span className="bg-emerald-50 text-emerald-700 text-xs font-bold px-2 py-1 rounded-md">{item.daysLeft} days left</span>
-                  </div>
-               </div>
-             ))}
-          </div>
-        )}
-
-        {activeTab === "items" && (
-           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-             {mockData.items.map(item => (
-               <div key={item.id} className="flex items-center justify-between p-5 border border-slate-100 rounded-2xl hover:shadow-md transition-shadow">
-                  <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 rounded-xl bg-slate-50 text-slate-600 flex items-center justify-center">
-                      <Box className="w-6 h-6" />
-                    </div>
-                    <div>
-                      <h4 className="font-bold text-slate-800">{item.name}</h4>
-                      <p className="text-sm text-slate-500">{item.category}</p>
-                    </div>
-                  </div>
-                  <div className="text-right font-bold text-slate-800 text-lg">
-                    {formatINR(item.value)}
-                  </div>
-               </div>
-             ))}
-           </div>
-        )}
+        {activeTab === "giftcards" && <div className="text-slate-600">Gift Cards workflow next.</div>}
+        {activeTab === "warranties" && <div className="text-slate-600">Warranties workflow next.</div>}
+        {activeTab === "items" && <div className="text-slate-600">Items workflow next.</div>}
       </div>
     </div>
   );
