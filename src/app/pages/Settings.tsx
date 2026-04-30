@@ -1,156 +1,155 @@
-import React from "react";
-import { Lock, Fingerprint, Palette, Cloud, Database, Download, Shield, IndianRupee, Globe, LayoutTemplate } from "lucide-react";
+import React, { useState } from "react";
+import { Lock, Fingerprint, Palette, Cloud, Database, Download, Upload, Shield, IndianRupee, Globe, LayoutTemplate, Store, Users, Repeat, CreditCard as CreditCardIcon, Gift, ShieldCheck, Bell, AlertTriangle, Briefcase, ChevronRight, X, Calendar, Tags } from "lucide-react";
+import { cn } from "../utils";
+
+const SettingRow = ({ icon: Icon, title, subtitle, action, destructive = false }: any) => (
+  <div className={cn("p-5 flex items-center justify-between hover:bg-slate-50 transition-colors", destructive ? "hover:bg-red-50" : "")}>
+    <div className="flex items-center gap-4">
+      <div className={cn("w-10 h-10 rounded-xl flex items-center justify-center shrink-0", destructive ? "bg-red-50 text-red-600" : "bg-indigo-50 text-indigo-600")}>
+        <Icon className="w-5 h-5" />
+      </div>
+      <div>
+        <p className={cn("font-semibold", destructive ? "text-red-600" : "text-slate-800")}>{title}</p>
+        <p className="text-sm text-slate-500 mt-0.5">{subtitle}</p>
+      </div>
+    </div>
+    {action}
+  </div>
+);
+
+const Toggle = ({ active, onToggle }: { active: boolean, onToggle: () => void }) => (
+  <button onClick={onToggle} className={cn("w-12 h-6 rounded-full relative transition-colors duration-200", active ? "bg-indigo-600" : "bg-slate-200")}>
+    <span className={cn("absolute top-1 w-4 h-4 rounded-full bg-white shadow-sm transition-all duration-200", active ? "left-7" : "left-1")} />
+  </button>
+);
 
 export const Settings = () => {
-  return (
-    <div className="p-4 md:p-8 max-w-3xl mx-auto space-y-6 pb-24">
-      <h2 className="text-2xl font-bold text-slate-800 mb-6">Preferences</h2>
+  const [locks, setLocks] = useState({ biometric: true, hideBalances: false });
+  const [sync, setSync] = useState({ drive: true });
+  const [reminders, setReminders] = useState({ bills: true, dailyLog: true });
 
-      <div className="bg-white border border-slate-100 rounded-2xl shadow-sm overflow-hidden mb-6">
+  // Entity Modal State
+  const [activeEntity, setActiveEntity] = useState<string | null>(null);
+
+  const openEntity = (entity: string) => setActiveEntity(entity);
+  const closeEntity = () => setActiveEntity(null);
+
+  return (
+    <div className="p-4 md:p-8 max-w-4xl mx-auto space-y-8 pb-24">
+      <h2 className="text-2xl font-bold text-slate-800">Preferences</h2>
+
+      {/* 1. Profile & Sync */}
+      <div className="bg-white border border-slate-100 rounded-[24px] shadow-sm overflow-hidden">
         <div className="p-6 border-b border-slate-100 flex items-center gap-4 bg-slate-50/50">
-          <img 
-            src="/src/imports/Untitled-2026-04-30-1618.png" 
-            alt="Profile" 
-            className="w-16 h-16 rounded-full border-2 border-white shadow-sm object-cover"
-            onError={(e) => { e.currentTarget.style.display = 'none' }}
-          />
+          <img src="/src/imports/Untitled-2026-04-30-1618.png" alt="Profile" className="w-16 h-16 rounded-full border-2 border-white shadow-sm object-cover" onError={(e) => { e.currentTarget.style.display = 'none' }} />
           <div>
             <h3 className="font-bold text-slate-800 text-lg">My Profile</h3>
-            <p className="text-sm text-slate-500">Free Local-First Account</p>
+            <p className="text-sm text-slate-500">Pro Local-First Account</p>
           </div>
         </div>
         
         <div className="divide-y divide-slate-100">
-          <div className="p-5 flex items-center justify-between hover:bg-slate-50 cursor-pointer transition-colors">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center">
-                <IndianRupee className="w-5 h-5" />
-              </div>
-              <div>
-                <p className="font-semibold text-slate-800">Primary Currency</p>
-                <p className="text-sm text-slate-500">Indian Rupee (INR)</p>
-              </div>
-            </div>
-            <span className="text-sm font-semibold text-indigo-600">Change</span>
-          </div>
-
-          <div className="p-5 flex items-center justify-between hover:bg-slate-50 cursor-pointer transition-colors">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center">
-                <Globe className="w-5 h-5" />
-              </div>
-              <div>
-                <p className="font-semibold text-slate-800">Number Format</p>
-                <p className="text-sm text-slate-500">Lakhs & Crores (1,00,000)</p>
-              </div>
-            </div>
-            <span className="text-sm font-semibold text-indigo-600">Change</span>
-          </div>
-
-          <div className="p-5 flex items-center justify-between hover:bg-slate-50 cursor-pointer transition-colors">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center">
-                <LayoutTemplate className="w-5 h-5" />
-              </div>
-              <div>
-                <p className="font-semibold text-slate-800">Default Tab</p>
-                <p className="text-sm text-slate-500">Dashboard</p>
-              </div>
-            </div>
-            <span className="text-sm font-semibold text-indigo-600">Change</span>
-          </div>
+          <SettingRow icon={Cloud} title="Google Drive Backup" subtitle="Last synced: 2 mins ago" action={<Toggle active={sync.drive} onToggle={() => setSync(s => ({ ...s, drive: !s.drive }))} />} />
+          <SettingRow icon={Download} title="Restore Data from Cloud" subtitle="Sync across devices seamlessly" action={<button className="text-sm font-bold text-indigo-600 bg-indigo-50 px-3 py-1.5 rounded-lg">Restore</button>} />
+          <SettingRow icon={Upload} title="Export Data (CSV/JSON)" subtitle="Take full control of your raw data" action={<button className="text-sm font-bold text-indigo-600 bg-indigo-50 px-3 py-1.5 rounded-lg">Export</button>} />
         </div>
       </div>
 
-      <div className="bg-white border border-slate-100 rounded-2xl shadow-sm overflow-hidden">
-        <div className="p-5 border-b border-slate-100 bg-slate-50/50">
-          <h3 className="font-bold text-slate-800 flex items-center gap-2">
-            <Shield className="w-5 h-5 text-indigo-500" />
-            Privacy & Security
-          </h3>
-        </div>
-        <div className="divide-y divide-slate-100">
-          <div className="p-5 flex items-center justify-between">
-            <div>
-              <p className="font-semibold text-slate-800">Biometric Lock</p>
-              <p className="text-sm text-slate-500">Require Face ID / Fingerprint to open app</p>
-            </div>
-            <div className="w-12 h-6 bg-indigo-600 rounded-full relative cursor-pointer">
-              <div className="absolute right-1 top-1 w-4 h-4 bg-white rounded-full"></div>
-            </div>
-          </div>
-          <div className="p-5 flex items-center justify-between">
-            <div>
-              <p className="font-semibold text-slate-800">Hide Balances</p>
-              <p className="text-sm text-slate-500">Blur numbers until tapped</p>
-            </div>
-            <div className="w-12 h-6 bg-slate-200 rounded-full relative cursor-pointer">
-              <div className="absolute left-1 top-1 w-4 h-4 bg-white rounded-full shadow-sm"></div>
-            </div>
-          </div>
-        </div>
+      {/* 2. Employment & Tax Profiling (New) */}
+      <div className="bg-gradient-to-br from-indigo-900 to-slate-900 border border-slate-800 rounded-[24px] shadow-xl overflow-hidden relative">
+         <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-500/20 rounded-full blur-[80px] pointer-events-none translate-x-1/3 -translate-y-1/3"></div>
+         <div className="p-6 relative z-10 flex items-center justify-between">
+           <div className="flex gap-4 items-start">
+             <div className="w-12 h-12 rounded-xl bg-white/10 flex items-center justify-center shrink-0 border border-white/10">
+               <Briefcase className="w-6 h-6 text-indigo-300" />
+             </div>
+             <div>
+               <h3 className="font-bold text-white text-lg">Employment & Tax Profile</h3>
+               <p className="text-sm text-indigo-200 mt-1 max-w-sm">Configure your Salary Band and Employer to unlock Smart Tax Engine suggestions (Old vs New Regime) and automatic PF tracking.</p>
+             </div>
+           </div>
+           <button className="hidden sm:block shrink-0 bg-indigo-500 hover:bg-indigo-600 text-white px-5 py-2.5 rounded-xl font-bold transition-all shadow-sm">
+             Configure Profile
+           </button>
+         </div>
       </div>
 
-      <div className="bg-white border border-slate-100 rounded-2xl shadow-sm overflow-hidden">
+      {/* 3. Entity Management (Khata, Shops, Subs) */}
+      <div className="bg-white border border-slate-100 rounded-[24px] shadow-sm overflow-hidden">
         <div className="p-5 border-b border-slate-100 bg-slate-50/50">
           <h3 className="font-bold text-slate-800 flex items-center gap-2">
             <Database className="w-5 h-5 text-indigo-500" />
-            Data & Sync
+            Advanced Entities Management
+          </h3>
+          <p className="text-sm text-slate-500 mt-1 ml-7">Manage your dedicated ledgers to speed up transaction logging.</p>
+        </div>
+        <div className="divide-y divide-slate-100">
+          <SettingRow icon={Store} title="Shops / Merchants" subtitle="Save frequent stores & default categories" action={<ChevronRight className="w-5 h-5 text-slate-300" />} />
+          <SettingRow icon={Users} title="People / Payees (Khata)" subtitle="Track lending, borrowing, and split expenses" action={<ChevronRight className="w-5 h-5 text-slate-300" />} />
+          <SettingRow icon={Repeat} title="Recurring Bills" subtitle="Utilities, mobile recharge, gas, electricity" action={<ChevronRight className="w-5 h-5 text-slate-300" />} />
+          <SettingRow icon={CreditCardIcon} title="Subscriptions" subtitle="Discretionary active digital services (Netflix, Gym)" action={<ChevronRight className="w-5 h-5 text-slate-300" />} />
+          <SettingRow icon={Gift} title="Gift Cards" subtitle="Track unused gift card balances & expiry" action={<ChevronRight className="w-5 h-5 text-slate-300" />} />
+          <SettingRow icon={ShieldCheck} title="Warranties" subtitle="Upload warranty cards for major electronics" action={<ChevronRight className="w-5 h-5 text-slate-300" />} />
+        </div>
+      </div>
+
+      {/* 4. Localization & Format */}
+      <div className="bg-white border border-slate-100 rounded-[24px] shadow-sm overflow-hidden">
+        <div className="p-5 border-b border-slate-100 bg-slate-50/50">
+          <h3 className="font-bold text-slate-800 flex items-center gap-2">
+            <Globe className="w-5 h-5 text-indigo-500" />
+            Localization & Categories
           </h3>
         </div>
         <div className="divide-y divide-slate-100">
-          <div className="p-5 flex items-center justify-between">
-            <div>
-              <p className="font-semibold text-slate-800">Local Storage Only</p>
-              <p className="text-sm text-slate-500">Your data never leaves your device</p>
-            </div>
-            <div className="w-12 h-6 bg-indigo-600 rounded-full relative cursor-pointer">
-              <div className="absolute right-1 top-1 w-4 h-4 bg-white rounded-full"></div>
-            </div>
+          <SettingRow icon={IndianRupee} title="Currency & Number System" subtitle="Indian Rupee (INR) • Lakhs & Crores (1,00,000)" action={<button className="text-sm font-bold text-indigo-600 bg-indigo-50 px-3 py-1.5 rounded-lg">Edit</button>} />
+          <SettingRow icon={Calendar} title="Financial Year Start" subtitle="April 1 (India Tax Standard)" action={<button className="text-sm font-bold text-indigo-600 bg-indigo-50 px-3 py-1.5 rounded-lg">Edit</button>} />
+          <SettingRow icon={Tags} title="Categories & Insight Tagging" subtitle="Manage sub-categories & Needs/Wants/Savings tags" action={<button className="text-sm font-bold text-indigo-600 bg-indigo-50 px-3 py-1.5 rounded-lg">Edit</button>} />
+        </div>
+      </div>
+
+      {/* 5. Security & Notifications */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+        <div className="bg-white border border-slate-100 rounded-[24px] shadow-sm overflow-hidden h-fit">
+          <div className="p-5 border-b border-slate-100 bg-slate-50/50">
+            <h3 className="font-bold text-slate-800 flex items-center gap-2">
+              <Shield className="w-5 h-5 text-indigo-500" /> Privacy & Security
+            </h3>
           </div>
-          <div className="p-5 flex items-center justify-between cursor-pointer hover:bg-slate-50 transition-colors">
-            <div>
-              <p className="font-semibold text-slate-800">Export to CSV</p>
-              <p className="text-sm text-slate-500">Download your raw transaction data</p>
-            </div>
-            <Download className="w-5 h-5 text-slate-400" />
+          <div className="divide-y divide-slate-100">
+            <SettingRow icon={Fingerprint} title="App Lock" subtitle="Require Biometrics to open" action={<Toggle active={locks.biometric} onToggle={() => setLocks(s => ({ ...s, biometric: !s.biometric }))} />} />
+            <SettingRow icon={Lock} title="Hide Balances" subtitle="Mask numbers by default" action={<Toggle active={locks.hideBalances} onToggle={() => setLocks(s => ({ ...s, hideBalances: !s.hideBalances }))} />} />
           </div>
-          <div className="p-5 flex items-center justify-between opacity-50">
-            <div>
-              <p className="font-semibold text-slate-800 flex items-center gap-2">
-                Encrypted Cloud Sync
-                <span className="text-[10px] bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded-md uppercase font-bold tracking-wider">Coming Soon</span>
-              </p>
-              <p className="text-sm text-slate-500">Optional end-to-end encrypted backup</p>
-            </div>
-            <Cloud className="w-5 h-5 text-slate-400" />
+        </div>
+
+        <div className="bg-white border border-slate-100 rounded-[24px] shadow-sm overflow-hidden h-fit">
+          <div className="p-5 border-b border-slate-100 bg-slate-50/50">
+            <h3 className="font-bold text-slate-800 flex items-center gap-2">
+              <Bell className="w-5 h-5 text-indigo-500" /> Reminders
+            </h3>
+          </div>
+          <div className="divide-y divide-slate-100">
+            <SettingRow icon={Bell} title="Bill Reminders" subtitle="Push notifications for due dates" action={<Toggle active={reminders.bills} onToggle={() => setReminders(s => ({ ...s, bills: !s.bills }))} />} />
+            <SettingRow icon={Bell} title="Daily Log Prompt" subtitle="Ping at 9:00 PM to log expenses" action={<Toggle active={reminders.dailyLog} onToggle={() => setReminders(s => ({ ...s, dailyLog: !s.dailyLog }))} />} />
           </div>
         </div>
       </div>
 
-      <div className="bg-white border border-slate-100 rounded-2xl shadow-sm overflow-hidden">
-        <div className="p-5 border-b border-slate-100 bg-slate-50/50">
-          <h3 className="font-bold text-slate-800 flex items-center gap-2">
-            <Palette className="w-5 h-5 text-indigo-500" />
-            Appearance
+      {/* 6. Danger Zone */}
+      <div className="bg-white border border-red-100 rounded-[24px] shadow-sm overflow-hidden">
+        <div className="p-5 border-b border-red-50 bg-red-50/30">
+          <h3 className="font-bold text-red-600 flex items-center gap-2">
+            <AlertTriangle className="w-5 h-5" /> Danger Zone
           </h3>
         </div>
-        <div className="p-5">
-           <div className="flex gap-4">
-              <div className="flex-1 border-2 border-indigo-600 rounded-xl p-4 text-center cursor-pointer bg-indigo-50">
-                <div className="w-8 h-8 rounded-full bg-white border border-slate-200 mx-auto mb-2"></div>
-                <p className="font-semibold text-slate-800">Light</p>
-              </div>
-              <div className="flex-1 border-2 border-slate-200 rounded-xl p-4 text-center cursor-pointer hover:border-slate-300">
-                <div className="w-8 h-8 rounded-full bg-slate-900 border border-slate-700 mx-auto mb-2"></div>
-                <p className="font-semibold text-slate-800">Dark</p>
-              </div>
-           </div>
+        <div className="divide-y divide-slate-100">
+          <SettingRow icon={Database} title="Reset Data" subtitle="Clear all transactions. Keep configs & categories." destructive action={<button className="text-sm font-bold text-red-600 bg-red-50 px-3 py-1.5 rounded-lg border border-red-100">Reset</button>} />
+          <SettingRow icon={AlertTriangle} title="Wipe Data" subtitle="Total nuclear reset. Erase absolutely everything." destructive action={<button className="text-sm font-bold text-white bg-red-600 hover:bg-red-700 transition-colors px-3 py-1.5 rounded-lg">Wipe</button>} />
         </div>
       </div>
 
       <div className="text-center mt-8 text-sm text-slate-400 font-medium">
-        FinLocal v1.0.0 • Made in India
+        FinLocal v2.0.0 • Made in India
       </div>
     </div>
   );
