@@ -19,7 +19,7 @@ function RadioGroup({
   );
 }
 
-function RadioGroupItem({
+function RadioGroUPItem({
   className,
   ...props
 }: React.ComponentProps<typeof RadioGroupPrimitive.Item>) {
@@ -42,4 +42,4 @@ function RadioGroupItem({
   );
 }
 
-export { RadioGroup, RadioGroupItem };
+export { RadioGroup, RadioGroUPItem };

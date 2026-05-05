@@ -20,9 +20,11 @@ Serve as the financial command center. The cognitive load must be low, allowing 
 
 ### 3.2. Income & Expense Velocity Cards
 *   **Psychology:** Income should always feel 'safe' (Green). Expenses should prompt caution (Red, but soft pastel reds to avoid anxiety).
+*   **Interactions:**
+    *   **Navigation:** Clicking cards navigates to the Transactions tab with a pre-filtered time range applied via URL parameters.
 *   **Data Points:**
     *   Absolute amount (e.g., ₹45,300).
-    *   MoM (Month-over-Month) percentage change with an Up/Down arrow.
+    *   Dynamic Period-over-Period growth statistics that calculate accurately based on the selected timeframe filter, with an Up/Down arrow.
     *   A miniature 7-bar chart at the bottom of the card showing the trailing 7 days velocity. If today's bar is much higher than average, it implicitly alerts the user.
 
 ### 3.3. Cashflow Trend & Heatmap (The Analytical View)

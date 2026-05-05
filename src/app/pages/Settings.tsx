@@ -1,19 +1,29 @@
 import React, { useState } from "react";
-import { Lock, Fingerprint, Palette, Cloud, Database, Download, Upload, Shield, IndianRupee, Globe, LayoutTemplate, Store, Users, Repeat, CreditCard as CreditCardIcon, Gift, ShieldCheck, Bell, AlertTriangle, Briefcase, ChevronRight, X, Calendar, Tags } from "lucide-react";
+import { Lock, Fingerprint, Palette, Cloud, Database, Download, Upload, Shield, IndianRupee, Globe, LayoutTemplate, Store, Users, Repeat, CreditCard as CreditCardIcon, Gift, ShieldCheck, Bell, AlertTriangle, Briefcase, ChevronRight, X, Calendar, Tags, Package } from "lucide-react";
 import { cn } from "../utils";
+import { EntityManagementModal } from "../components/EntityManagementModal";
 
-const SettingRow = ({ icon: Icon, title, subtitle, action, destructive = false }: any) => (
-  <div className={cn("p-5 flex items-center justify-between hover:bg-slate-50 transition-colors", destructive ? "hover:bg-red-50" : "")}>
-    <div className="flex items-center gap-4">
+const SettingRow = ({ icon: Icon, title, subtitle, action, destructive = false, onClick }: any) => (
+  <div 
+    onClick={onClick}
+    className={cn(
+      "p-5 flex items-center justify-between gap-4 transition-colors", 
+      destructive ? "hover:bg-red-50" : "hover:bg-slate-50",
+      onClick ? "cursor-pointer active:bg-slate-100" : ""
+    )}
+  >
+    <div className="flex items-center gap-4 min-w-0">
       <div className={cn("w-10 h-10 rounded-xl flex items-center justify-center shrink-0", destructive ? "bg-red-50 text-red-600" : "bg-indigo-50 text-indigo-600")}>
         <Icon className="w-5 h-5" />
       </div>
-      <div>
-        <p className={cn("font-semibold", destructive ? "text-red-600" : "text-slate-800")}>{title}</p>
-        <p className="text-sm text-slate-500 mt-0.5">{subtitle}</p>
+      <div className="min-w-0">
+        <p className={cn("font-semibold truncate", destructive ? "text-red-600" : "text-slate-800")}>{title}</p>
+        <p className="text-sm text-slate-500 mt-0.5 truncate sm:whitespace-normal">{subtitle}</p>
       </div>
     </div>
-    {action}
+    <div className="shrink-0">
+      {action}
+    </div>
   </div>
 );
 
@@ -58,17 +68,17 @@ export const Settings = () => {
       {/* 2. Employment & Tax Profiling (New) */}
       <div className="bg-gradient-to-br from-indigo-900 to-slate-900 border border-slate-800 rounded-[24px] shadow-xl overflow-hidden relative">
          <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-500/20 rounded-full blur-[80px] pointer-events-none translate-x-1/3 -translate-y-1/3"></div>
-         <div className="p-6 relative z-10 flex items-center justify-between">
+         <div className="p-6 relative z-10 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
            <div className="flex gap-4 items-start">
              <div className="w-12 h-12 rounded-xl bg-white/10 flex items-center justify-center shrink-0 border border-white/10">
                <Briefcase className="w-6 h-6 text-indigo-300" />
              </div>
              <div>
                <h3 className="font-bold text-white text-lg">Employment & Tax Profile</h3>
-               <p className="text-sm text-indigo-200 mt-1 max-w-sm">Configure your Salary Band and Employer to unlock Smart Tax Engine suggestions (Old vs New Regime) and automatic PF tracking.</p>
+               <p className="text-sm text-indigo-200 mt-1 max-w-sm">Configure your Salary Band and Employer to unlock Smart Tax Engine suggestions and automatic PF tracking.</p>
              </div>
            </div>
-           <button className="hidden sm:block shrink-0 bg-indigo-500 hover:bg-indigo-600 text-white px-5 py-2.5 rounded-xl font-bold transition-all shadow-sm">
+           <button className="w-full sm:w-auto shrink-0 bg-indigo-500 hover:bg-indigo-600 text-white px-5 py-2.5 rounded-xl font-bold transition-all shadow-sm mt-2 sm:mt-0">
              Configure Profile
            </button>
          </div>
@@ -84,12 +94,13 @@ export const Settings = () => {
           <p className="text-sm text-slate-500 mt-1 ml-7">Manage your dedicated ledgers to speed up transaction logging.</p>
         </div>
         <div className="divide-y divide-slate-100">
-          <SettingRow icon={Store} title="Shops / Merchants" subtitle="Save frequent stores & default categories" action={<ChevronRight className="w-5 h-5 text-slate-300" />} />
-          <SettingRow icon={Users} title="People / Payees (Khata)" subtitle="Track lending, borrowing, and split expenses" action={<ChevronRight className="w-5 h-5 text-slate-300" />} />
-          <SettingRow icon={Repeat} title="Recurring Bills" subtitle="Utilities, mobile recharge, gas, electricity" action={<ChevronRight className="w-5 h-5 text-slate-300" />} />
-          <SettingRow icon={CreditCardIcon} title="Subscriptions" subtitle="Discretionary active digital services (Netflix, Gym)" action={<ChevronRight className="w-5 h-5 text-slate-300" />} />
-          <SettingRow icon={Gift} title="Gift Cards" subtitle="Track unused gift card balances & expiry" action={<ChevronRight className="w-5 h-5 text-slate-300" />} />
-          <SettingRow icon={ShieldCheck} title="Warranties" subtitle="Upload warranty cards for major electronics" action={<ChevronRight className="w-5 h-5 text-slate-300" />} />
+          <SettingRow onClick={() => openEntity('shop')} icon={Store} title="Shops / Merchants" subtitle="Save frequent stores & default categories" action={<ChevronRight className="w-5 h-5 text-slate-300" />} />
+          <SettingRow onClick={() => openEntity('person')} icon={Users} title="People / Payees (Khata)" subtitle="Track lending, borrowing, and split expenses" action={<ChevronRight className="w-5 h-5 text-slate-300" />} />
+          <SettingRow onClick={() => openEntity('recurring')} icon={Repeat} title="Recurring Bills" subtitle="Utilities, mobile recharge, gas, electricity" action={<ChevronRight className="w-5 h-5 text-slate-300" />} />
+          <SettingRow onClick={() => openEntity('subscription')} icon={CreditCardIcon} title="Subscriptions" subtitle="Discretionary active digital services (Netflix, Gym)" action={<ChevronRight className="w-5 h-5 text-slate-300" />} />
+          <SettingRow onClick={() => openEntity('giftcard')} icon={Gift} title="Gift Cards" subtitle="Track unused gift card balances & expiry" action={<ChevronRight className="w-5 h-5 text-slate-300" />} />
+          <SettingRow onClick={() => openEntity('warranty')} icon={ShieldCheck} title="Warranties" subtitle="Upload warranty cards for major electronics" action={<ChevronRight className="w-5 h-5 text-slate-300" />} />
+          <SettingRow onClick={() => openEntity('item')} icon={Package} title="Items / Inventory" subtitle="Manage purchased items & assets" action={<ChevronRight className="w-5 h-5 text-slate-300" />} />
         </div>
       </div>
 
@@ -144,6 +155,7 @@ export const Settings = () => {
         </div>
         <div className="divide-y divide-slate-100">
           <SettingRow icon={Database} title="Reset Data" subtitle="Clear all transactions. Keep configs & categories." destructive action={<button className="text-sm font-bold text-red-600 bg-red-50 px-3 py-1.5 rounded-lg border border-red-100">Reset</button>} />
+          <SettingRow icon={Database} title="Seed Data (2 Years)" subtitle="Generate 2 years of realistic testing data." destructive onClick={() => { if(confirm("This will overwrite your current data with 2 years of seed data. Continue?")) { import("../utils/seedData").then(m => m.applySeedData()); } }} action={<button className="text-sm font-bold text-red-600 bg-red-50 px-3 py-1.5 rounded-lg border border-red-100">Seed</button>} />
           <SettingRow icon={AlertTriangle} title="Wipe Data" subtitle="Total nuclear reset. Erase absolutely everything." destructive action={<button className="text-sm font-bold text-white bg-red-600 hover:bg-red-700 transition-colors px-3 py-1.5 rounded-lg">Wipe</button>} />
         </div>
       </div>
@@ -151,6 +163,10 @@ export const Settings = () => {
       <div className="text-center mt-8 text-sm text-slate-400 font-medium">
         FinLocal v2.0.0 • Made in India
       </div>
+
+      {activeEntity && (
+        <EntityManagementModal type={activeEntity as any} onClose={closeEntity} />
+      )}
     </div>
   );
 };

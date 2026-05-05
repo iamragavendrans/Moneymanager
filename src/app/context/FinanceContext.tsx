@@ -14,14 +14,21 @@ export interface Transaction {
   date: string;
   notes: string;
   tags: string[];
-  mode?: "upi" | "card" | "cash" | "netbanking" | "cheque";
+  mode?: "UPI" | "card" | "cash" | "netbanking" | "cheque";
   status?: "cleared" | "pending";
+  subCategory?: string;
+  items?: { name: string; qty: string; unit: string }[];
+  split?: {
+    with: string[];
+    shareStrategy: string;
+    dueDate: string;
+  };
 }
 
 export interface Account {
   id: string;
   name: string;
-  type: "bank" | "upi" | "wallet" | "cash" | "credit_card" | "loan" | "investment" | "meal_card" | "pf";
+  type: "bank" | "UPI" | "wallet" | "cash" | "credit_card" | "loan" | "investment" | "meal_card" | "pf";
   balance: number;
   currency: string;
 }
@@ -65,7 +72,7 @@ interface FinanceContextType {
   getNetWorth: () => number;
   getTotalExpenses: (month?: Date) => number;
   getTotalIncome: (month?: Date) => number;
-  
+
   resetData: () => void;
   wipeData: () => void;
 }

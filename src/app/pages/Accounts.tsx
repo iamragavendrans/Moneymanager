@@ -9,7 +9,7 @@ const AccountIcon = ({ type }: { type: Account["type"] }) => {
     case "bank": return <Building2 className="w-6 h-6" />;
     case "credit_card": return <CreditCard className="w-6 h-6" />;
     case "wallet": return <Wallet className="w-6 h-6" />;
-    case "upi": return <Smartphone className="w-6 h-6" />;
+    case "UPI": return <Smartphone className="w-6 h-6" />;
     case "cash": return <Banknote className="w-6 h-6" />;
     case "investment": return <TrendingUp className="w-6 h-6" />;
     case "meal_card": return <Utensils className="w-6 h-6" />;
@@ -23,10 +23,10 @@ const CHART_COLORS = ['#4F46E5', '#10B981', '#3B82F6', '#8B5CF6', '#F59E0B', '#E
 
 export const Accounts = () => {
   const { accounts, addAccount, getNetWorth } = useFinance();
-  
+
   const bankAccounts = accounts.filter(a => a.type === "bank");
   const creditCards = accounts.filter(a => a.type === "credit_card" || a.type === "loan");
-  const cashWallets = accounts.filter(a => ["cash", "wallet", "upi", "meal_card"].includes(a.type));
+  const cashWallets = accounts.filter(a => ["cash", "wallet", "UPI", "meal_card"].includes(a.type));
 
   const totalPositive = accounts.filter(a => a.balance > 0).reduce((sum, a) => sum + a.balance, 0);
   const totalCreditDebt = accounts.filter(a => a.type === "credit_card" && a.balance < 0).reduce((sum, a) => sum + Math.abs(a.balance), 0);
@@ -41,7 +41,7 @@ export const Accounts = () => {
 
   return (
     <div className="p-4 md:p-8 max-w-5xl mx-auto space-y-8 pb-24">
-      
+
       {/* 3.1. Account Summary Header */}
       <div className="bg-white rounded-[24px] shadow-sm border border-slate-100 p-6 md:p-8 flex flex-col md:flex-row items-center gap-8 relative overflow-hidden">
         {/* Subtle background decoration */}
@@ -84,7 +84,7 @@ export const Accounts = () => {
                   <Cell key={`cell-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />
                 ))}
               </Pie>
-              <Tooltip 
+              <Tooltip
                 formatter={(value: number) => formatINR(value)}
                 contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
               />
@@ -105,7 +105,7 @@ export const Accounts = () => {
       </div>
 
       <div className="space-y-10">
-        
+
         {/* A. Bank Accounts */}
         <section>
           <h3 className="text-lg font-bold text-slate-800 mb-4 px-1 flex items-center gap-2">
@@ -117,7 +117,7 @@ export const Accounts = () => {
                 <div className="absolute right-4 top-4 text-slate-300 group-hover:text-slate-500 transition-colors">
                   <MoreVertical className="w-5 h-5" />
                 </div>
-                
+
                 <div className="flex items-start gap-4">
                   <div className="w-14 h-14 rounded-2xl bg-indigo-50 text-indigo-600 flex items-center justify-center shrink-0 border border-indigo-100 shadow-inner">
                     <AccountIcon type={acc.type} />
@@ -131,7 +131,7 @@ export const Accounts = () => {
                       )}
                     </div>
                     <p className="text-sm font-medium text-slate-500 font-mono tracking-wider mb-4">••• 4521</p>
-                    
+
                     <div className="flex items-end justify-between mt-4">
                       <div>
                         <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-0.5">Current Balance</p>
@@ -160,17 +160,17 @@ export const Accounts = () => {
               const limit = outstanding > 50000 ? 500000 : 100000;
               const available = limit - outstanding;
               const utilization = (outstanding / limit) * 100;
-              
+
               return (
                 <div key={acc.id} className="group bg-slate-900 rounded-2xl border border-slate-800 p-6 shadow-xl relative overflow-hidden cursor-pointer hover:ring-2 ring-indigo-500/50 transition-all">
                   {/* Card Gloss Effect */}
                   <div className="absolute inset-0 bg-gradient-to-br from-white/10 to-transparent opacity-50 pointer-events-none"></div>
-                  
+
                   <div className="relative z-10 flex flex-col h-full justify-between">
                     <div className="flex justify-between items-start mb-8">
                       <div>
-                         <h4 className="font-bold text-white text-lg">{acc.name}</h4>
-                         <p className="text-slate-400 font-mono text-xs tracking-widest mt-1">45XX •••• •••• 9012</p>
+                        <h4 className="font-bold text-white text-lg">{acc.name}</h4>
+                        <p className="text-slate-400 font-mono text-xs tracking-widest mt-1">45XX •••• •••• 9012</p>
                       </div>
                       <div className="w-12 h-8 bg-white/10 rounded-md backdrop-blur-sm flex items-center justify-center">
                         <CreditCard className="w-5 h-5 text-white/70" />
@@ -191,7 +191,7 @@ export const Accounts = () => {
 
                       <div className="flex items-center justify-between text-xs font-medium">
                         <div className="flex items-center gap-1.5 text-slate-300 bg-white/5 px-2.5 py-1.5 rounded-lg">
-                           <CalendarDays className="w-3.5 h-3.5" /> Due in 12 days
+                          <CalendarDays className="w-3.5 h-3.5" /> Due in 12 days
                         </div>
                         <div className="text-slate-400">
                           {utilization.toFixed(0)}% Utilized
@@ -213,18 +213,18 @@ export const Accounts = () => {
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             {cashWallets.map(acc => (
               <div key={acc.id} className="bg-white rounded-2xl border border-slate-200 p-4 shadow-sm hover:shadow-md hover:border-indigo-200 transition-all cursor-pointer text-center">
-                 <div className="w-12 h-12 mx-auto rounded-full bg-slate-50 text-slate-600 flex items-center justify-center mb-3">
-                   <AccountIcon type={acc.type} />
-                 </div>
-                 <h4 className="font-bold text-slate-700 text-sm mb-1 line-clamp-1">{acc.name}</h4>
-                 <p className="text-lg font-black text-slate-900">{formatINR(acc.balance)}</p>
+                <div className="w-12 h-12 mx-auto rounded-full bg-slate-50 text-slate-600 flex items-center justify-center mb-3">
+                  <AccountIcon type={acc.type} />
+                </div>
+                <h4 className="font-bold text-slate-700 text-sm mb-1 line-clamp-1">{acc.name}</h4>
+                <p className="text-lg font-black text-slate-900">{formatINR(acc.balance)}</p>
               </div>
             ))}
-            
+
             {/* Quick Add Wallet/Cash */}
             <div className="bg-slate-50/50 rounded-2xl border border-slate-200 border-dashed p-4 flex flex-col items-center justify-center cursor-pointer hover:bg-slate-50 transition-colors text-slate-400 hover:text-indigo-600">
-               <Plus className="w-8 h-8 mb-2" />
-               <span className="font-bold text-sm">Add Wallet</span>
+              <Plus className="w-8 h-8 mb-2" />
+              <span className="font-bold text-sm">Add Wallet</span>
             </div>
           </div>
         </section>
