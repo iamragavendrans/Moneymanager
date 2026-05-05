@@ -4,7 +4,7 @@ import { Layout } from "./components/Layout";
 import { Dashboard } from "./pages/Dashboard";
 import { Transactions } from "./pages/Transactions";
 import { Accounts } from "./pages/Accounts";
-import { Investments } from "./pages/Instruments";
+import { Investments } from "./pages/Investments";
 import { Settings } from "./pages/Settings";
 
 function RootBoundary() {

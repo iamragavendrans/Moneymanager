@@ -29,7 +29,7 @@ const categories = {
 };
 
 export const TransactionFormModal: React.FC<{ onClose: () => void, txId?: string, initialType?: TransactionType }> = ({ onClose, txId, initialType }) => {
-  const { accounts, addTransaction, updateTransaction, transactions, profile } = useFinance();
+  const { accounts, addTransaction, updateTransaction, transactions, profile, entities } = useFinance();
   const [viewMode, setViewMode] = useState<"normal" | "detailed">("normal");
 
   // Basic Fields
@@ -45,6 +45,7 @@ export const TransactionFormModal: React.FC<{ onClose: () => void, txId?: string
   const [needWant, setNeedWant] = useState<"need" | "want" | "investment" | "discretionary">("need");
   const [forWhom, setForWhom] = useState<string[]>(["self"]);
   const [mode, setMode] = useState<"UPI" | "card" | "cash" | "netbanking">("UPI");
+  const [showPayeeSuggestions, setShowPayeeSuggestions] = useState(false);
   const [isSplit, setIsSplit] = useState(false);
   const [notes, setNotes] = useState("");
   const [subCategory, setSubCategory] = useState("");
@@ -506,13 +507,42 @@ export const TransactionFormModal: React.FC<{ onClose: () => void, txId?: string
                     </select>
                   </div>
                 </div>
-                <div>
+                <div className="relative">
                   <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Payee / Shop</label>
                   <input
-                    type="text" value={payee} onChange={(e) => setPayee(e.target.value)} required
+                    type="text" 
+                    value={payee} 
+                    onChange={(e) => {
+                      setPayee(e.target.value);
+                      setShowPayeeSuggestions(true);
+                    }}
+                    onFocus={() => setShowPayeeSuggestions(true)}
+                    required
                     placeholder="e.g. Amazon, Swiggy"
                     className="w-full text-sm font-bold bg-slate-50 px-3 py-2.5 rounded-xl border-0 focus:ring-2 focus:ring-indigo-600 outline-none"
                   />
+                  {showPayeeSuggestions && payee.length > 0 && (
+                    <div className="absolute top-full left-0 right-0 z-[110] mt-1 bg-white border border-slate-200 rounded-xl shadow-xl overflow-hidden max-h-40 overflow-y-auto">
+                      {entities.filter(e => e.name.toLowerCase().includes(payee.toLowerCase())).map(e => (
+                        <button
+                          key={e.id}
+                          type="button"
+                          onClick={() => {
+                            setPayee(e.name);
+                            if (e.category) setCategory(e.category);
+                            setShowPayeeSuggestions(false);
+                          }}
+                          className="w-full px-4 py-2 text-left text-sm hover:bg-slate-50 flex items-center gap-2 border-b border-slate-50 last:border-0"
+                        >
+                          <div className="w-6 h-6 rounded bg-slate-100 flex items-center justify-center text-[10px] font-bold uppercase">{e.name.charAt(0)}</div>
+                          <div className="flex-1">
+                            <p className="font-bold text-slate-700">{e.name}</p>
+                            {e.category && <p className="text-[10px] text-slate-400 uppercase">{e.category}</p>}
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  )}
                 </div>
               </div>
             )}

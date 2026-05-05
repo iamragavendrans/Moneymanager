@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { Lock, Fingerprint, Palette, Cloud, Database, Download, Upload, Shield, IndianRupee, Globe, LayoutTemplate, Store, Users, Repeat, CreditCard as CreditCardIcon, Gift, ShieldCheck, Bell, AlertTriangle, Briefcase, ChevronRight, X, Calendar, Tags, Package } from "lucide-react";
 import { cn } from "../utils";
 import { EntityManagementModal } from "../components/EntityManagementModal";
+import { ProfileManagementModal } from "../components/ProfileManagementModal";
 import { useFinance } from "../context/FinanceContext";
 
 const SettingRow = ({ icon: Icon, title, subtitle, action, destructive = false, onClick }: any) => (
@@ -58,6 +59,7 @@ export const Settings = () => {
   const [reminders, setReminders] = useState({ bills: getStoredBool('s_bills', true), dailyLog: getStoredBool('s_dailyLog', true) });
   const [confirmReset, setConfirmReset] = useState(false);
   const [confirmWipe, setConfirmWipe] = useState(false);
+  const [showProfileModal, setShowProfileModal] = useState(false);
   const [wipePhase, setWipePhase] = useState(1);
 
   useEffect(() => { localStorage.setItem('s_biometric', String(locks.biometric)); }, [locks.biometric]);
@@ -89,8 +91,8 @@ export const Settings = () => {
         <div className="p-6 border-b border-slate-100 flex items-center gap-4 bg-slate-50/50">
           <img src="/profile.png" alt="Profile" className="w-16 h-16 rounded-full border-2 border-white shadow-sm object-cover bg-indigo-100" onError={(e) => { e.currentTarget.style.display = 'none' }} />
           <div>
-            <h3 className="font-bold text-slate-800 text-lg">My Profile</h3>
-            <p className="text-sm text-slate-500">Pro Local-First Account</p>
+            <h3 className="font-bold text-slate-800 text-lg">{profile.userName || "My Profile"}</h3>
+            <p className="text-sm text-slate-500 font-medium tracking-tight">{profile.userEmail || "Pro Local-First Account"}</p>
           </div>
         </div>
         
@@ -142,9 +144,12 @@ export const Settings = () => {
                <p className="text-sm text-indigo-200 mt-1 max-w-sm">Configure your Salary Band and Employer to unlock Smart Tax Engine suggestions and automatic PF tracking.</p>
              </div>
            </div>
-           <button className="w-full sm:w-auto shrink-0 bg-indigo-500 hover:bg-indigo-600 text-white px-5 py-2.5 rounded-xl font-bold transition-all shadow-sm mt-2 sm:mt-0">
-             Configure Profile
-           </button>
+            <button 
+              onClick={() => setShowProfileModal(true)}
+              className="w-full sm:w-auto shrink-0 bg-indigo-500 hover:bg-indigo-600 text-white px-5 py-2.5 rounded-xl font-bold transition-all shadow-sm mt-2 sm:mt-0"
+            >
+              Configure Profile
+            </button>
          </div>
       </div>
 
@@ -194,7 +199,7 @@ export const Settings = () => {
           </div>
           <div className="divide-y divide-slate-100">
             <SettingRow icon={Fingerprint} title="App Lock" subtitle="Require Biometrics to open" action={<Toggle active={locks.biometric} onToggle={() => setLocks(s => ({ ...s, biometric: !s.biometric }))} />} />
-            <SettingRow icon={Lock} title="Hide Balances" subtitle="Mask numbers by default" action={<Toggle active={locks.hideBalances} onToggle={() => setLocks(s => ({ ...s, hideBalances: !s.hideBalances }))} />} />
+            <SettingRow icon={Lock} title="Hide Balances" subtitle="Mask numbers by default" action={<Toggle active={profile.maskBalances || false} onToggle={() => updateProfile({ maskBalances: !profile.maskBalances })} />} />
           </div>
         </div>
 
@@ -269,6 +274,9 @@ export const Settings = () => {
 
       {activeEntity && (
         <EntityManagementModal type={activeEntity as any} onClose={closeEntity} />
+      )}
+      {showProfileModal && (
+        <ProfileManagementModal onClose={() => setShowProfileModal(false)} />
       )}
     </div>
   );

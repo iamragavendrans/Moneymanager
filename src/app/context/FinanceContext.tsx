@@ -28,8 +28,15 @@ export interface Transaction {
 }
 
 export interface Profile {
+  userName?: string;
+  userEmail?: string;
   companyName: string;
   logoDevToken?: string;
+  salaryBand?: string;
+  employer?: string;
+  taxRegime?: "old" | "new";
+  baseCurrency?: string;
+  maskBalances?: boolean;
 }
 
 export interface Account {
