@@ -40,7 +40,7 @@ function ToggleGroup({
   );
 }
 
-function ToggleGroupItem({
+function ToggleGroUPItem({
   className,
   children,
   variant,
@@ -70,4 +70,4 @@ function ToggleGroupItem({
   );
 }
 
-export { ToggleGroup, ToggleGroupItem };
+export { ToggleGroup, ToggleGroUPItem };

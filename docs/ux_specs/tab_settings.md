@@ -41,13 +41,14 @@ Provide ultimate control over the app's behavior, data privacy, and personalizat
     *   Categories can be tagged globally (e.g., "Needs", "Wants", "Savings/Investments"). This is critical for powering psychological insights and 50/30/20 budgeting reports.
 
 ### 3.5. Advanced Configurations & Entities
-*   **Entity Management:** Dedicated lists to add, edit, or archive specific entities to speed up transaction logging:
-    *   **Shops / Merchants:** Save frequent stores. *Features:* Show a dedicated ledger of all transactions with this specific shop, the total historical spend, and the usual category mapped to it.
-    *   **People / Payees:** Track individuals. *Features:* Acts as a mini-ledger showing "How much they owe us" (Receivables) vs "How much we owe them" (Payables), along with a linked transaction history.
-    *   **Recurring Bills:** For utilities, mobile recharge, gas, electricity, DTH, etc.
-    *   **Subscriptions:** For digital services, apps, games, streaming (Netflix, Spotify, etc.). *Separated from bills because subscriptions are usually discretionary/wants.*
-    *   **Gift Cards:** Spendable entities. Track current unused balance and expiry date (acts like a temporary wallet/account).
-    *   **Warranties:** Non-spendable entities. Upload warranty cards, invoices, and track warranty expiration dates for major electronics.
+*   **Entity Management (3-Tier Architecture):** Dedicated lists to add, edit, or archive specific entities to speed up transaction logging. Operates via a List ➔ Dashboard ➔ Edit Form flow. All entities support a "Pause/Resume" status toggle.
+    *   **Shops / Merchants:** Tracks `mode` (offline/online), `location`/`url`. *Dashboard:* Shows historical spending with time/price filters and a transaction ledger.
+    *   **People / Payees (Khata):** Tracks `relationship` (Family/Friend/Colleague). *Dashboard:* Acts as a mini-ledger showing "How much they owe us" (Receivables) vs "We owe them" (Payables), with linked transactions.
+    *   **Recurring Bills:** Specifically for utility bills (EB, gas, water, broadband). Tracks `provider`, `billingDetails` (e.g., EB Number), and `recurringDuration`.
+    *   **Subscriptions:** Separated from bills. Tracks subscribed plan details, provider, and recurring duration.
+    *   **Gift Cards:** Spendable entities. Tracks `providerName` and initial `totalBalance`. *Dashboard:* Calculates current balance vs total balance automatically based on transactions made.
+    *   **Warranties:** Non-spendable entities. Tracks provider name, warranty details, and natively links to an `Item`.
+    *   **Items / Inventory (New Module):** The master catalog of assets purchased. Tracks `price` (dynamically updated), `quantity`/measurements, and `pics`/`url`. Other modules (like Warranties) map to these items. *Dashboard:* Lists transactions where the item was purchased.
 *   **Employment Details (Optional Profiling):**
     *   A dedicated section to collect: *Employer Name*, *Location*, and *Salary Band*.
     *   *Smart Tax Engine:* By knowing the salary band, the app can auto-suggest the optimal tax variant (Old vs. New Tax Regime) and estimate PF (Provident Fund) and TDS deductions to predict exact in-hand salary.

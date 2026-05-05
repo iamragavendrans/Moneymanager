@@ -98,7 +98,7 @@ export const Dashboard = () => {
     if (globalFilter === '1W') newDate = dir === 'prev' ? subWeeks(referenceDate, 1) : addWeeks(referenceDate, 1);
     if (globalFilter === '1M') newDate = dir === 'prev' ? subMonths(referenceDate, 1) : addMonths(referenceDate, 1);
     if (globalFilter === '1Y') newDate = dir === 'prev' ? subYears(referenceDate, 1) : addYears(referenceDate, 1);
-    
+
     if (newDate > new Date()) newDate = new Date();
     setReferenceDate(newDate);
   };
@@ -149,18 +149,18 @@ export const Dashboard = () => {
     let days = 7;
     if (globalFilter === "1M") days = 30;
     if (globalFilter === "1Y") days = 365;
-    
+
     const currentStart = subDays(now, days);
     const prevStart = subDays(now, days * 2);
-    
+
     const prevTx = transactions.filter(t => {
       const txDate = new Date(t.date);
       return txDate >= prevStart && txDate < currentStart;
     });
-    
+
     const pInc = prevTx.filter(t => t.type === 'income').reduce((s, t) => s + t.amount, 0);
     const pExp = prevTx.filter(t => t.type === 'expense').reduce((s, t) => s + t.amount, 0);
-    
+
     const prevAccounts = accounts.map(a => {
       const futureTx = transactions.filter(t => new Date(t.date) > endOfDay(currentStart) && (t.account_id === a.id || t.to_account_id === a.id));
       let netChange = 0;
@@ -174,7 +174,7 @@ export const Dashboard = () => {
       });
       return { ...a, balance: a.balance - netChange };
     });
-    
+
     const pNW = prevAccounts.reduce((sum, a) => sum + a.balance, 0);
     return { pInc, pExp, pNW };
   }, [transactions, accounts, globalFilter, referenceDate]);
@@ -186,7 +186,7 @@ export const Dashboard = () => {
   const chartData = useMemo(() => {
     const daysCount = globalFilter === "1W" ? 7 : globalFilter === "1M" ? 30 : 365;
     const data = [];
-    const loopLimit = globalFilter === "1Y" ? 30 : daysCount; // Cap line chart points at 30 to keep it readable, wait 1Y usually needs month grouping but 30 days is standard trend
+    const loopLimit = globalFilter === "1Y" ? 30 : daysCount; // Cap line chart points at 30 to keep it readable, wait 1Y usually needs month groUPIng but 30 days is standard trend
     for (let i = loopLimit - 1; i >= 0; i--) {
       const dateObj = subDays(now, i);
       const dateStr = format(dateObj, "yyyy-MM-dd");
@@ -218,11 +218,11 @@ export const Dashboard = () => {
       const dateStr = format(d, "yyyy-MM-dd");
       const dayTx = transactions.filter(t => t.date === dateStr);
       if (dayTx.length === 0) return { type: 'empty' };
-      
+
       const inc = dayTx.filter(t => t.type === 'income').reduce((s, t) => s + t.amount, 0);
       const exp = dayTx.filter(t => t.type === 'expense').reduce((s, t) => s + t.amount, 0);
       const trf = dayTx.filter(t => t.type === 'transfer').reduce((s, t) => s + t.amount, 0);
-      
+
       if (trf > inc && trf > exp) return { type: 'transfer' };
       if (inc > exp) return { type: 'income' };
       if (exp > inc) return { type: 'expense' };
@@ -244,21 +244,13 @@ export const Dashboard = () => {
       const start = startOfWeek(subWeeks(now, weeksToSubtract));
       const end = endOfWeek(now);
       const days = eachDayOfInterval({ start, end });
-      
+
       const matrixRows = Math.ceil(days.length / 7);
       const matrix = Array(matrixRows).fill(null).map(() => Array(7).fill(null));
       days.forEach((d, i) => { matrix[Math.floor(i / 7)][getDay(d)] = d; });
 
       return (
         <div className="flex flex-col gap-2 w-full overflow-x-auto pb-4 scrollbar-hide">
-          <div className="flex justify-end mb-2">
-            <span className="text-[10px] font-medium text-slate-500 flex items-center gap-1.5">
-              <span className="flex items-center gap-0.5"><span className="w-2.5 h-2.5 bg-emerald-400 rounded-sm"></span> Inc</span>
-              <span className="flex items-center gap-0.5"><span className="w-2.5 h-2.5 bg-red-400 rounded-sm"></span> Exp</span>
-              <span className="flex items-center gap-0.5"><span className="w-2.5 h-2.5 bg-blue-400 rounded-sm"></span> Trf</span>
-              <span className="flex items-center gap-0.5"><span className="w-2.5 h-2.5 bg-yellow-400 rounded-sm"></span> Bal</span>
-            </span>
-          </div>
           <div className="flex gap-2 min-w-max pl-8">
             {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((day, i) => <div key={i} className="w-6 text-center text-[10px] font-bold text-slate-400">{day}</div>)}
           </div>
@@ -283,9 +275,6 @@ export const Dashboard = () => {
       const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
       return (
         <div className="flex flex-col gap-1.5 w-full overflow-x-auto pb-4 scrollbar-hide">
-          <div className="flex justify-end mb-2">
-            <span className="text-xs font-medium text-slate-500 flex items-center gap-1">Low <span className="w-2.5 h-2.5 bg-emerald-400 rounded-sm mx-0.5"></span><span className="w-2.5 h-2.5 bg-yellow-300 rounded-sm mx-0.5"></span><span className="w-2.5 h-2.5 bg-red-500 rounded-sm mx-0.5"></span> High</span>
-          </div>
           <div className="flex gap-1.5 min-w-max pl-8">
             {Array.from({ length: 31 }).map((_, i) => <div key={i} className="w-4 text-center text-[8px] font-bold text-slate-400">{i + 1}</div>)}
           </div>
@@ -342,23 +331,23 @@ export const Dashboard = () => {
           </ResponsiveContainer>
         </div>
         <div className="relative z-10 flex flex-col h-full justify-between">
-          <div className="flex justify-between items-center mb-4">
-            <div className="flex items-center gap-2">
-              <span className="text-slate-400 font-medium text-sm">Total Net Worth</span>
+          <div className="flex flex-wrap md:flex-nowrap justify-between items-center mb-4 gap-y-3 gap-x-2">
+            <div className="flex items-center gap-2 flex-shrink-0">
+              <span className="text-slate-400 font-medium text-sm whitespace-nowrap">Total Net Worth</span>
               <button onClick={() => setIsMasked(!isMasked)} className="text-slate-400 hover:text-white transition-colors">{isMasked ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}</button>
             </div>
-            <div className="flex flex-row items-center gap-1.5 md:gap-2 max-w-[60vw] overflow-x-auto scrollbar-hide justify-end pb-1 md:pb-0">
+            <div className="flex flex-row items-center gap-1.5 md:gap-2 overflow-x-auto scrollbar-hide pb-1 md:pb-0 max-w-full">
               <div className="bg-[#1A2235] rounded-lg p-1 flex gap-1 border border-slate-700/50">
                 {['1W', '1M', '1Y'].map(f => (
                   <button key={f} onClick={() => handleGlobalFilter(f)} className={`px-3 py-1 text-xs font-semibold rounded-md transition-colors ${globalFilter === f ? 'bg-white text-[#0B1220]' : 'text-slate-400 hover:text-white'}`}>{f}</button>
                 ))}
               </div>
               <div className="flex items-center gap-1.5 bg-[#1A2235] border border-slate-700/50 rounded-lg p-1 h-[32px]">
-                <button onClick={() => navigatePeriod('prev')} className="p-1 rounded bg-transparent hover:bg-white/10 text-slate-300 transition-colors"><ChevronLeft className="w-4 h-4"/></button>
+                <button onClick={() => navigatePeriod('prev')} className="p-1 rounded bg-transparent hover:bg-white/10 text-slate-300 transition-colors"><ChevronLeft className="w-4 h-4" /></button>
                 <span className="text-white text-[11px] font-medium w-20 text-center">
                   {isSameMonth(referenceDate, new Date()) && isSameDay(referenceDate, new Date()) ? 'Current' : format(referenceDate, globalFilter === '1Y' ? 'yyyy' : 'MMM dd, yyyy')}
                 </span>
-                <button onClick={() => navigatePeriod('next')} disabled={isSameMonth(referenceDate, new Date()) && isSameDay(referenceDate, new Date())} className="p-1 rounded bg-transparent hover:bg-white/10 text-slate-300 transition-colors disabled:opacity-30 disabled:hover:bg-transparent"><ChevronRight className="w-4 h-4"/></button>
+                <button onClick={() => navigatePeriod('next')} disabled={isSameMonth(referenceDate, new Date()) && isSameDay(referenceDate, new Date())} className="p-1 rounded bg-transparent hover:bg-white/10 text-slate-300 transition-colors disabled:opacity-30 disabled:hover:bg-transparent"><ChevronRight className="w-4 h-4" /></button>
               </div>
             </div>
           </div>
@@ -394,7 +383,7 @@ export const Dashboard = () => {
         <Card onClick={() => navigate(`/transactions?type=income&start=${subDays(now, globalFilter === '1W' ? 7 : globalFilter === '1M' ? 30 : 365).getTime()}&end=${endOfDay(now).getTime()}`)} className="flex flex-col justify-between relative overflow-hidden group hover:shadow-md transition-all h-[140px] md:h-[160px] cursor-pointer">
           <div className="flex justify-between items-start mb-2">
             <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-full bg-emerald-50 flex items-center justify-center text-emerald-500 flex-shrink-0 border border-emerald-100"><ArrowDownRight className="w-4 h-4" /></div>
+              <div className="w-8 h-8 rounded-full bg-emerald-50 flex items-center justify-center text-emerald-500 flex-shrink-0 border border-emerald-100"><ArrowUpRight className="w-4 h-4" /></div>
               <span className="text-slate-500 font-medium text-xs md:text-sm">{periodTitle} Income</span>
             </div>
             <button className="text-slate-400 hover:text-slate-600"><MoreVertical className="w-4 h-4" /></button>
@@ -412,7 +401,7 @@ export const Dashboard = () => {
         <Card onClick={() => navigate(`/transactions?type=expense&start=${subDays(now, globalFilter === '1W' ? 7 : globalFilter === '1M' ? 30 : 365).getTime()}&end=${endOfDay(now).getTime()}`)} className="flex flex-col justify-between relative overflow-hidden group hover:shadow-md transition-all h-[140px] md:h-[160px] cursor-pointer">
           <div className="flex justify-between items-start mb-2">
             <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-full bg-red-50 flex items-center justify-center text-red-500 flex-shrink-0 border border-red-100"><ArrowUpRight className="w-4 h-4" /></div>
+              <div className="w-8 h-8 rounded-full bg-red-50 flex items-center justify-center text-red-500 flex-shrink-0 border border-red-100"><ArrowDownRight className="w-4 h-4" /></div>
               <span className="text-slate-500 font-medium text-xs md:text-sm">{periodTitle} Expenses</span>
             </div>
             <button className="text-slate-400 hover:text-slate-600"><MoreVertical className="w-4 h-4" /></button>
@@ -430,21 +419,34 @@ export const Dashboard = () => {
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
         <div className="lg:col-span-7 space-y-6">
           <Card className="p-5 md:p-6 overflow-hidden">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
-              <div>
+            <div className="mb-6">
+              <div className="flex items-center justify-between">
                 <h3 className="font-bold text-slate-800 text-[16px]">Cashflow Intensity</h3>
-                {!showHeatmap && (
-                  <div className="flex items-center gap-4 mt-2">
+                <button onClick={() => setShowHeatmap(!showHeatmap)} className="text-sm border rounded-lg px-3 py-1.5 font-medium flex items-center gap-2 transition-colors bg-white border-slate-200 text-slate-600 hover:bg-slate-50">
+                  {showHeatmap ? <TrendingUp className="w-4 h-4" /> : <LayoutGrid className="w-4 h-4" />} <span className="hidden sm:inline">{showHeatmap ? "Trendline" : "Heatmap"}</span>
+                </button>
+              </div>
+              <div className="mt-3">
+                {!showHeatmap ? (
+                  <div className="flex items-center gap-4">
                     <div className="flex items-center gap-1.5 text-xs font-medium text-slate-500"><div className="w-2 h-2 rounded-full bg-emerald-500"></div> Income</div>
                     <div className="flex items-center gap-1.5 text-xs font-medium text-slate-500"><div className="w-2 h-2 rounded-full bg-red-500"></div> Expense</div>
                     <div className="flex items-center gap-1.5 text-xs font-medium text-slate-500"><div className="w-2 h-2 rounded-full bg-blue-500"></div> Net</div>
                   </div>
+                ) : globalFilter === "1M" || globalFilter === "1W" ? (
+                  <div className="flex items-center gap-4">
+                    <div className="flex items-center gap-1.5 text-xs font-medium text-slate-500"><div className="w-2 h-2 rounded-sm bg-emerald-400"></div> Income</div>
+                    <div className="flex items-center gap-1.5 text-xs font-medium text-slate-500"><div className="w-2 h-2 rounded-sm bg-red-400"></div> Expense</div>
+                    <div className="flex items-center gap-1.5 text-xs font-medium text-slate-500"><div className="w-2 h-2 rounded-sm bg-blue-400"></div> Transfer</div>
+                    <div className="flex items-center gap-1.5 text-xs font-medium text-slate-500"><div className="w-2 h-2 rounded-sm bg-yellow-400"></div> Balance</div>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-1 text-xs font-medium text-slate-500">
+                    Low <div className="w-2.5 h-2.5 bg-emerald-400 rounded-sm mx-0.5"></div>
+                    <div className="w-2.5 h-2.5 bg-yellow-300 rounded-sm mx-0.5"></div>
+                    <div className="w-2.5 h-2.5 bg-red-500 rounded-sm mx-0.5"></div> High
+                  </div>
                 )}
-              </div>
-              <div className="flex items-center gap-2">
-                <button onClick={() => setShowHeatmap(!showHeatmap)} className={`text-sm border rounded-lg px-3 py-1.5 font-medium flex items-center gap-2 transition-colors ${showHeatmap ? 'bg-indigo-50 border-indigo-200 text-indigo-600' : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100'}`}>
-                  {showHeatmap ? <TrendingUp className="w-4 h-4" /> : <LayoutGrid className="w-4 h-4" />} {showHeatmap ? "Trendline" : "Heatmap"}
-                </button>
               </div>
             </div>
             {showHeatmap ? (
@@ -536,9 +538,9 @@ export const Dashboard = () => {
             <div className="space-y-1">
               {recentTransactions.map(tx => (
                 <div key={tx.id} onClick={() => setEditTxId(tx.id)} className="cursor-pointer">
-                  <ListCard 
-                    icon={<div className={`w-10 h-10 rounded-xl flex items-center justify-center font-bold ${tx.type === 'expense' ? 'bg-orange-50 text-orange-500' : tx.type === 'income' ? 'bg-emerald-50 text-emerald-600' : 'bg-purple-50 text-purple-600'}`}>{tx.payee.charAt(0)}</div>} 
-                    title={tx.payee} 
+                  <ListCard
+                    icon={<div className={`w-10 h-10 rounded-xl flex items-center justify-center font-bold ${tx.type === 'expense' ? 'bg-orange-50 text-orange-500' : tx.type === 'income' ? 'bg-emerald-50 text-emerald-600' : 'bg-purple-50 text-purple-600'}`}>{tx.payee.charAt(0)}</div>}
+                    title={tx.payee}
                     subtitle={
                       <div className="flex items-center gap-1.5 mt-0.5">
                         <span>{tx.category}</span><span>•</span><span>{format(new Date(tx.date), "MMM dd")}</span><span>•</span>
@@ -546,8 +548,8 @@ export const Dashboard = () => {
                           {tx.type === 'transfer' && tx.to_account_id ? `${getAccountName(tx.account_id)} → ${getAccountName(tx.to_account_id)}` : getAccountName(tx.account_id)}
                         </span>
                       </div>
-                    } 
-                    amount={`${tx.type === 'expense' ? '-' : '+'}${formatINR(tx.amount)}`} 
+                    }
+                    amount={`${tx.type === 'expense' ? '-' : '+'}${formatINR(tx.amount)}`}
                   />
                 </div>
               ))}
