@@ -5,6 +5,7 @@ import { cn } from "../utils";
 import { TransactionFormModal } from "./TransactionFormModal";
 import { AccountManagementModal } from "./AccountManagementModal";
 import { EntityManagementModal } from "./EntityManagementModal";
+import { InvestmentManagementModal } from "./InvestmentManagementModal";
 
 const navItems = [
   { icon: LayoutDashboard, label: "Home", path: "/" },
@@ -18,6 +19,7 @@ export const Layout = () => {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [showAccountModal, setShowAccountModal] = useState(false);
   const [showEntityModal, setShowEntityModal] = useState(false);
+  const [showInvModal, setShowInvModal] = useState(false);
   const location = useLocation();
 
   const getPageTitle = () => {
@@ -34,7 +36,7 @@ export const Layout = () => {
   const getAddAction = () => {
     switch (location.pathname) {
       case "/accounts": return { label: "Add Account", action: () => setShowAccountModal(true) };
-      case "/investments": return { label: "Add Investment", action: () => setShowEntityModal(true) };
+      case "/investments": return { label: "Add Investment", action: () => setShowInvModal(true) };
       default: return { label: "Add Transaction", action: () => setIsAddModalOpen(true) };
     }
   };
@@ -160,6 +162,7 @@ export const Layout = () => {
       {showEntityModal && (
         <EntityManagementModal type="item" onClose={() => setShowEntityModal(false)} />
       )}
+      {showInvModal && <InvestmentManagementModal onClose={() => setShowInvModal(false)} />}
     </div>
   );
 };

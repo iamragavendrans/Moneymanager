@@ -4,6 +4,7 @@ import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from "recharts";
 import { formatINR, cn } from "../utils";
 import { differenceInDays, parseISO, format } from "date-fns";
 import { useFinance } from "../context/FinanceContext";
+import { InvestmentManagementModal } from "../components/InvestmentManagementModal";
 
 // Default seed data used when context investments list is empty
 const defaultInvestments = {
@@ -29,6 +30,8 @@ const CHART_COLORS = ['#3B82F6', '#10B981', '#F59E0B', '#6366F1'];
 
 export const Investments = () => {
   const { investments: contextInvestments } = useFinance();
+  const [showAddModal, setShowAddModal] = React.useState(false);
+  const [editingId, setEditingId] = React.useState<string | null>(null);
 
   // Use context investments when available, otherwise use defaults
   const inv = useMemo(() => {
@@ -148,7 +151,10 @@ export const Investments = () => {
 
       <div className="flex items-center justify-between">
         <h2 className="text-xl font-bold text-slate-800">Your Instruments</h2>
-        <button className="flex items-center gap-2 bg-slate-900 text-white px-4 py-2 rounded-xl text-sm font-semibold hover:bg-slate-800 transition-colors">
+        <button 
+          onClick={() => setShowAddModal(true)}
+          className="flex items-center gap-2 bg-slate-900 text-white px-4 py-2 rounded-xl text-sm font-semibold hover:bg-slate-800 transition-colors"
+        >
           <Plus className="w-4 h-4" /> Add Asset
         </button>
       </div>
@@ -170,7 +176,11 @@ export const Investments = () => {
               const profit = current - invested;
               const isProfitable = profit >= 0;
               return (
-                <div key={mf.id} className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition-shadow">
+                <div 
+                  key={mf.id} 
+                  onClick={() => setEditingId(mf.id)}
+                  className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition-all cursor-pointer group"
+                >
                   <div className="flex justify-between items-start mb-4">
                     <div className="pr-4">
                       <h4 className="font-bold text-slate-900 line-clamp-1">{mf.name}</h4>
@@ -214,7 +224,11 @@ export const Investments = () => {
               const progress = Math.min(100, Math.max(0, (daysPassed / totalDays) * 100));
 
               return (
-                <div key={fd.id} className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition-shadow">
+                <div 
+                  key={fd.id} 
+                  onClick={() => setEditingId(fd.id)}
+                  className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition-all cursor-pointer"
+                >
                   <div className="flex justify-between items-start mb-4">
                     <div>
                       <h4 className="font-bold text-slate-900">{fd.name}</h4>
@@ -258,7 +272,11 @@ export const Investments = () => {
               const current = g.grams * g.currentPrice;
               const profit = current - invested;
               return (
-                <div key={g.id} className="bg-gradient-to-br from-amber-50/50 to-white p-5 rounded-2xl border border-amber-100 shadow-sm hover:shadow-md transition-shadow">
+                <div 
+                  key={g.id} 
+                  onClick={() => setEditingId(g.id)}
+                  className="bg-gradient-to-br from-amber-50/50 to-white p-5 rounded-2xl border border-amber-100 shadow-sm hover:shadow-md transition-all cursor-pointer"
+                >
                   <h4 className="font-bold text-slate-900 mb-1">{g.name}</h4>
                   <p className="text-xs text-amber-700 font-medium">Holding: {g.grams}g • Avg Cost: ₹{g.avgPrice}/g</p>
                   
@@ -294,7 +312,11 @@ export const Investments = () => {
               const equityPercentage = (netEquity / re.propertyValue) * 100;
 
               return (
-                <div key={re.id} className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex flex-col md:flex-row md:items-center gap-6">
+                <div 
+                  key={re.id} 
+                  onClick={() => setEditingId(re.id)}
+                  className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex flex-col md:flex-row md:items-center gap-6 cursor-pointer hover:shadow-md transition-all"
+                >
                   <div className="flex-1">
                     <h4 className="font-bold text-slate-900 text-lg mb-1">{re.name}</h4>
                     <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Property Valuation: {formatINR(re.propertyValue)}</p>
@@ -329,8 +351,14 @@ export const Investments = () => {
             })}
           </div>
         </section>
-
       </div>
+
+      {(showAddModal || editingId) && (
+        <InvestmentManagementModal 
+          invId={editingId} 
+          onClose={() => { setShowAddModal(false); setEditingId(null); }} 
+        />
+      )}
     </div>
   );
 };

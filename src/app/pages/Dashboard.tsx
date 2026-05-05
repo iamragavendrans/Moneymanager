@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from "react";
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
-import { ArrowUpRight, ArrowDownRight, Eye, EyeOff, MoreVertical, LayoutGrid, ChevronDown, TrendingUp, X, Check, Clock, ChevronLeft, ChevronRight } from "lucide-react";
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from "recharts";
+import { ArrowUpRight, ArrowDownRight, Eye, EyeOff, MoreVertical, LayoutGrid, ChevronDown, TrendingUp, X, Check, Clock, ChevronLeft, ChevronRight, Store, ShieldCheck } from "lucide-react";
 import { format, subDays, getDaysInMonth, getWeekOfMonth, getDay, startOfMonth, endOfMonth, startOfWeek, endOfWeek, subWeeks, eachDayOfInterval, addWeeks, subMonths, addMonths, subYears, addYears, isSameDay, isSameMonth, endOfDay, startOfYear, endOfYear } from "date-fns";
 import { useFinance } from "../context/FinanceContext";
 import { formatINR } from "../utils";
@@ -76,12 +76,13 @@ const SwipeableCard = ({ children, onSwipeLeft, onSwipeRight, rightActionLabel, 
 };
 
 export const Dashboard = () => {
-  const { getNetWorth, transactions, accounts } = useFinance();
+  const { getNetWorth, transactions, accounts, profile, updateProfile } = useFinance();
   const navigate = useNavigate();
   const [showHeroBreakdown, setShowHeroBreakdown] = useState(false);
   const [globalFilter, setGlobalFilter] = useState("1M");
   const [showHeatmap, setShowHeatmap] = useState(false);
-  const [isMasked, setIsMasked] = useState(false);
+  const isMasked = profile.maskBalances || false;
+  const setIsMasked = (val: boolean) => updateProfile({ maskBalances: val });
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [editTxId, setEditTxId] = useState<string | null>(null);
   const [referenceDate, setReferenceDate] = useState<Date>(new Date());
@@ -246,6 +247,32 @@ export const Dashboard = () => {
     // Smooth the data if needed or handle the scale
     return finalData;
   }, [transactions, globalFilter, referenceDate, historicalNetWorth]);
+
+  const categoryData = useMemo(() => {
+    const cats: Record<string, number> = {};
+    filteredTransactions.filter(t => t.type === 'expense').forEach(t => {
+      cats[t.category] = (cats[t.category] || 0) + t.amount;
+    });
+    return Object.entries(cats)
+      .map(([name, value]) => ({ name, value }))
+      .sort((a, b) => b.value - a.value)
+      .slice(0, 6);
+  }, [filteredTransactions]);
+
+  const topMerchants = useMemo(() => {
+    const merchants: Record<string, { amount: number, count: number }> = {};
+    filteredTransactions.filter(t => t.type === 'expense').forEach(t => {
+      if (!merchants[t.payee]) merchants[t.payee] = { amount: 0, count: 0 };
+      merchants[t.payee].amount += t.amount;
+      merchants[t.payee].count += 1;
+    });
+    return Object.entries(merchants)
+      .map(([name, data]) => ({ name, ...data }))
+      .sort((a, b) => b.amount - a.amount)
+      .slice(0, 5);
+  }, [filteredTransactions]);
+
+  const CATEGORY_COLORS = ['#6366F1', '#EC4899', '#F59E0B', '#10B981', '#3B82F6', '#8B5CF6'];
 
   // Use a zoomed-in domain for sparkline if variance is low
   const sparklineDomain = useMemo(() => {
@@ -630,6 +657,68 @@ export const Dashboard = () => {
                   />
                 </div>
               ))}
+            </div>
+          </Card>
+        </div>
+
+        {/* Third Row: Insights */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <Card className="p-6">
+            <h3 className="font-bold text-slate-800 text-[16px] mb-6">Spending Breakdown</h3>
+            <div className="flex flex-col md:flex-row items-center gap-8">
+              <div className="w-full md:w-1/2 h-56">
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie data={categoryData} cx="50%" cy="50%" innerRadius="65%" outerRadius="85%" paddingAngle={5} dataKey="value" stroke="none">
+                      {categoryData.map((_, index) => (
+                        <Cell key={`cell-${index}`} fill={CATEGORY_COLORS[index % CATEGORY_COLORS.length]} />
+                      ))}
+                    </Pie>
+                    <Tooltip formatter={(v: number) => formatINR(v)} />
+                  </PieChart>
+                </ResponsiveContainer>
+              </div>
+              <div className="flex-1 space-y-3 w-full">
+                {categoryData.map((cat, i) => (
+                  <div key={cat.name} className="flex items-center justify-between group">
+                    <div className="flex items-center gap-2">
+                      <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: CATEGORY_COLORS[i % CATEGORY_COLORS.length] }}></div>
+                      <span className="text-sm font-medium text-slate-600 group-hover:text-slate-900 transition-colors">{cat.name}</span>
+                    </div>
+                    <span className="text-sm font-bold text-slate-800">{formatINR(cat.value)}</span>
+                  </div>
+                ))}
+                {categoryData.length === 0 && <p className="text-sm text-slate-400 italic text-center py-8">No expenses this period</p>}
+              </div>
+            </div>
+          </Card>
+
+          <Card className="p-6">
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="font-bold text-slate-800 text-[16px]">Top Merchants</h3>
+              <div className="w-8 h-8 rounded-full bg-slate-50 flex items-center justify-center text-slate-400">
+                <Store className="w-4 h-4" />
+              </div>
+            </div>
+            <div className="space-y-4">
+              {topMerchants.map((m, i) => (
+                <div key={m.name} className="flex items-center justify-between p-3 rounded-2xl border border-slate-50 hover:border-indigo-100 hover:bg-indigo-50/30 transition-all group">
+                  <div className="flex items-center gap-4">
+                    <div className="w-10 h-10 rounded-xl bg-white border border-slate-100 flex items-center justify-center text-slate-500 font-bold group-hover:bg-indigo-600 group-hover:text-white group-hover:border-indigo-600 transition-all shadow-sm">
+                      {i + 1}
+                    </div>
+                    <div>
+                      <p className="font-bold text-slate-800 leading-none mb-1">{m.name}</p>
+                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{m.count} Transactions</p>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <p className="font-black text-slate-900">{formatINR(m.amount)}</p>
+                    <p className="text-[10px] font-bold text-red-500 uppercase">-{((m.amount / periodExpense) * 100).toFixed(1)}% of Spend</p>
+                  </div>
+                </div>
+              ))}
+              {topMerchants.length === 0 && <p className="text-sm text-slate-400 italic text-center py-8">No spending data</p>}
             </div>
           </Card>
         </div>

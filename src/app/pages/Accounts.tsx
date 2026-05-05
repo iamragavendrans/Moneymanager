@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from "react";
-import { Plus, Building2, CreditCard, Wallet, Smartphone, Banknote, TrendingUp, Utensils, PiggyBank, HandCoins, ShieldCheck, ArrowRightLeft, RefreshCw, CalendarDays, MoreVertical, ChevronRight, ChevronLeft } from "lucide-react";
+import { Plus, Building2, CreditCard, Wallet, Smartphone, Banknote, TrendingUp, Utensils, PiggyBank, HandCoins, ShieldCheck, ArrowRightLeft, RefreshCw, CalendarDays, MoreVertical, ChevronRight, ChevronLeft, Eye, EyeOff } from "lucide-react";
 import { useFinance, Account } from "../context/FinanceContext";
 import { formatINR, cn } from "../utils";
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from "recharts";
@@ -29,11 +29,13 @@ const maskAccNumber = (last4?: string) => last4 ? `••• ${last4}` : "••
 const maskCardNumber = (last4?: string) => last4 ? `•••• •••• •••• ${last4}` : "•••• •••• •••• ••••";
 
 export const Accounts = () => {
-  const { accounts, addAccount, transactions, updateAccount, addTransaction, getNetWorth } = useFinance();
+  const { accounts, addAccount, transactions, updateAccount, addTransaction, getNetWorth, profile, updateProfile } = useFinance();
   const [showTransferModal, setShowTransferModal] = useState(false);
   const [showAccountModal, setShowAccountModal] = useState(false);
   const [editingAccountId, setEditingAccountId] = useState<string | null>(null);
   const [currentCardIndex, setCurrentCardIndex] = useState(0);
+  const isMasked = profile.maskBalances || false;
+  const setIsMasked = (val: boolean) => updateProfile({ maskBalances: val });
 
   // Expansion states for compact view
   const [expanded, setExpanded] = useState<Record<string, boolean>>({
@@ -41,7 +43,8 @@ export const Accounts = () => {
     cards: false,
     loans: false,
     cash: false,
-    others: false
+    others: false,
+    retirement: false
   });
 
   const toggleExpand = (key: string) => setExpanded(prev => ({ ...prev, [key]: !prev[key] }));
@@ -59,6 +62,7 @@ export const Accounts = () => {
   const creditCards = accounts.filter(a => a.type === "credit_card");
   const loans = accounts.filter(a => a.type === "loan");
   const cashWallets = accounts.filter(a => ["cash", "wallet", "UPI", "meal_card"].includes(a.type));
+  const retirementAccounts = accounts.filter(a => ["pf", "ppf", "nps"].includes(a.type));
 
   const totalPositive = accounts.filter(a => a.balance > 0).reduce((sum, a) => sum + a.balance, 0);
   const totalCreditDebt = accounts.filter(a => a.type === "credit_card" && a.balance < 0).reduce((sum, a) => sum + Math.abs(a.balance), 0);
@@ -121,8 +125,11 @@ export const Accounts = () => {
           <div className="flex items-center justify-center md:justify-start gap-2 text-slate-500 mb-1">
             <Wallet className="w-4 h-4" />
             <span className="font-semibold text-sm uppercase tracking-wider">Total Liquidity</span>
+            <button onClick={() => setIsMasked(!isMasked)} className="ml-2 text-slate-400 hover:text-indigo-600 transition-colors">
+              {isMasked ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+            </button>
           </div>
-          <h1 className="text-4xl md:text-5xl font-black text-slate-900 tracking-tight">{formatINR(totalLiquidity)}</h1>
+          <h1 className="text-4xl md:text-5xl font-black text-slate-900 tracking-tight">{isMasked ? '₹ •••••••' : formatINR(totalLiquidity)}</h1>
           <p className="text-sm font-medium text-slate-500 mt-2">
             Sum of liquid positive balances minus credit card outstanding.
           </p>
@@ -432,18 +439,40 @@ export const Accounts = () => {
             </h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {(expanded.loans ? loans : loans.slice(0, 2)).map(acc => (
-                <div
-                  key={acc.id}
+                <div 
+                  key={acc.id} 
                   onClick={() => { setEditingAccountId(acc.id); setShowAccountModal(true); }}
-                  className="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm hover:shadow-md transition-all cursor-pointer"
+                  className="bg-white rounded-3xl border border-slate-200 p-6 shadow-sm hover:shadow-md transition-all cursor-pointer group relative overflow-hidden"
                 >
-                  <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 rounded-xl bg-orange-50 text-orange-600 flex items-center justify-center">
-                      <AccountIcon type={acc.type} />
+                  <div className="flex items-start gap-4">
+                    <div className="w-12 h-12 rounded-2xl bg-orange-50 text-orange-600 flex items-center justify-center shrink-0">
+                      <HandCoins className="w-6 h-6" />
                     </div>
                     <div className="flex-1">
-                      <h4 className="font-bold text-slate-900">{acc.name}</h4>
-                      <p className="text-sm text-slate-500">Outstanding: <span className="font-black text-red-600">{formatINR(Math.abs(acc.balance))}</span></p>
+                      <div className="flex items-center justify-between mb-1">
+                        <h4 className="font-bold text-slate-900">{acc.name}</h4>
+                        {acc.interestRate && (
+                          <span className="text-[10px] font-black text-orange-600 bg-orange-50 px-2 py-0.5 rounded-md border border-orange-100 uppercase">
+                            {acc.interestRate}% Interest
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-sm text-slate-500 mb-4 flex items-center gap-2">
+                        Outstanding: <span className="font-black text-red-600">{formatINR(Math.abs(acc.balance))}</span>
+                      </p>
+                      
+                      {acc.emiAmount && (
+                        <div className="flex items-center justify-between pt-4 border-t border-slate-50">
+                          <div>
+                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-0.5">Monthly EMI</p>
+                            <p className="text-lg font-black text-slate-800">{formatINR(acc.emiAmount)}</p>
+                          </div>
+                          <div className="text-right">
+                             <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-0.5">Next Due</p>
+                             <p className="text-xs font-bold text-slate-600">Day {acc.emiDate || '05'} of month</p>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -460,7 +489,65 @@ export const Accounts = () => {
           </section>
         )}
 
-        {/* D. Cash & Wallets */}
+        {/* D. Retirement & PF */}
+        {retirementAccounts.length > 0 && (
+          <section>
+            <h3 className="text-lg font-bold text-slate-800 mb-4 px-1 flex items-center gap-2">
+              <ShieldCheck className="w-5 h-5 text-indigo-600" /> Retirement & PF
+            </h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {(expanded.retirement ? retirementAccounts : retirementAccounts.slice(0, 2)).map(acc => (
+                <div 
+                  key={acc.id} 
+                  onClick={() => { setEditingAccountId(acc.id); setShowAccountModal(true); }}
+                  className="bg-white rounded-3xl border border-slate-200 p-6 shadow-sm hover:shadow-md transition-all cursor-pointer group relative overflow-hidden"
+                >
+                  <div className="flex items-start gap-4">
+                    <div className="w-12 h-12 rounded-2xl bg-indigo-50 text-indigo-600 flex items-center justify-center shrink-0">
+                      <ShieldCheck className="w-6 h-6" />
+                    </div>
+                    <div className="flex-1">
+                      <div className="flex items-center justify-between mb-1">
+                        <h4 className="font-bold text-slate-900">{acc.name}</h4>
+                        <span className="text-[10px] font-black text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-md border border-indigo-100 uppercase">
+                          Interest: {acc.interestRate || '8.1'}%
+                        </span>
+                      </div>
+                      <p className="text-sm text-slate-500 mb-4 flex items-center gap-2">
+                        Corpus Balance: <span className="font-black text-indigo-600">{formatINR(acc.balance)}</span>
+                      </p>
+                      
+                      {(acc.fullAccountNumber || acc.ifsc) && (
+                        <div className="flex items-center justify-between pt-4 border-t border-slate-50">
+                          <div>
+                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-0.5">UAN / Emp ID</p>
+                            <p className="text-xs font-black text-slate-800 tracking-widest">{acc.fullAccountNumber || '********'}</p>
+                          </div>
+                          {acc.lastFour && (
+                            <div className="text-right">
+                              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-0.5">Last Contrib</p>
+                              <p className="text-xs font-bold text-slate-600">Monthly</p>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+            {retirementAccounts.length > 2 && (
+              <button
+                onClick={() => toggleExpand('retirement')}
+                className="mt-3 w-full py-2.5 border-2 border-dashed border-slate-200 rounded-xl text-sm font-bold text-slate-500 hover:border-indigo-300 hover:text-indigo-600 transition-all bg-white/50"
+              >
+                {expanded.retirement ? 'Show Less' : `+${retirementAccounts.length - 2} more items`}
+              </button>
+            )}
+          </section>
+        )}
+
+        {/* E. Cash & Wallets */}
         <section>
           <h3 className="text-lg font-bold text-slate-800 mb-4 px-1 flex items-center gap-2">
             <Wallet className="w-5 h-5 text-indigo-600" /> Cash & Wallets
