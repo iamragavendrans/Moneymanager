@@ -1,7 +1,8 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Lock, Fingerprint, Palette, Cloud, Database, Download, Upload, Shield, IndianRupee, Globe, LayoutTemplate, Store, Users, Repeat, CreditCard as CreditCardIcon, Gift, ShieldCheck, Bell, AlertTriangle, Briefcase, ChevronRight, X, Calendar, Tags, Package } from "lucide-react";
 import { cn } from "../utils";
 import { EntityManagementModal } from "../components/EntityManagementModal";
+import { useFinance } from "../context/FinanceContext";
 
 const SettingRow = ({ icon: Icon, title, subtitle, action, destructive = false, onClick }: any) => (
   <div 
@@ -33,14 +34,49 @@ const Toggle = ({ active, onToggle }: { active: boolean, onToggle: () => void })
   </button>
 );
 
+const WipeConfirmInput = ({ onConfirm, onCancel }: { onConfirm: () => void; onCancel: () => void }) => {
+  const [val, setVal] = React.useState('');
+  return (
+    <div className="space-y-3">
+      <input value={val} onChange={e => setVal(e.target.value)} placeholder="Type WIPE" className="w-full border border-red-200 rounded-xl px-4 py-2.5 text-sm font-bold focus:outline-none focus:ring-2 focus:ring-red-400 text-red-600 bg-red-50 placeholder:text-red-300" />
+      <div className="flex gap-3">
+        <button onClick={onCancel} className="flex-1 py-2.5 border border-slate-200 rounded-xl font-semibold text-slate-600">Cancel</button>
+        <button onClick={onConfirm} disabled={val !== 'WIPE'} className="flex-1 py-2.5 bg-red-600 text-white rounded-xl font-bold disabled:opacity-40 hover:bg-red-700 transition-colors">Delete Everything</button>
+      </div>
+    </div>
+  );
+};
+
 export const Settings = () => {
-  const [locks, setLocks] = useState({ biometric: true, hideBalances: false });
-  const [sync, setSync] = useState({ drive: true });
-  const [reminders, setReminders] = useState({ bills: true, dailyLog: true });
+  const { resetData, wipeData, transactions, accounts, investments, entities, profile, updateProfile } = useFinance();
+
+  const getStoredBool = (key: string, def: boolean) => {
+    const v = localStorage.getItem(key); return v === null ? def : v === 'true';
+  };
+  const [locks, setLocks] = useState({ biometric: getStoredBool('s_biometric', true), hideBalances: getStoredBool('s_hideBalances', false) });
+  const [sync, setSync] = useState({ drive: getStoredBool('s_drive', true) });
+  const [reminders, setReminders] = useState({ bills: getStoredBool('s_bills', true), dailyLog: getStoredBool('s_dailyLog', true) });
+  const [confirmReset, setConfirmReset] = useState(false);
+  const [confirmWipe, setConfirmWipe] = useState(false);
+  const [wipePhase, setWipePhase] = useState(1);
+
+  useEffect(() => { localStorage.setItem('s_biometric', String(locks.biometric)); }, [locks.biometric]);
+  useEffect(() => { localStorage.setItem('s_hideBalances', String(locks.hideBalances)); }, [locks.hideBalances]);
+  useEffect(() => { localStorage.setItem('s_drive', String(sync.drive)); }, [sync.drive]);
+  useEffect(() => { localStorage.setItem('s_bills', String(reminders.bills)); }, [reminders.bills]);
+  useEffect(() => { localStorage.setItem('s_dailyLog', String(reminders.dailyLog)); }, [reminders.dailyLog]);
+
+  const handleExport = () => {
+    const data = { transactions, accounts, investments, entities, exportedAt: new Date().toISOString() };
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = `moneymanager-backup-${new Date().toISOString().split('T')[0]}.json`;
+    a.click(); URL.revokeObjectURL(url);
+  };
 
   // Entity Modal State
   const [activeEntity, setActiveEntity] = useState<string | null>(null);
-
   const openEntity = (entity: string) => setActiveEntity(entity);
   const closeEntity = () => setActiveEntity(null);
 
@@ -51,7 +87,7 @@ export const Settings = () => {
       {/* 1. Profile & Sync */}
       <div className="bg-white border border-slate-100 rounded-[24px] shadow-sm overflow-hidden">
         <div className="p-6 border-b border-slate-100 flex items-center gap-4 bg-slate-50/50">
-          <img src="/src/imports/Untitled-2026-04-30-1618.png" alt="Profile" className="w-16 h-16 rounded-full border-2 border-white shadow-sm object-cover" onError={(e) => { e.currentTarget.style.display = 'none' }} />
+          <img src="/profile.png" alt="Profile" className="w-16 h-16 rounded-full border-2 border-white shadow-sm object-cover bg-indigo-100" onError={(e) => { e.currentTarget.style.display = 'none' }} />
           <div>
             <h3 className="font-bold text-slate-800 text-lg">My Profile</h3>
             <p className="text-sm text-slate-500">Pro Local-First Account</p>
@@ -61,7 +97,35 @@ export const Settings = () => {
         <div className="divide-y divide-slate-100">
           <SettingRow icon={Cloud} title="Google Drive Backup" subtitle="Last synced: 2 mins ago" action={<Toggle active={sync.drive} onToggle={() => setSync(s => ({ ...s, drive: !s.drive }))} />} />
           <SettingRow icon={Download} title="Restore Data from Cloud" subtitle="Sync across devices seamlessly" action={<button className="text-sm font-bold text-indigo-600 bg-indigo-50 px-3 py-1.5 rounded-lg">Restore</button>} />
-          <SettingRow icon={Upload} title="Export Data (CSV/JSON)" subtitle="Take full control of your raw data" action={<button className="text-sm font-bold text-indigo-600 bg-indigo-50 px-3 py-1.5 rounded-lg">Export</button>} />
+          <SettingRow icon={Upload} title="Export Data (JSON)" subtitle="Download a full backup of your data" action={<button onClick={handleExport} className="text-sm font-bold text-indigo-600 bg-indigo-50 px-3 py-1.5 rounded-lg">Export</button>} />
+        </div>
+      </div>
+
+      {/* 2. Branding & Appearance */}
+      <div className="bg-white border border-slate-100 rounded-[24px] shadow-sm overflow-hidden">
+        <div className="p-5 border-b border-slate-100 bg-indigo-50/30">
+          <h3 className="font-bold text-slate-800 flex items-center gap-2">
+            <Palette className="w-5 h-5 text-indigo-600" /> Branding & Identity
+          </h3>
+          <p className="text-xs text-slate-500 mt-1">Personalize how brands and logos appear</p>
+        </div>
+        <div className="p-6 space-y-6">
+          <div>
+            <div className="flex items-center justify-between mb-2">
+              <label className="text-sm font-bold text-slate-700">Logo.dev API Token</label>
+              <a href="https://logo.dev" target="_blank" rel="noreferrer" className="text-[10px] font-bold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-md hover:bg-indigo-100 transition-colors uppercase">Get Token</a>
+            </div>
+            <input 
+              type="password"
+              value={profile.logoDevToken || ''}
+              onChange={(e) => updateProfile({ logoDevToken: e.target.value })}
+              placeholder="pk_xxxxxxxxxxxxxxxxxxxxxxxx"
+              className="w-full text-sm font-mono bg-slate-50 border-0 px-4 py-3 rounded-xl focus:ring-2 focus:ring-indigo-600 outline-none"
+            />
+            <p className="text-[10px] text-slate-400 mt-2 leading-relaxed">
+              Required for high-definition bank logos. If not provided, the app will use standard icons as fallback.
+            </p>
+          </div>
         </div>
       </div>
 
@@ -155,15 +219,53 @@ export const Settings = () => {
           </h3>
         </div>
         <div className="divide-y divide-slate-100">
-          <SettingRow icon={Database} title="Reset Data" subtitle="Clear all transactions. Keep configs & categories." destructive action={<button className="text-sm font-bold text-red-600 bg-red-50 px-3 py-1.5 rounded-lg border border-red-100">Reset</button>} />
-          <SettingRow icon={Database} title="Seed Data (2 Years)" subtitle="Generate 2 years of realistic testing data." destructive onClick={() => { if(confirm("This will overwrite your current data with 2 years of seed data. Continue?")) { import("../utils/seedData").then(m => m.applySeedData()); } }} action={<button className="text-sm font-bold text-red-600 bg-red-50 px-3 py-1.5 rounded-lg border border-red-100">Seed</button>} />
-          <SettingRow icon={AlertTriangle} title="Wipe Data" subtitle="Total nuclear reset. Erase absolutely everything." destructive action={<button className="text-sm font-bold text-white bg-red-600 hover:bg-red-700 transition-colors px-3 py-1.5 rounded-lg">Wipe</button>} />
+          <SettingRow icon={Database} title="Reset Data" subtitle="Restore seed transactions & keep accounts." destructive action={<button onClick={() => setConfirmReset(true)} className="text-sm font-bold text-red-600 bg-red-50 px-3 py-1.5 rounded-lg border border-red-100">Reset</button>} />
+          <SettingRow icon={Database} title="Seed Data (2 Years)" subtitle="Generate 2 years of realistic testing data." destructive onClick={() => setConfirmReset(true)} action={<button onClick={() => setConfirmReset(true)} className="text-sm font-bold text-red-600 bg-red-50 px-3 py-1.5 rounded-lg border border-red-100">Seed</button>} />
+          <SettingRow icon={AlertTriangle} title="Wipe Data" subtitle="Total nuclear reset. Erase absolutely everything." destructive action={<button onClick={() => { setWipePhase(1); setConfirmWipe(true); }} className="text-sm font-bold text-white bg-red-600 hover:bg-red-700 transition-colors px-3 py-1.5 rounded-lg">Wipe</button>} />
         </div>
       </div>
 
       <div className="text-center mt-8 text-sm text-slate-400 font-medium">
-        FinLocal v2.0.0 • Made in India
+        MoneyManager v1.0.0 • Made in India
       </div>
+
+      {/* Confirm Reset Modal */}
+      {confirmReset && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4">
+          <div className="bg-white rounded-3xl p-6 w-full max-w-sm shadow-2xl">
+            <h3 className="font-bold text-xl text-slate-800 mb-2">Reset Data?</h3>
+            <p className="text-sm text-slate-500 mb-6">This will restore the default seed transactions and reset account balances. Your accounts and settings will be kept.</p>
+            <div className="flex gap-3">
+              <button onClick={() => setConfirmReset(false)} className="flex-1 py-2.5 border border-slate-200 rounded-xl font-semibold text-slate-600 hover:bg-slate-50">Cancel</button>
+              <button onClick={() => { resetData(); setConfirmReset(false); }} className="flex-1 py-2.5 bg-red-600 text-white rounded-xl font-bold hover:bg-red-700">Reset</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Confirm Wipe Modal */}
+      {confirmWipe && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4">
+          <div className="bg-white rounded-3xl p-6 w-full max-w-sm shadow-2xl">
+            {wipePhase === 1 ? (
+              <>
+                <h3 className="font-bold text-xl text-red-600 mb-2">Wipe All Data?</h3>
+                <p className="text-sm text-slate-500 mb-6">This will permanently delete ALL transactions, investments, and entities. This cannot be undone.</p>
+                <div className="flex gap-3">
+                  <button onClick={() => setConfirmWipe(false)} className="flex-1 py-2.5 border border-slate-200 rounded-xl font-semibold text-slate-600">Cancel</button>
+                  <button onClick={() => setWipePhase(2)} className="flex-1 py-2.5 bg-red-600 text-white rounded-xl font-bold">Continue</button>
+                </div>
+              </>
+            ) : (
+              <>
+                <h3 className="font-bold text-xl text-red-600 mb-2">Are you absolutely sure?</h3>
+                <p className="text-sm text-slate-500 mb-6">Type <strong>WIPE</strong> to confirm permanent deletion.</p>
+                <WipeConfirmInput onConfirm={() => { wipeData(); setConfirmWipe(false); }} onCancel={() => setConfirmWipe(false)} />
+              </>
+            )}
+          </div>
+        </div>
+      )}
 
       {activeEntity && (
         <EntityManagementModal type={activeEntity as any} onClose={closeEntity} />

@@ -1,14 +1,13 @@
 import React, { useState, useMemo, useEffect } from "react";
-import { format, parseISO, isSameDay, startOfWeek, endOfWeek, startOfMonth, endOfMonth, startOfYear, endOfYear, subDays, subMonths, subYears, parse } from "date-fns";
+import { format, parseISO, isSameDay, startOfWeek, endOfWeek, startOfMonth, endOfMonth, startOfYear, endOfYear, subDays, subMonths, subYears, parse, endOfDay } from "date-fns";
 import { useSearchParams } from "react-router";
-import { Search, Filter, ArrowUpRight, ArrowDownRight, Wallet, ChevronDown, ChevronRight, Maximize2, Minimize2, Trash2, Edit, X } from "lucide-react";
+import { Search, Filter, ArrowUpRight, ArrowDownRight, Wallet, ChevronDown, ChevronRight, Maximize2, Minimize2, Trash2, Edit, X, CheckSquare, Square, CalendarDays, CreditCard, Tag, Store, CheckCheck } from "lucide-react";
 import { useFinance, Transaction } from "../context/FinanceContext";
 import { TransactionFormModal } from "../components/TransactionFormModal";
-import { formatINR } from "../utils";
-import { cn } from "../utils";
+import { formatINR, cn } from "../utils";
 
 export const Transactions = () => {
-  const { transactions, deleteTransaction } = useFinance();
+  const { transactions, deleteTransaction, updateTransaction, accounts } = useFinance();
   const [searchParams, setSearchParams] = useSearchParams();
   const startParam = searchParams.get("start");
   const endParam = searchParams.get("end");
@@ -46,22 +45,34 @@ export const Transactions = () => {
     const s = parse(customStart, "yyyy-MM-dd", new Date());
     const e = parse(customEnd, "yyyy-MM-dd", new Date());
     searchParams.set('start', s.getTime().toString());
-    searchParams.set('end', e.getTime().toString());
+    searchParams.set('end', endOfDay(e).getTime().toString());
     setSearchParams(searchParams);
   };
-  const [filterType, setFilterType] = useState<"all" | "expense" | "income">((searchParams.get("type") as any) || "all");
-  const [filterMode, setFilterMode] = useState<"all" | "UPI" | "card" | "cash">("all");
+  const [filterType, setFilterType] = useState<"all" | "expense" | "income" | "transfer">((searchParams.get("type") as any) || "all");
+  const [filterMode, setFilterMode] = useState<"all" | "UPI" | "card" | "cash" | "netbanking" | "cheque">("all");
   const [filterStatus, setFilterStatus] = useState<"all" | "cleared" | "pending">("all");
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
   const [isAllExpanded, setIsAllExpanded] = useState(false);
   const [editTxId, setEditTxId] = useState<string | null>(null);
   const [showFilters, setShowFilters] = useState(false);
   const [dateFilterType, setDateFilterType] = useState<string>("all");
+  // Bulk selection
+  const [bulkSelected, setBulkSelected] = useState<Set<string>>(new Set());
+  const [bulkMode, setBulkMode] = useState(false);
+  const [showBulkEdit, setShowBulkEdit] = useState(false);
+  // Bulk edit fields
+  const [bulkDate, setBulkDate] = useState("");
+  const [bulkAccountId, setBulkAccountId] = useState("");
+  const [bulkCategory, setBulkCategory] = useState("");
+  const [bulkShop, setBulkShop] = useState("");
 
   const filteredTransactions = useMemo(() => {
     return transactions.filter((tx) => {
-      const matchesSearch = tx.payee.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        tx.category.toLowerCase().includes(searchTerm.toLowerCase());
+      const searchLower = searchTerm.toLowerCase();
+      const matchesSearch = tx.payee.toLowerCase().includes(searchLower) ||
+        tx.category.toLowerCase().includes(searchLower) ||
+        (tx.notes || '').toLowerCase().includes(searchLower) ||
+        (tx.tags || []).some(tag => tag.toLowerCase().includes(searchLower));
       const matchesType = filterType === "all" || tx.type === filterType;
       const matchesMode = filterMode === "all" || (tx.mode || 'UPI') === filterMode;
       const matchesStatus = filterStatus === "all" || (tx.status || 'cleared') === filterStatus;
@@ -81,6 +92,7 @@ export const Transactions = () => {
       date: string;
       totalExpense: number;
       totalIncome: number;
+      totalTransfer: number;
       payeeGroups: Map<string, {
         payee: string;
         type: Transaction["type"];
@@ -92,14 +104,15 @@ export const Transactions = () => {
 
     filteredTransactions.forEach(tx => {
       if (!groups.has(tx.date)) {
-        groups.set(tx.date, { date: tx.date, totalExpense: 0, totalIncome: 0, payeeGroups: new Map() });
+        groups.set(tx.date, { date: tx.date, totalExpense: 0, totalIncome: 0, totalTransfer: 0, payeeGroups: new Map() });
       }
       const group = groups.get(tx.date)!;
 
       if (tx.type === "expense") group.totalExpense += tx.amount;
       if (tx.type === "income") group.totalIncome += tx.amount;
+      if (tx.type === "transfer") group.totalTransfer = (group.totalTransfer || 0) + tx.amount;
 
-      // Use a lowercased payee as a groUPIng key
+      // Use a lowercased payee as a grouping key
       const payeeKey = tx.payee.toLowerCase().trim();
 
       if (!group.payeeGroups.has(payeeKey)) {
@@ -141,13 +154,13 @@ export const Transactions = () => {
       .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
   }, [filteredTransactions]);
 
-  const toggleGroup = (groUPId: string) => {
+  const toggleGroup = (groupId: string) => {
     setExpandedGroups(prev => {
       const next = new Set(prev);
-      if (next.has(groUPId)) {
-        next.delete(groUPId);
+      if (next.has(groupId)) {
+        next.delete(groupId);
       } else {
-        next.add(groUPId);
+        next.add(groupId);
       }
       return next;
     });
@@ -188,9 +201,94 @@ export const Transactions = () => {
     else if (expandedGroups.size >= actualGroupCount && actualGroupCount > 0) setIsAllExpanded(true);
   }, [expandedGroups, actualGroupCount]);
 
+  // Bulk helpers
+  const toggleBulk = (id: string) => {
+    setBulkSelected(prev => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+  };
+
+  const selectAllFiltered = () => {
+    const allIds = new Set(filteredTransactions.map(t => t.id));
+    setBulkSelected(allIds);
+  };
+
+  const clearBulk = () => { setBulkSelected(new Set()); setBulkMode(false); };
+
+  const applyBulkEdit = () => {
+    bulkSelected.forEach(id => {
+      const updates: Partial<Transaction> = {};
+      if (bulkDate) updates.date = bulkDate;
+      if (bulkAccountId) updates.account_id = bulkAccountId;
+      if (bulkCategory) updates.category = bulkCategory;
+      if (bulkShop) updates.payee = bulkShop;
+      if (Object.keys(updates).length > 0) updateTransaction(id, updates);
+    });
+    setBulkDate(""); setBulkAccountId(""); setBulkCategory(""); setBulkShop("");
+    setShowBulkEdit(false);
+    clearBulk();
+  };
+
+  const bulkDeleteSelected = () => {
+    bulkSelected.forEach(id => deleteTransaction(id));
+    clearBulk();
+  };
+
   return (
     <div className="p-4 md:p-8 max-w-4xl mx-auto flex flex-col h-full">
       {editTxId && <TransactionFormModal txId={editTxId} onClose={() => setEditTxId(null)} />}
+
+      {/* Bulk Edit Sheet */}
+      {showBulkEdit && (
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-slate-900/50 backdrop-blur-sm">
+          <div className="bg-white rounded-t-3xl w-full max-w-lg p-6 shadow-2xl animate-in slide-in-from-bottom-full duration-300">
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="font-bold text-xl text-slate-800">Edit {bulkSelected.size} Transactions</h3>
+              <button onClick={() => setShowBulkEdit(false)} className="p-2 rounded-full hover:bg-slate-100"><X className="w-5 h-5 text-slate-500" /></button>
+            </div>
+            <p className="text-xs text-slate-400 mb-5">Only filled fields will be applied. Leave blank to keep original values.</p>
+            <div className="space-y-4">
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-xl bg-indigo-50 flex items-center justify-center shrink-0"><CalendarDays className="w-4 h-4 text-indigo-600" /></div>
+                <div className="flex-1">
+                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Change Date</label>
+                  <input type="date" value={bulkDate} onChange={e => setBulkDate(e.target.value)} className="w-full text-sm font-semibold bg-slate-50 px-3 py-2 rounded-xl border-0 focus:ring-2 focus:ring-indigo-500 outline-none mt-1" />
+                </div>
+              </div>
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-xl bg-indigo-50 flex items-center justify-center shrink-0"><CreditCard className="w-4 h-4 text-indigo-600" /></div>
+                <div className="flex-1">
+                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Change Account</label>
+                  <select value={bulkAccountId} onChange={e => setBulkAccountId(e.target.value)} className="w-full text-sm font-semibold bg-slate-50 px-3 py-2 rounded-xl border-0 focus:ring-2 focus:ring-indigo-500 outline-none mt-1 appearance-none">
+                    <option value="">— keep original —</option>
+                    {accounts.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
+                  </select>
+                </div>
+              </div>
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-xl bg-indigo-50 flex items-center justify-center shrink-0"><Tag className="w-4 h-4 text-indigo-600" /></div>
+                <div className="flex-1">
+                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Change Category</label>
+                  <input type="text" value={bulkCategory} onChange={e => setBulkCategory(e.target.value)} placeholder="e.g. Food" className="w-full text-sm font-semibold bg-slate-50 px-3 py-2 rounded-xl border-0 focus:ring-2 focus:ring-indigo-500 outline-none mt-1" />
+                </div>
+              </div>
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-xl bg-indigo-50 flex items-center justify-center shrink-0"><Store className="w-4 h-4 text-indigo-600" /></div>
+                <div className="flex-1">
+                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Change Shop / Payee</label>
+                  <input type="text" value={bulkShop} onChange={e => setBulkShop(e.target.value)} placeholder="e.g. BigBasket" className="w-full text-sm font-semibold bg-slate-50 px-3 py-2 rounded-xl border-0 focus:ring-2 focus:ring-indigo-500 outline-none mt-1" />
+                </div>
+              </div>
+            </div>
+            <div className="flex gap-3 mt-6">
+              <button onClick={() => setShowBulkEdit(false)} className="flex-1 py-3 border border-slate-200 rounded-xl font-semibold text-slate-600 hover:bg-slate-50">Cancel</button>
+              <button onClick={applyBulkEdit} className="flex-1 py-3 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 flex items-center justify-center gap-2"><CheckCheck className="w-4 h-4" /> Apply to {bulkSelected.size}</button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Active Time Filter Banner */}
       {startParam && endParam && (
@@ -209,7 +307,7 @@ export const Transactions = () => {
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
             <input
               type="text"
-              placeholder="Search payee or category..."
+              placeholder="Search payee, category, notes..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="w-full pl-11 pr-4 py-3 text-base bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-600 focus:border-transparent outline-none transition-all shadow-sm"
@@ -237,7 +335,7 @@ export const Transactions = () => {
               <div className="flex flex-col gap-1.5 flex-1 min-w-[240px]">
                 <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Type</span>
                 <div className="flex bg-slate-100 p-1 rounded-lg shrink-0 overflow-x-auto scrollbar-hide">
-                  {(["all", "expense", "income"] as const).map((t) => (
+                  {(["all", "expense", "income", "transfer"] as const).map((t) => (
                     <button
                       key={t}
                       onClick={() => setFilterType(t)}
@@ -255,7 +353,7 @@ export const Transactions = () => {
               <div className="flex flex-col gap-1.5 flex-1 min-w-[240px]">
                 <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Payment Mode</span>
                 <div className="flex bg-slate-100 p-1 rounded-lg shrink-0 overflow-x-auto scrollbar-hide">
-                  {(["all", "UPI", "card", "cash"] as const).map((t) => (
+                  {(["all", "UPI", "card", "cash", "netbanking", "cheque"] as const).map((t) => (
                     <button
                       key={t}
                       onClick={() => setFilterMode(t as any)}
@@ -320,6 +418,24 @@ export const Transactions = () => {
         )}
       </div>
 
+      {/* Bulk Action Bar */}
+      {bulkMode && (
+        <div className="flex items-center gap-2 bg-indigo-600 text-white px-4 py-2.5 rounded-xl mb-4 animate-in slide-in-from-top-2 duration-200">
+          <button onClick={() => bulkSelected.size === filteredTransactions.length ? setBulkSelected(new Set()) : selectAllFiltered()} className="flex items-center gap-1.5 text-xs font-bold hover:text-indigo-200 transition-colors">
+            <CheckCheck className="w-4 h-4" />
+            {bulkSelected.size === filteredTransactions.length ? 'Deselect All' : `Select All (${filteredTransactions.length})`}
+          </button>
+          <span className="flex-1 text-center text-xs font-bold">{bulkSelected.size} selected</span>
+          <button onClick={() => setShowBulkEdit(true)} disabled={bulkSelected.size === 0} className="flex items-center gap-1 text-xs font-bold bg-white/20 hover:bg-white/30 px-3 py-1.5 rounded-lg disabled:opacity-40 transition-colors">
+            <Edit className="w-3.5 h-3.5" /> Edit
+          </button>
+          <button onClick={bulkDeleteSelected} disabled={bulkSelected.size === 0} className="flex items-center gap-1 text-xs font-bold bg-red-500 hover:bg-red-600 px-3 py-1.5 rounded-lg disabled:opacity-40 transition-colors">
+            <Trash2 className="w-3.5 h-3.5" /> Delete
+          </button>
+          <button onClick={clearBulk} className="p-1.5 hover:bg-white/10 rounded-lg transition-colors"><X className="w-4 h-4" /></button>
+        </div>
+      )}
+
       {/* Transaction List */}
       <div className="flex-1 overflow-y-auto space-y-6 pb-20">
         {groupedTransactions.length === 0 ? (
@@ -336,30 +452,58 @@ export const Transactions = () => {
             return (
               <div key={group.date} className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
                 <div className="px-5 py-3 bg-slate-50/50 border-b border-slate-100 flex items-center justify-between">
-                  <h4 className="font-semibold text-slate-700 text-sm">{dateDisplay}</h4>
+                  <div className="flex items-center gap-3">
+                    {/* Long-press / select mode toggle */}
+                    <button
+                      onClick={() => setBulkMode(m => !m)}
+                      className={cn("w-5 h-5 rounded-md border-2 transition-all shrink-0", bulkMode ? "border-indigo-500 bg-indigo-500" : "border-slate-300 hover:border-indigo-400")}
+                      title="Toggle selection mode"
+                    >
+                      {bulkMode && <CheckCheck className="w-3 h-3 text-white m-auto" />}
+                    </button>
+                    <h4 className="font-semibold text-slate-700 text-sm">{dateDisplay}</h4>
+                  </div>
                   <div className="flex gap-3 text-xs font-semibold">
                     {group.totalIncome > 0 && <span className="text-emerald-600">+{formatINR(group.totalIncome)}</span>}
                     {group.totalExpense > 0 && <span className="text-red-600">-{formatINR(group.totalExpense)}</span>}
+                    {group.totalTransfer > 0 && <span className="text-blue-600">{formatINR(group.totalTransfer)}</span>}
                   </div>
                 </div>
 
                 <div className="divide-y divide-slate-100">
                   {group.payeeGroups.map((pg) => {
-                    const groUPId = `${group.date}-${pg.payee.toLowerCase()}`;
-                    const isExpanded = expandedGroups.has(groUPId);
+                    const groupId = `${group.date}-${pg.payee.toLowerCase()}`;
+                    const isExpanded = expandedGroups.has(groupId);
                     const isGrouped = pg.transactions.length > 1;
 
                     return (
-                      <div key={groUPId} className="flex flex-col">
+                      <div key={groupId} className="flex flex-col">
                         {/* Parent Row */}
                         <div
-                          onClick={() => isGrouped && toggleGroup(groUPId)}
+                          onClick={() => {
+                            if (bulkMode) {
+                              pg.transactions.forEach(tx => toggleBulk(tx.id));
+                            } else if (isGrouped) {
+                              toggleGroup(groupId);
+                            } else {
+                              setEditTxId(pg.transactions[0].id);
+                            }
+                          }}
                           className={cn(
-                            "p-4 px-5 flex items-center justify-between transition-colors group",
-                            isGrouped ? "cursor-pointer hover:bg-slate-50" : "hover:bg-slate-50/50"
+                            "p-4 px-5 flex items-center justify-between transition-colors group cursor-pointer",
+                            isGrouped ? "hover:bg-slate-50" : "hover:bg-indigo-50/40",
+                            bulkMode && bulkSelected.has(pg.transactions[0]?.id) && !isGrouped && "bg-indigo-50",
                           )}
                         >
                           <div className="flex items-center gap-4 flex-1 min-w-0">
+                            {/* Checkbox for bulk mode */}
+                            {bulkMode && !isGrouped && (
+                              <div className={cn("w-5 h-5 rounded-md border-2 flex items-center justify-center shrink-0 transition-all",
+                                bulkSelected.has(pg.transactions[0]?.id) ? "bg-indigo-600 border-indigo-600" : "border-slate-300"
+                              )}>
+                                {bulkSelected.has(pg.transactions[0]?.id) && <CheckCheck className="w-3 h-3 text-white" />}
+                              </div>
+                            )}
                             <div className={cn(
                               "w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 transition-transform group-hover:scale-105",
                               pg.type === 'expense' ? 'bg-red-50 text-red-600' :
@@ -398,8 +542,8 @@ export const Transactions = () => {
                           </div>
 
                           <div className="flex items-center gap-3 shrink-0 ml-2">
-                            {!isGrouped && (
-                              <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity hidden md:flex">
+                            {!isGrouped && !bulkMode && (
+                              <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                                 <button onClick={(e) => { e.stopPropagation(); setEditTxId(pg.transactions[0].id); }} className="p-1.5 text-slate-400 hover:text-indigo-600 rounded-md hover:bg-indigo-50" title="Edit"><Edit className="w-4 h-4" /></button>
                                 <button onClick={(e) => { e.stopPropagation(); deleteTransaction(pg.transactions[0].id); }} className="p-1.5 text-slate-400 hover:text-red-600 rounded-md hover:bg-red-50" title="Delete"><Trash2 className="w-4 h-4" /></button>
                               </div>
@@ -423,16 +567,31 @@ export const Transactions = () => {
                         {isGrouped && isExpanded && (
                           <div className="bg-slate-50/50 border-t border-slate-100 divide-y divide-slate-100 pl-16">
                             {pg.transactions.map((tx) => (
-                              <div key={tx.id} className="p-3 pr-5 flex items-center justify-between text-sm hover:bg-slate-50 transition-colors group/row">
-                                <div className="flex-1 min-w-0 pr-2">
-                                  <p className="font-semibold text-slate-700 truncate">{tx.category}</p>
-                                  {tx.notes && <p className="text-slate-500 text-xs mt-0.5 truncate">{tx.notes}</p>}
+                              <div key={tx.id} className={cn("p-3 pr-5 flex items-center justify-between text-sm transition-colors group/row cursor-pointer",
+                              bulkMode && bulkSelected.has(tx.id) ? "bg-indigo-50" : "hover:bg-slate-50"
+                            )}
+                            onClick={() => bulkMode ? toggleBulk(tx.id) : setEditTxId(tx.id)}
+                          >
+                            <div className="flex items-center gap-3 flex-1 min-w-0 pr-2">
+                              {bulkMode && (
+                                <div className={cn("w-4 h-4 rounded border-2 flex items-center justify-center shrink-0",
+                                  bulkSelected.has(tx.id) ? "bg-indigo-600 border-indigo-600" : "border-slate-300"
+                                )}>
+                                  {bulkSelected.has(tx.id) && <CheckCheck className="w-2.5 h-2.5 text-white" />}
                                 </div>
-                                <div className="flex items-center gap-3 shrink-0">
-                                  <div className="flex items-center gap-1 opacity-0 group-hover/row:opacity-100 transition-opacity hidden md:flex">
-                                    <button onClick={(e) => { e.stopPropagation(); setEditTxId(tx.id); }} className="p-1 text-slate-400 hover:text-indigo-600 rounded-md hover:bg-indigo-50"><Edit className="w-4 h-4" /></button>
-                                    <button onClick={(e) => { e.stopPropagation(); deleteTransaction(tx.id); }} className="p-1 text-slate-400 hover:text-red-600 rounded-md hover:bg-red-50"><Trash2 className="w-4 h-4" /></button>
-                                  </div>
+                              )}
+                              <div className="flex-1 min-w-0">
+                                <p className="font-semibold text-slate-700 truncate">{tx.category}</p>
+                                {tx.notes && <p className="text-slate-500 text-xs mt-0.5 truncate">{tx.notes}</p>}
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-3 shrink-0">
+                              {!bulkMode && (
+                                <div className="flex items-center gap-1 opacity-0 group-hover/row:opacity-100 transition-opacity">
+                                  <button onClick={(e) => { e.stopPropagation(); setEditTxId(tx.id); }} className="p-1 text-slate-400 hover:text-indigo-600 rounded-md hover:bg-indigo-50"><Edit className="w-4 h-4" /></button>
+                                  <button onClick={(e) => { e.stopPropagation(); deleteTransaction(tx.id); }} className="p-1 text-slate-400 hover:text-red-600 rounded-md hover:bg-red-50"><Trash2 className="w-4 h-4" /></button>
+                                </div>
+                              )}
                                   <div className={cn(
                                     "font-semibold min-w-[70px] text-right whitespace-nowrap",
                                     tx.type === 'expense' ? 'text-slate-700' :

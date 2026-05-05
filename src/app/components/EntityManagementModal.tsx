@@ -143,25 +143,61 @@ export const EntityManagementModal = ({ type, onClose }: { type: string; onClose
         </div>
       );
     } else if (type === "person") {
-      relevantTxns = transactions.filter(t => t.tags.includes(activeEntity.name) || t.payee.toLowerCase() === activeEntity.name.toLowerCase());
+      relevantTxns = transactions.filter(t => 
+        t.payee.toLowerCase() === activeEntity.name.toLowerCase() || 
+        t.tags.includes(activeEntity.name) ||
+        t.split?.with.includes(activeEntity.name)
+      );
+
       let net = 0;
       relevantTxns.forEach(t => {
-        if (t.type === 'expense') net -= t.amount;
-        if (t.type === 'income') net += t.amount;
+        // 1. Direct Income from them (Repayment to us)
+        if (t.type === 'income' && t.payee.toLowerCase() === activeEntity.name.toLowerCase()) {
+          net -= t.amount; // They paid us back, they owe less
+        }
+        // 2. Direct Expense to them (We paying them / lending cash)
+        else if (t.type === 'expense' && t.payee.toLowerCase() === activeEntity.name.toLowerCase()) {
+          net += t.amount; // We gave them money, they owe more
+        }
+        // 3. Splits where they were included
+        else if (t.split?.with.includes(activeEntity.name)) {
+          // Calculate their specific share
+          const total = t.amount;
+          if (t.split.shareStrategy === 'Equally') {
+            net += total / (1 + t.split.with.length);
+          } else if (t.split.shareStrategy === 'By Items' && t.split.portionAssignments) {
+            // Find their portion from assignments
+            let personSum = 0;
+            t.items?.forEach((itm, idx) => {
+              const assignments = t.split!.portionAssignments![idx] || {};
+              const totalQty = Number(itm.qty) || 1;
+              const personQty = Number(assignments[activeEntity.name] || 0);
+              if (personQty > 0 && itm.price) {
+                personSum += (itm.price / totalQty) * personQty;
+              }
+            });
+            net += personSum;
+          } else if (t.split.shares?.[activeEntity.name]) {
+            const val = Number(t.split.shares[activeEntity.name]);
+            if (t.split.shareStrategy === 'Percentages') net += (total * val) / 100;
+            else if (t.split.shareStrategy === 'Exact Amounts') net += val;
+          }
+        }
       });
+
       stats = (
         <div className="grid grid-cols-2 gap-4 mb-6">
           <div className={cn("p-4 rounded-xl border shadow-sm", net > 0 ? "bg-emerald-50 border-emerald-100" : net < 0 ? "bg-red-50 border-red-100" : "bg-white border-slate-100")}>
             <p className="text-[10px] uppercase font-bold tracking-wider mb-1 opacity-70">
-              {net > 0 ? "Owes Us (Receivable)" : net < 0 ? "We Owe (Payable)" : "Settled"}
+              {net > 0 ? "They Owe You" : net < 0 ? "You Owe Them" : "Settled"}
             </p>
             <p className={cn("text-xl font-bold", net > 0 ? "text-emerald-700" : net < 0 ? "text-red-700" : "text-slate-800")}>
               {formatINR(Math.abs(net))}
             </p>
           </div>
-          <div className="bg-white p-4 rounded-xl border border-slate-100 shadow-sm">
+          <div className="bg-white p-4 rounded-xl border border-slate-100 shadow-sm flex flex-col justify-center">
             <p className="text-[10px] text-slate-400 uppercase font-bold tracking-wider mb-1">Relationship</p>
-            <p className="text-sm font-bold text-slate-800 mt-1">{activeEntity.relationship || "Unspecified"}</p>
+            <p className="text-sm font-bold text-slate-800">{activeEntity.relationship || "Contact"}</p>
           </div>
         </div>
       );
@@ -478,7 +514,7 @@ export const EntityManagementModal = ({ type, onClose }: { type: string; onClose
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex justify-end bg-slate-900/50 backdrop-blur-sm sm:p-4">
+    <div className="fixed inset-0 z-[100] flex justify-end bg-slate-900/50 backdrop-blur-sm sm:p-4">
       <div className="fixed inset-0 sm:hidden" onClick={onClose} />
       
       <div className="relative w-full sm:w-[480px] bg-slate-50 h-full sm:rounded-2xl shadow-2xl flex flex-col animate-in slide-in-from-right duration-300 overflow-hidden">

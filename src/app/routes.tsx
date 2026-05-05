@@ -1,10 +1,10 @@
 import React from "react";
-import { createBrowserRouter, useRouteError, isRouteErrorResponse } from "react-router";
+import { createHashRouter, useRouteError, isRouteErrorResponse } from "react-router";
 import { Layout } from "./components/Layout";
 import { Dashboard } from "./pages/Dashboard";
 import { Transactions } from "./pages/Transactions";
 import { Accounts } from "./pages/Accounts";
-import { Instruments } from "./pages/Instruments";
+import { Investments } from "./pages/Instruments";
 import { Settings } from "./pages/Settings";
 
 function RootBoundary() {
@@ -31,7 +31,7 @@ function RootBoundary() {
   );
 }
 
-export const router = createBrowserRouter([
+export const router = createHashRouter([
   {
     path: "/",
     Component: Layout,
@@ -40,7 +40,7 @@ export const router = createBrowserRouter([
       { index: true, Component: Dashboard },
       { path: "transactions", Component: Transactions },
       { path: "accounts", Component: Accounts },
-      { path: "instruments", Component: Instruments },
+      { path: "investments", Component: Investments },
       { path: "settings", Component: Settings },
       { path: "*", Component: () => <div>404 Not Found</div> },
     ],

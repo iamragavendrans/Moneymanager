@@ -1,11 +1,12 @@
 {
-  "name": "@figma/my-make-file",
+  "name": "money-manager",
   "private": true,
-  "version": "0.0.1",
+  "version": "1.0.0",
   "type": "module",
   "scripts": {
     "build": "vite build",
-    "dev": "vite"
+    "dev": "vite",
+    "typecheck": "tsc --noEmit --skipLibCheck"
   },
   "dependencies": {
     "@emotion/react": "11.14.0",

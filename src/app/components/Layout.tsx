@@ -3,18 +3,21 @@ import { Outlet, NavLink, useLocation } from "react-router";
 import { LayoutDashboard, ReceiptText, WalletCards, Repeat, Settings, Plus, X } from "lucide-react";
 import { cn } from "../utils";
 import { TransactionFormModal } from "./TransactionFormModal";
+import { AccountManagementModal } from "./AccountManagementModal";
+import { EntityManagementModal } from "./EntityManagementModal";
 
 const navItems = [
   { icon: LayoutDashboard, label: "Home", path: "/" },
   { icon: ReceiptText, label: "Transactions", path: "/transactions" },
   { icon: WalletCards, label: "Accounts", path: "/accounts" },
-  { icon: Repeat, label: "Instruments", path: "/instruments" },
+  { icon: Repeat, label: "Investments", path: "/investments" },
   { icon: Settings, label: "Settings", path: "/settings" },
 ];
 
 export const Layout = () => {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
-  const [contextModalOpen, setContextModalOpen] = useState(false);
+  const [showAccountModal, setShowAccountModal] = useState(false);
+  const [showEntityModal, setShowEntityModal] = useState(false);
   const location = useLocation();
 
   const getPageTitle = () => {
@@ -22,7 +25,7 @@ export const Layout = () => {
       case "/": return "Dashboard";
       case "/transactions": return "Transactions";
       case "/accounts": return "Accounts";
-      case "/instruments": return "Instruments";
+      case "/investments": return "Investments";
       case "/settings": return "Preferences";
       default: return "Money Tracker";
     }
@@ -30,8 +33,8 @@ export const Layout = () => {
 
   const getAddAction = () => {
     switch (location.pathname) {
-      case "/accounts": return { label: "Add Account", action: () => setContextModalOpen(true) };
-      case "/instruments": return { label: "Add Instrument", action: () => setContextModalOpen(true) };
+      case "/accounts": return { label: "Add Account", action: () => setShowAccountModal(true) };
+      case "/investments": return { label: "Add Investment", action: () => setShowEntityModal(true) };
       default: return { label: "Add Transaction", action: () => setIsAddModalOpen(true) };
     }
   };
@@ -46,7 +49,7 @@ export const Layout = () => {
           <div className="w-8 h-8 rounded-xl bg-indigo-600 flex items-center justify-center text-white font-bold text-lg">
             ₹
           </div>
-          <h1 className="text-xl font-bold text-slate-900 tracking-tight">FinLocal</h1>
+          <h1 className="text-xl font-bold text-slate-900 tracking-tight">MoneyManager</h1>
         </div>
         
         <nav className="flex-1 px-4 py-4 space-y-1">
@@ -91,9 +94,9 @@ export const Layout = () => {
             <span className="font-bold text-lg">{getPageTitle()}</span>
           </div>
           <img 
-            src="/src/imports/Untitled-2026-04-30-1618.png" 
+            src="/profile.png" 
             alt="Profile" 
-            className="w-8 h-8 rounded-full border border-slate-200 object-cover"
+            className="w-8 h-8 rounded-full border border-slate-200 object-cover bg-indigo-100"
             onError={(e) => { e.currentTarget.style.display = 'none' }}
           />
         </header>
@@ -102,14 +105,10 @@ export const Layout = () => {
         <header className="hidden md:flex items-center justify-between px-8 py-5 bg-white/80 backdrop-blur-md border-b border-slate-200 sticky top-0 z-10">
           <h2 className="text-2xl font-bold text-slate-800 tracking-tight">{getPageTitle()}</h2>
           <div className="flex items-center gap-4">
-            <button className="text-sm font-medium text-slate-500 hover:text-slate-900 transition-colors">
-              Last synced: Just now
-            </button>
-            <div className="w-px h-6 bg-slate-200"></div>
             <img 
-              src="/src/imports/Untitled-2026-04-30-1618.png" 
+              src="/profile.png" 
               alt="Profile" 
-              className="w-9 h-9 rounded-full border-2 border-slate-100 object-cover shadow-sm"
+              className="w-9 h-9 rounded-full border-2 border-slate-100 object-cover shadow-sm bg-indigo-100"
               onError={(e) => { e.currentTarget.style.display = 'none' }}
             />
           </div>
@@ -130,7 +129,7 @@ export const Layout = () => {
       </main>
 
       {/* Mobile Bottom Nav */}
-      <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 pb-safe z-30">
+      <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 pb-6 z-30" style={{paddingBottom: 'max(1.5rem, env(safe-area-inset-bottom))'}}>
         <div className="grid grid-cols-5 items-center h-16 px-1">
           {navItems.map((item) => (
             <NavLink
@@ -154,42 +153,12 @@ export const Layout = () => {
         <TransactionFormModal onClose={() => setIsAddModalOpen(false)} />
       )}
 
-      {contextModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-end justify-center bg-slate-900/50 backdrop-blur-sm sm:items-center sm:p-4">
-          <div className="w-full max-w-md bg-white rounded-t-2xl sm:rounded-2xl shadow-xl overflow-hidden animate-in slide-in-from-bottom-full sm:slide-in-from-bottom-0 sm:zoom-in-95 duration-200">
-            <div className="flex items-center justify-between p-4 border-b border-slate-100">
-              <h3 className="font-bold text-lg text-slate-800">
-                {location.pathname === "/accounts" ? "Add Account" : "Add Instrument"}
-              </h3>
-              <button 
-                onClick={() => setContextModalOpen(false)}
-                className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-slate-100 text-slate-500 transition-colors"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-            <div className="p-6">
-              {location.pathname === "/accounts" ? (
-                <div className="space-y-4">
-                   <p className="text-sm text-slate-500 mb-2">Select an account type to add to your portfolio:</p>
-                   <button onClick={() => setContextModalOpen(false)} className="w-full text-left px-4 py-3 rounded-xl border border-slate-200 hover:border-indigo-600 hover:bg-indigo-50 font-semibold text-slate-700 transition-all">Bank Account</button>
-                   <button onClick={() => setContextModalOpen(false)} className="w-full text-left px-4 py-3 rounded-xl border border-slate-200 hover:border-indigo-600 hover:bg-indigo-50 font-semibold text-slate-700 transition-all">Credit Card</button>
-                   <button onClick={() => setContextModalOpen(false)} className="w-full text-left px-4 py-3 rounded-xl border border-slate-200 hover:border-indigo-600 hover:bg-indigo-50 font-semibold text-slate-700 transition-all">Cash / Wallet</button>
-                </div>
-              ) : (
-                <div className="space-y-4">
-                   <p className="text-sm text-slate-500 mb-2">What would you like to track?</p>
-                   <div className="grid grid-cols-2 gap-3">
-                     <button onClick={() => setContextModalOpen(false)} className="px-4 py-3 rounded-xl border border-slate-200 hover:border-indigo-600 hover:bg-indigo-50 font-semibold text-slate-700 transition-all text-sm">Add Shop</button>
-                     <button onClick={() => setContextModalOpen(false)} className="px-4 py-3 rounded-xl border border-slate-200 hover:border-indigo-600 hover:bg-indigo-50 font-semibold text-slate-700 transition-all text-sm">Add Payee / Person</button>
-                     <button onClick={() => setContextModalOpen(false)} className="px-4 py-3 rounded-xl border border-slate-200 hover:border-indigo-600 hover:bg-indigo-50 font-semibold text-slate-700 transition-all text-sm">Add Bill</button>
-                     <button onClick={() => setContextModalOpen(false)} className="px-4 py-3 rounded-xl border border-slate-200 hover:border-indigo-600 hover:bg-indigo-50 font-semibold text-slate-700 transition-all text-sm">Add Subscription</button>
-                   </div>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
+      {showAccountModal && (
+        <AccountManagementModal onClose={() => setShowAccountModal(false)} />
+      )}
+
+      {showEntityModal && (
+        <EntityManagementModal type="item" onClose={() => setShowEntityModal(false)} />
       )}
     </div>
   );
