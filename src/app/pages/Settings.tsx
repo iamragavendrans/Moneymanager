@@ -1,105 +1,353 @@
-import React, { useState, useEffect } from "react";
-import { Lock, Fingerprint, Palette, Cloud, Database, Download, Upload, Shield, IndianRupee, Globe, LayoutTemplate, Store, Users, Repeat, CreditCard as CreditCardIcon, Gift, ShieldCheck, Bell, AlertTriangle, Briefcase, ChevronRight, X, Calendar, Tags, Package } from "lucide-react";
+import React, { useState, useEffect, useRef } from "react";
+import {
+  Lock, Fingerprint, Palette, Cloud, Database, Download, Upload, Shield,
+  IndianRupee, Globe, Store, Users, Repeat, CreditCard as CreditCardIcon,
+  Gift, ShieldCheck, Bell, AlertTriangle, Briefcase, ChevronRight, X,
+  Calendar, Tags, Package, FileSpreadsheet, FileJson, CheckCircle2,
+} from "lucide-react";
 import { cn } from "../utils";
 import { EntityManagementModal } from "../components/EntityManagementModal";
 import { ProfileManagementModal } from "../components/ProfileManagementModal";
 import { useFinance } from "../context/FinanceContext";
 
-const SettingRow = ({ icon: Icon, title, subtitle, action, destructive = false, onClick }: any) => (
-  <div 
+const SettingRow = ({
+  icon: Icon, title, subtitle, action, destructive = false, onClick,
+}: {
+  icon: React.ComponentType<{ className?: string }>;
+  title: string;
+  subtitle: string;
+  action?: React.ReactNode;
+  destructive?: boolean;
+  onClick?: () => void;
+}) => (
+  <div
     onClick={onClick}
     className={cn(
-      "p-5 flex items-center justify-between gap-4 transition-colors", 
+      "p-5 flex items-center justify-between gap-4 transition-colors",
       destructive ? "hover:bg-red-50" : "hover:bg-slate-50",
       onClick ? "cursor-pointer active:bg-slate-100" : ""
     )}
   >
     <div className="flex items-center gap-4 min-w-0">
-      <div className={cn("w-10 h-10 rounded-xl flex items-center justify-center shrink-0", destructive ? "bg-red-50 text-red-600" : "bg-indigo-50 text-indigo-600")}>
+      <div
+        className={cn(
+          "w-10 h-10 rounded-xl flex items-center justify-center shrink-0",
+          destructive ? "bg-red-50 text-red-600" : "bg-indigo-50 text-indigo-600"
+        )}
+      >
         <Icon className="w-5 h-5" />
       </div>
       <div className="min-w-0">
-        <p className={cn("font-semibold truncate", destructive ? "text-red-600" : "text-slate-800")}>{title}</p>
+        <p className={cn("font-semibold truncate", destructive ? "text-red-600" : "text-slate-800")}>
+          {title}
+        </p>
         <p className="text-sm text-slate-500 mt-0.5 truncate sm:whitespace-normal">{subtitle}</p>
       </div>
     </div>
-    <div className="shrink-0">
-      {action}
-    </div>
+    {action && <div className="shrink-0">{action}</div>}
   </div>
 );
 
-const Toggle = ({ active, onToggle }: { active: boolean, onToggle: () => void }) => (
-  <button onClick={onToggle} className={cn("w-12 h-6 rounded-full relative transition-colors duration-200", active ? "bg-indigo-600" : "bg-slate-200")}>
-    <span className={cn("absolute top-1 w-4 h-4 rounded-full bg-white shadow-sm transition-all duration-200", active ? "left-7" : "left-1")} />
+const Toggle = ({ active, onToggle }: { active: boolean; onToggle: () => void }) => (
+  <button
+    onClick={onToggle}
+    className={cn(
+      "w-12 h-6 rounded-full relative transition-colors duration-200",
+      active ? "bg-indigo-600" : "bg-slate-200"
+    )}
+    role="switch"
+    aria-checked={active}
+  >
+    <span
+      className={cn(
+        "absolute top-1 w-4 h-4 rounded-full bg-white shadow-sm transition-all duration-200",
+        active ? "left-7" : "left-1"
+      )}
+    />
   </button>
 );
 
-const WipeConfirmInput = ({ onConfirm, onCancel }: { onConfirm: () => void; onCancel: () => void }) => {
-  const [val, setVal] = React.useState('');
+const WipeConfirmInput = ({
+  onConfirm, onCancel,
+}: { onConfirm: () => void; onCancel: () => void }) => {
+  const [val, setVal] = React.useState("");
   return (
     <div className="space-y-3">
-      <input value={val} onChange={e => setVal(e.target.value)} placeholder="Type WIPE" className="w-full border border-red-200 rounded-xl px-4 py-2.5 text-sm font-bold focus:outline-none focus:ring-2 focus:ring-red-400 text-red-600 bg-red-50 placeholder:text-red-300" />
+      <input
+        value={val}
+        onChange={(e) => setVal(e.target.value)}
+        placeholder="Type WIPE"
+        className="w-full border border-red-200 rounded-xl px-4 py-2.5 text-sm font-bold focus:outline-none focus:ring-2 focus:ring-red-400 text-red-600 bg-red-50 placeholder:text-red-300"
+      />
       <div className="flex gap-3">
-        <button onClick={onCancel} className="flex-1 py-2.5 border border-slate-200 rounded-xl font-semibold text-slate-600">Cancel</button>
-        <button onClick={onConfirm} disabled={val !== 'WIPE'} className="flex-1 py-2.5 bg-red-600 text-white rounded-xl font-bold disabled:opacity-40 hover:bg-red-700 transition-colors">Delete Everything</button>
+        <button
+          onClick={onCancel}
+          className="flex-1 py-2.5 border border-slate-200 rounded-xl font-semibold text-slate-600"
+        >
+          Cancel
+        </button>
+        <button
+          onClick={onConfirm}
+          disabled={val !== "WIPE"}
+          className="flex-1 py-2.5 bg-red-600 text-white rounded-xl font-bold disabled:opacity-40 hover:bg-red-700 transition-colors"
+        >
+          Delete Everything
+        </button>
       </div>
     </div>
   );
 };
 
 export const Settings = () => {
-  const { resetData, wipeData, transactions, accounts, investments, entities, profile, updateProfile } = useFinance();
+  const { resetData, wipeData, transactions, accounts, investments, entities, profile, updateProfile } =
+    useFinance();
 
   const getStoredBool = (key: string, def: boolean) => {
-    const v = localStorage.getItem(key); return v === null ? def : v === 'true';
+    const v = localStorage.getItem(key);
+    return v === null ? def : v === "true";
   };
-  const [locks, setLocks] = useState({ biometric: getStoredBool('s_biometric', true), hideBalances: getStoredBool('s_hideBalances', false) });
-  const [sync, setSync] = useState({ drive: getStoredBool('s_drive', true) });
-  const [reminders, setReminders] = useState({ bills: getStoredBool('s_bills', true), dailyLog: getStoredBool('s_dailyLog', true) });
+
+  const [locks, setLocks]         = useState({ biometric: getStoredBool("s_biometric", true) });
+  const [sync, setSync]           = useState({ drive: getStoredBool("s_drive", false) });
+  const [reminders, setReminders] = useState({
+    bills: getStoredBool("s_bills", true),
+    dailyLog: getStoredBool("s_dailyLog", true),
+  });
   const [confirmReset, setConfirmReset] = useState(false);
-  const [confirmWipe, setConfirmWipe] = useState(false);
+  const [confirmWipe, setConfirmWipe]   = useState(false);
   const [showProfileModal, setShowProfileModal] = useState(false);
-  const [wipePhase, setWipePhase] = useState(1);
+  const [wipePhase, setWipePhase]       = useState(1);
+  const [activeEntity, setActiveEntity] = useState<string | null>(null);
 
-  useEffect(() => { localStorage.setItem('s_biometric', String(locks.biometric)); }, [locks.biometric]);
-  useEffect(() => { localStorage.setItem('s_hideBalances', String(locks.hideBalances)); }, [locks.hideBalances]);
-  useEffect(() => { localStorage.setItem('s_drive', String(sync.drive)); }, [sync.drive]);
-  useEffect(() => { localStorage.setItem('s_bills', String(reminders.bills)); }, [reminders.bills]);
-  useEffect(() => { localStorage.setItem('s_dailyLog', String(reminders.dailyLog)); }, [reminders.dailyLog]);
+  // Import state
+  const [importPreview, setImportPreview] = useState<{
+    data: Record<string, unknown>;
+    txCount: number;
+    accCount: number;
+  } | null>(null);
+  const [importError, setImportError] = useState<string | null>(null);
+  const [importSuccess, setImportSuccess] = useState(false);
+  const importRef = useRef<HTMLInputElement>(null);
 
-  const handleExport = () => {
+  useEffect(() => { localStorage.setItem("s_biometric", String(locks.biometric)); }, [locks.biometric]);
+  useEffect(() => { localStorage.setItem("s_drive",     String(sync.drive)); }, [sync.drive]);
+  useEffect(() => { localStorage.setItem("s_bills",     String(reminders.bills)); }, [reminders.bills]);
+  useEffect(() => { localStorage.setItem("s_dailyLog",  String(reminders.dailyLog)); }, [reminders.dailyLog]);
+
+  // JSON export
+  const handleExportJSON = () => {
     const data = { transactions, accounts, investments, entities, exportedAt: new Date().toISOString() };
-    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url; a.download = `moneymanager-backup-${new Date().toISOString().split('T')[0]}.json`;
-    a.click(); URL.revokeObjectURL(url);
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement("a");
+    a.href     = url;
+    a.download = `moneymanager-backup-${new Date().toISOString().split("T")[0]}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
   };
 
-  // Entity Modal State
-  const [activeEntity, setActiveEntity] = useState<string | null>(null);
-  const openEntity = (entity: string) => setActiveEntity(entity);
-  const closeEntity = () => setActiveEntity(null);
+  // CSV export — all transactions
+  const handleExportCSV = () => {
+    const accountName = (id: string) => accounts.find((a) => a.id === id)?.name ?? id;
+    const escape = (s: string) => `"${s.replace(/"/g, '""')}"`;
+
+    const header = ["Date","Payee","Category","Type","Amount (INR)","Account","To Account","Notes","Tags","Mode","Status"];
+    const rows = transactions.map((tx) => [
+      tx.date,
+      escape(tx.payee),
+      escape(tx.category),
+      tx.type,
+      tx.amount.toString(),
+      escape(accountName(tx.account_id)),
+      tx.to_account_id ? escape(accountName(tx.to_account_id)) : "",
+      escape(tx.notes ?? ""),
+      escape((tx.tags ?? []).join(";")),
+      tx.mode ?? "",
+      tx.status ?? "cleared",
+    ]);
+
+    const csv  = [header, ...rows].map((r) => r.join(",")).join("\n");
+    const blob = new Blob(["﻿" + csv], { type: "text/csv;charset=utf-8;" }); // BOM for Excel
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement("a");
+    a.href     = url;
+    a.download = `moneymanager-transactions-${new Date().toISOString().split("T")[0]}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  // JSON import — parse & preview
+  const handleImportFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setImportError(null);
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      try {
+        const raw = ev.target?.result as string;
+        const data = JSON.parse(raw) as Record<string, unknown>;
+        if (!data.transactions || !Array.isArray(data.transactions)) {
+          setImportError("Invalid backup file: missing 'transactions' array.");
+          return;
+        }
+        setImportPreview({
+          data,
+          txCount:  (data.transactions as unknown[]).length,
+          accCount: Array.isArray(data.accounts) ? (data.accounts as unknown[]).length : 0,
+        });
+      } catch {
+        setImportError("Could not parse the file. Please use a JSON backup exported from MoneyManager.");
+      }
+    };
+    reader.readAsText(file);
+    // Reset input so same file can be re-selected
+    e.target.value = "";
+  };
+
+  const confirmImport = () => {
+    if (!importPreview) return;
+    const { data } = importPreview;
+    try {
+      localStorage.setItem("finance_txns",        JSON.stringify(data.transactions));
+      if (data.accounts)    localStorage.setItem("finance_accounts",    JSON.stringify(data.accounts));
+      if (data.investments) localStorage.setItem("finance_investments", JSON.stringify(data.investments));
+      if (data.entities)    localStorage.setItem("finance_entities",    JSON.stringify(data.entities));
+      setImportPreview(null);
+      setImportSuccess(true);
+      setTimeout(() => window.location.reload(), 1200);
+    } catch (err) {
+      setImportError("Failed to write data. Your storage may be full.");
+    }
+  };
 
   return (
     <div className="p-4 md:p-8 max-w-4xl mx-auto space-y-8 pb-24">
       <h2 className="text-2xl font-bold text-slate-800">Preferences</h2>
 
-      {/* 1. Profile & Sync */}
-      <div className="bg-white border border-slate-100 rounded-[24px] shadow-sm overflow-hidden">
-        <div className="p-6 border-b border-slate-100 flex items-center gap-4 bg-slate-50/50">
-          <img src="/profile.png" alt="Profile" className="w-16 h-16 rounded-full border-2 border-white shadow-sm object-cover bg-indigo-100" onError={(e) => { e.currentTarget.style.display = 'none' }} />
-          <div>
-            <h3 className="font-bold text-slate-800 text-lg">{profile.userName || "My Profile"}</h3>
-            <p className="text-sm text-slate-500 font-medium tracking-tight">{profile.userEmail || "Pro Local-First Account"}</p>
+      {/* Import preview modal */}
+      {importPreview && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4">
+          <div className="bg-white rounded-3xl p-6 w-full max-w-sm shadow-2xl space-y-4">
+            <h3 className="font-bold text-lg text-slate-800">Confirm Import</h3>
+            <div className="bg-slate-50 rounded-xl p-4 space-y-1 text-sm">
+              <p className="text-slate-600">
+                <span className="font-bold text-slate-800">{importPreview.txCount}</span> transactions
+              </p>
+              {importPreview.accCount > 0 && (
+                <p className="text-slate-600">
+                  <span className="font-bold text-slate-800">{importPreview.accCount}</span> accounts
+                </p>
+              )}
+            </div>
+            <p className="text-sm text-amber-600 bg-amber-50 rounded-xl px-4 py-3">
+              <span className="font-bold">Warning:</span> This will replace your current data. Export a backup first if needed.
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setImportPreview(null)}
+                className="flex-1 py-2.5 border border-slate-200 rounded-xl font-semibold text-slate-600 hover:bg-slate-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmImport}
+                className="flex-1 py-2.5 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700"
+              >
+                Import
+              </button>
+            </div>
           </div>
         </div>
-        
+      )}
+
+      {/* Import error toast */}
+      {importError && (
+        <div className="fixed bottom-8 left-1/2 -translate-x-1/2 z-50 bg-red-600 text-white px-5 py-3 rounded-2xl shadow-xl text-sm font-semibold flex items-center gap-2">
+          <AlertTriangle className="w-4 h-4 shrink-0" />
+          {importError}
+          <button onClick={() => setImportError(null)} className="ml-2"><X className="w-4 h-4" /></button>
+        </div>
+      )}
+
+      {/* Import success */}
+      {importSuccess && (
+        <div className="fixed bottom-8 left-1/2 -translate-x-1/2 z-50 bg-emerald-600 text-white px-5 py-3 rounded-2xl shadow-xl text-sm font-semibold flex items-center gap-2">
+          <CheckCircle2 className="w-4 h-4" /> Import successful! Reloading…
+        </div>
+      )}
+
+      {/* Hidden file input */}
+      <input
+        ref={importRef}
+        type="file"
+        accept=".json"
+        onChange={handleImportFile}
+        className="hidden"
+      />
+
+      {/* 1. Profile & Data */}
+      <div className="bg-white border border-slate-100 rounded-[24px] shadow-sm overflow-hidden">
+        <div className="p-6 border-b border-slate-100 flex items-center gap-4 bg-slate-50/50">
+          <div className="w-16 h-16 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600 font-bold text-2xl">
+            M
+          </div>
+          <div>
+            <h3 className="font-bold text-slate-800 text-lg">{profile.userName ?? "My Profile"}</h3>
+            <p className="text-sm text-slate-500 font-medium">{profile.userEmail ?? "Local-First Account"}</p>
+          </div>
+        </div>
+
         <div className="divide-y divide-slate-100">
-          <SettingRow icon={Cloud} title="Google Drive Backup" subtitle="Last synced: 2 mins ago" action={<Toggle active={sync.drive} onToggle={() => setSync(s => ({ ...s, drive: !s.drive }))} />} />
-          <SettingRow icon={Download} title="Restore Data from Cloud" subtitle="Sync across devices seamlessly" action={<button className="text-sm font-bold text-indigo-600 bg-indigo-50 px-3 py-1.5 rounded-lg">Restore</button>} />
-          <SettingRow icon={Upload} title="Export Data (JSON)" subtitle="Download a full backup of your data" action={<button onClick={handleExport} className="text-sm font-bold text-indigo-600 bg-indigo-50 px-3 py-1.5 rounded-lg">Export</button>} />
+          <SettingRow
+            icon={Cloud}
+            title="Google Drive Backup"
+            subtitle="Auto-sync coming soon"
+            action={
+              <Toggle
+                active={sync.drive}
+                onToggle={() => setSync((s) => ({ ...s, drive: !s.drive }))}
+              />
+            }
+          />
+          <SettingRow
+            icon={FileJson}
+            title="Export Data (JSON)"
+            subtitle="Full backup — transactions, accounts, investments"
+            action={
+              <button
+                onClick={handleExportJSON}
+                className="text-sm font-bold text-indigo-600 bg-indigo-50 px-3 py-1.5 rounded-lg hover:bg-indigo-100"
+              >
+                Export
+              </button>
+            }
+          />
+          <SettingRow
+            icon={FileSpreadsheet}
+            title="Export as CSV"
+            subtitle="Transactions spreadsheet (Excel-compatible)"
+            action={
+              <button
+                onClick={handleExportCSV}
+                className="text-sm font-bold text-indigo-600 bg-indigo-50 px-3 py-1.5 rounded-lg hover:bg-indigo-100"
+              >
+                Export
+              </button>
+            }
+          />
+          <SettingRow
+            icon={Upload}
+            title="Import from Backup (JSON)"
+            subtitle="Restore a previously exported .json backup file"
+            action={
+              <button
+                onClick={() => importRef.current?.click()}
+                className="text-sm font-bold text-indigo-600 bg-indigo-50 px-3 py-1.5 rounded-lg hover:bg-indigo-100"
+              >
+                Import
+              </button>
+            }
+          />
         </div>
       </div>
 
@@ -111,85 +359,94 @@ export const Settings = () => {
           </h3>
           <p className="text-xs text-slate-500 mt-1">Personalize how brands and logos appear</p>
         </div>
-        <div className="p-6 space-y-6">
+        <div className="p-6 space-y-4">
           <div>
             <div className="flex items-center justify-between mb-2">
               <label className="text-sm font-bold text-slate-700">Logo.dev API Token</label>
-              <a href="https://logo.dev" target="_blank" rel="noreferrer" className="text-[10px] font-bold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-md hover:bg-indigo-100 transition-colors uppercase">Get Token</a>
+              <a
+                href="https://logo.dev"
+                target="_blank"
+                rel="noreferrer"
+                className="text-[10px] font-bold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-md hover:bg-indigo-100 uppercase"
+              >
+                Get Token
+              </a>
             </div>
-            <input 
+            <input
               type="password"
-              value={profile.logoDevToken || ''}
+              value={profile.logoDevToken ?? ""}
               onChange={(e) => updateProfile({ logoDevToken: e.target.value })}
               placeholder="pk_xxxxxxxxxxxxxxxxxxxxxxxx"
               className="w-full text-sm font-mono bg-slate-50 border-0 px-4 py-3 rounded-xl focus:ring-2 focus:ring-indigo-600 outline-none"
             />
-            <p className="text-[10px] text-slate-400 mt-2 leading-relaxed">
-              Required for high-definition bank logos. If not provided, the app will use standard icons as fallback.
+            <p className="text-[10px] text-slate-400 mt-2">
+              Required for high-definition bank logos. Falls back to standard icons if not set.
             </p>
           </div>
         </div>
       </div>
 
-      {/* 2. Employment & Tax Profiling (New) */}
+      {/* 3. Employment & Tax */}
       <div className="bg-gradient-to-br from-indigo-900 to-slate-900 border border-slate-800 rounded-[24px] shadow-xl overflow-hidden relative">
-         <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-500/20 rounded-full blur-[80px] pointer-events-none translate-x-1/3 -translate-y-1/3"></div>
-         <div className="p-6 relative z-10 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-           <div className="flex gap-4 items-start">
-             <div className="w-12 h-12 rounded-xl bg-white/10 flex items-center justify-center shrink-0 border border-white/10">
-               <Briefcase className="w-6 h-6 text-indigo-300" />
-             </div>
-             <div>
-               <h3 className="font-bold text-white text-lg">Employment & Tax Profile</h3>
-               <p className="text-sm text-indigo-200 mt-1 max-w-sm">Configure your Salary Band and Employer to unlock Smart Tax Engine suggestions and automatic PF tracking.</p>
-             </div>
-           </div>
-            <button 
-              onClick={() => setShowProfileModal(true)}
-              className="w-full sm:w-auto shrink-0 bg-indigo-500 hover:bg-indigo-600 text-white px-5 py-2.5 rounded-xl font-bold transition-all shadow-sm mt-2 sm:mt-0"
-            >
-              Configure Profile
-            </button>
-         </div>
+        <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-500/20 rounded-full blur-[80px] pointer-events-none translate-x-1/3 -translate-y-1/3" />
+        <div className="p-6 relative z-10 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <div className="flex gap-4 items-start">
+            <div className="w-12 h-12 rounded-xl bg-white/10 flex items-center justify-center shrink-0 border border-white/10">
+              <Briefcase className="w-6 h-6 text-indigo-300" />
+            </div>
+            <div>
+              <h3 className="font-bold text-white text-lg">Employment & Tax Profile</h3>
+              <p className="text-sm text-indigo-200 mt-1 max-w-sm">
+                Configure salary band and employer to unlock Smart Tax Engine suggestions.
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={() => setShowProfileModal(true)}
+            className="w-full sm:w-auto shrink-0 bg-indigo-500 hover:bg-indigo-600 text-white px-5 py-2.5 rounded-xl font-bold transition-all shadow-sm"
+          >
+            Configure
+          </button>
+        </div>
       </div>
 
-      {/* 3. Entity Management (Khata, Shops, Subs) */}
+      {/* 4. Entity Management */}
       <div className="bg-white border border-slate-100 rounded-[24px] shadow-sm overflow-hidden">
         <div className="p-5 border-b border-slate-100 bg-slate-50/50">
           <h3 className="font-bold text-slate-800 flex items-center gap-2">
-            <Database className="w-5 h-5 text-indigo-500" />
-            Advanced Entities Management
+            <Database className="w-5 h-5 text-indigo-500" /> Entities & Ledgers
           </h3>
-          <p className="text-sm text-slate-500 mt-1 ml-7">Manage your dedicated ledgers to speed up transaction logging.</p>
+          <p className="text-sm text-slate-500 mt-1 ml-7">
+            Manage dedicated ledgers to speed up transaction logging.
+          </p>
         </div>
         <div className="divide-y divide-slate-100">
-          <SettingRow onClick={() => openEntity('shop')} icon={Store} title="Shops / Merchants" subtitle="Save frequent stores & default categories" action={<ChevronRight className="w-5 h-5 text-slate-300" />} />
-          <SettingRow onClick={() => openEntity('person')} icon={Users} title="People / Payees (Khata)" subtitle="Track lending, borrowing, and split expenses" action={<ChevronRight className="w-5 h-5 text-slate-300" />} />
-          <SettingRow onClick={() => openEntity('recurring')} icon={Repeat} title="Recurring Bills" subtitle="Utilities, mobile recharge, gas, electricity" action={<ChevronRight className="w-5 h-5 text-slate-300" />} />
-          <SettingRow onClick={() => openEntity('subscription')} icon={CreditCardIcon} title="Subscriptions" subtitle="Discretionary active digital services (Netflix, Gym)" action={<ChevronRight className="w-5 h-5 text-slate-300" />} />
-          <SettingRow onClick={() => openEntity('giftcard')} icon={Gift} title="Gift Cards" subtitle="Track unused gift card balances & expiry" action={<ChevronRight className="w-5 h-5 text-slate-300" />} />
-          <SettingRow onClick={() => openEntity('warranty')} icon={ShieldCheck} title="Warranties" subtitle="Upload warranty cards for major electronics" action={<ChevronRight className="w-5 h-5 text-slate-300" />} />
-          <SettingRow onClick={() => openEntity('item')} icon={Package} title="Items / Inventory" subtitle="Manage purchased items & assets" action={<ChevronRight className="w-5 h-5 text-slate-300" />} />
-          <SettingRow onClick={() => openEntity('bank')} icon={IndianRupee} title="Bank Details" subtitle="Manage account numbers, IFSC & branch info" action={<ChevronRight className="w-5 h-5 text-slate-300" />} />
+          <SettingRow onClick={() => setActiveEntity("shop")}        icon={Store}         title="Shops / Merchants"    subtitle="Frequent stores & default categories"                    action={<ChevronRight className="w-5 h-5 text-slate-300" />} />
+          <SettingRow onClick={() => setActiveEntity("person")}      icon={Users}         title="People / Payees"      subtitle="Track lending, borrowing & split expenses"               action={<ChevronRight className="w-5 h-5 text-slate-300" />} />
+          <SettingRow onClick={() => setActiveEntity("recurring")}   icon={Repeat}        title="Recurring Bills"      subtitle="Utilities, mobile, electricity"                         action={<ChevronRight className="w-5 h-5 text-slate-300" />} />
+          <SettingRow onClick={() => setActiveEntity("subscription")} icon={CreditCardIcon} title="Subscriptions"       subtitle="Netflix, Spotify, Gym — with due dates"                 action={<ChevronRight className="w-5 h-5 text-slate-300" />} />
+          <SettingRow onClick={() => setActiveEntity("giftcard")}    icon={Gift}          title="Gift Cards"           subtitle="Track unused balances & expiry"                          action={<ChevronRight className="w-5 h-5 text-slate-300" />} />
+          <SettingRow onClick={() => setActiveEntity("warranty")}    icon={ShieldCheck}   title="Warranties"           subtitle="Upload warranty cards for electronics"                   action={<ChevronRight className="w-5 h-5 text-slate-300" />} />
+          <SettingRow onClick={() => setActiveEntity("item")}        icon={Package}       title="Items / Inventory"    subtitle="Purchased assets & items"                               action={<ChevronRight className="w-5 h-5 text-slate-300" />} />
+          <SettingRow onClick={() => setActiveEntity("bank")}        icon={IndianRupee}   title="Bank Details"         subtitle="Account numbers, IFSC & branch info"                    action={<ChevronRight className="w-5 h-5 text-slate-300" />} />
         </div>
       </div>
 
-      {/* 4. Localization & Format */}
+      {/* 5. Localization */}
       <div className="bg-white border border-slate-100 rounded-[24px] shadow-sm overflow-hidden">
         <div className="p-5 border-b border-slate-100 bg-slate-50/50">
           <h3 className="font-bold text-slate-800 flex items-center gap-2">
-            <Globe className="w-5 h-5 text-indigo-500" />
-            Localization & Categories
+            <Globe className="w-5 h-5 text-indigo-500" /> Localization & Categories
           </h3>
         </div>
         <div className="divide-y divide-slate-100">
-          <SettingRow icon={IndianRupee} title="Currency & Number System" subtitle="Indian Rupee (INR) • Lakhs & Crores (1,00,000)" action={<button className="text-sm font-bold text-indigo-600 bg-indigo-50 px-3 py-1.5 rounded-lg">Edit</button>} />
-          <SettingRow icon={Calendar} title="Financial Year Start" subtitle="April 1 (India Tax Standard)" action={<button className="text-sm font-bold text-indigo-600 bg-indigo-50 px-3 py-1.5 rounded-lg">Edit</button>} />
-          <SettingRow icon={Tags} title="Categories & Insight Tagging" subtitle="Manage sub-categories & Needs/Wants/Savings tags" action={<button className="text-sm font-bold text-indigo-600 bg-indigo-50 px-3 py-1.5 rounded-lg">Edit</button>} />
+          <SettingRow icon={IndianRupee} title="Currency & Number System" subtitle="Indian Rupee (INR) • Lakhs & Crores" action={<button className="text-sm font-bold text-indigo-600 bg-indigo-50 px-3 py-1.5 rounded-lg">Edit</button>} />
+          <SettingRow icon={Calendar}    title="Financial Year Start"     subtitle="April 1 (India Standard)"             action={<button className="text-sm font-bold text-indigo-600 bg-indigo-50 px-3 py-1.5 rounded-lg">Edit</button>} />
+          <SettingRow icon={Tags}        title="Categories & Tagging"     subtitle="Manage sub-categories & Needs/Wants"  action={<button className="text-sm font-bold text-indigo-600 bg-indigo-50 px-3 py-1.5 rounded-lg">Edit</button>} />
         </div>
       </div>
 
-      {/* 5. Security & Notifications */}
+      {/* 6. Security & Notifications */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
         <div className="bg-white border border-slate-100 rounded-[24px] shadow-sm overflow-hidden h-fit">
           <div className="p-5 border-b border-slate-100 bg-slate-50/50">
@@ -198,8 +455,28 @@ export const Settings = () => {
             </h3>
           </div>
           <div className="divide-y divide-slate-100">
-            <SettingRow icon={Fingerprint} title="App Lock" subtitle="Require Biometrics to open" action={<Toggle active={locks.biometric} onToggle={() => setLocks(s => ({ ...s, biometric: !s.biometric }))} />} />
-            <SettingRow icon={Lock} title="Hide Balances" subtitle="Mask numbers by default" action={<Toggle active={profile.maskBalances || false} onToggle={() => updateProfile({ maskBalances: !profile.maskBalances })} />} />
+            <SettingRow
+              icon={Fingerprint}
+              title="App Lock"
+              subtitle="Require Biometrics to open"
+              action={
+                <Toggle
+                  active={locks.biometric}
+                  onToggle={() => setLocks((s) => ({ ...s, biometric: !s.biometric }))}
+                />
+              }
+            />
+            <SettingRow
+              icon={Lock}
+              title="Hide Balances"
+              subtitle="Mask numbers by default"
+              action={
+                <Toggle
+                  active={profile.maskBalances ?? false}
+                  onToggle={() => updateProfile({ maskBalances: !profile.maskBalances })}
+                />
+              }
+            />
           </div>
         </div>
 
@@ -210,13 +487,33 @@ export const Settings = () => {
             </h3>
           </div>
           <div className="divide-y divide-slate-100">
-            <SettingRow icon={Bell} title="Bill Reminders" subtitle="Push notifications for due dates" action={<Toggle active={reminders.bills} onToggle={() => setReminders(s => ({ ...s, bills: !s.bills }))} />} />
-            <SettingRow icon={Bell} title="Daily Log Prompt" subtitle="Ping at 9:00 PM to log expenses" action={<Toggle active={reminders.dailyLog} onToggle={() => setReminders(s => ({ ...s, dailyLog: !s.dailyLog }))} />} />
+            <SettingRow
+              icon={Bell}
+              title="Bill Reminders"
+              subtitle="Push notifications for due dates"
+              action={
+                <Toggle
+                  active={reminders.bills}
+                  onToggle={() => setReminders((s) => ({ ...s, bills: !s.bills }))}
+                />
+              }
+            />
+            <SettingRow
+              icon={Bell}
+              title="Daily Log Prompt"
+              subtitle="Ping at 9:00 PM to log expenses"
+              action={
+                <Toggle
+                  active={reminders.dailyLog}
+                  onToggle={() => setReminders((s) => ({ ...s, dailyLog: !s.dailyLog }))}
+                />
+              }
+            />
           </div>
         </div>
       </div>
 
-      {/* 6. Danger Zone */}
+      {/* 7. Danger Zone */}
       <div className="bg-white border border-red-100 rounded-[24px] shadow-sm overflow-hidden">
         <div className="p-5 border-b border-red-50 bg-red-50/30">
           <h3 className="font-bold text-red-600 flex items-center gap-2">
@@ -224,25 +521,63 @@ export const Settings = () => {
           </h3>
         </div>
         <div className="divide-y divide-slate-100">
-          <SettingRow icon={Database} title="Reset Data" subtitle="Restore seed transactions & keep accounts." destructive action={<button onClick={() => setConfirmReset(true)} className="text-sm font-bold text-red-600 bg-red-50 px-3 py-1.5 rounded-lg border border-red-100">Reset</button>} />
-          <SettingRow icon={Database} title="Seed Data (2 Years)" subtitle="Generate 2 years of realistic testing data." destructive onClick={() => setConfirmReset(true)} action={<button onClick={() => setConfirmReset(true)} className="text-sm font-bold text-red-600 bg-red-50 px-3 py-1.5 rounded-lg border border-red-100">Seed</button>} />
-          <SettingRow icon={AlertTriangle} title="Wipe Data" subtitle="Total nuclear reset. Erase absolutely everything." destructive action={<button onClick={() => { setWipePhase(1); setConfirmWipe(true); }} className="text-sm font-bold text-white bg-red-600 hover:bg-red-700 transition-colors px-3 py-1.5 rounded-lg">Wipe</button>} />
+          <SettingRow
+            icon={Database}
+            title="Seed Data"
+            subtitle="Restore 2 years of realistic sample transactions."
+            destructive
+            action={
+              <button
+                onClick={() => setConfirmReset(true)}
+                className="text-sm font-bold text-red-600 bg-red-50 px-3 py-1.5 rounded-lg border border-red-100"
+              >
+                Seed
+              </button>
+            }
+          />
+          <SettingRow
+            icon={AlertTriangle}
+            title="Wipe All Data"
+            subtitle="Total nuclear reset. Erases everything permanently."
+            destructive
+            action={
+              <button
+                onClick={() => { setWipePhase(1); setConfirmWipe(true); }}
+                className="text-sm font-bold text-white bg-red-600 hover:bg-red-700 transition-colors px-3 py-1.5 rounded-lg"
+              >
+                Wipe
+              </button>
+            }
+          />
         </div>
       </div>
 
       <div className="text-center mt-8 text-sm text-slate-400 font-medium">
-        MoneyManager v1.0.0 • Made in India
+        MoneyManager v1.0.0 • Made in India • Local-First
       </div>
 
       {/* Confirm Reset Modal */}
       {confirmReset && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4">
           <div className="bg-white rounded-3xl p-6 w-full max-w-sm shadow-2xl">
-            <h3 className="font-bold text-xl text-slate-800 mb-2">Reset Data?</h3>
-            <p className="text-sm text-slate-500 mb-6">This will restore the default seed transactions and reset account balances. Your accounts and settings will be kept.</p>
+            <h3 className="font-bold text-xl text-slate-800 mb-2">Seed Sample Data?</h3>
+            <p className="text-sm text-slate-500 mb-6">
+              This will replace all transactions with 2 years of realistic sample data.
+              Your current data will be lost.
+            </p>
             <div className="flex gap-3">
-              <button onClick={() => setConfirmReset(false)} className="flex-1 py-2.5 border border-slate-200 rounded-xl font-semibold text-slate-600 hover:bg-slate-50">Cancel</button>
-              <button onClick={() => { resetData(); setConfirmReset(false); }} className="flex-1 py-2.5 bg-red-600 text-white rounded-xl font-bold hover:bg-red-700">Reset</button>
+              <button
+                onClick={() => setConfirmReset(false)}
+                className="flex-1 py-2.5 border border-slate-200 rounded-xl font-semibold text-slate-600 hover:bg-slate-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => { resetData(); setConfirmReset(false); }}
+                className="flex-1 py-2.5 bg-red-600 text-white rounded-xl font-bold hover:bg-red-700"
+              >
+                Seed
+              </button>
             </div>
           </div>
         </div>
@@ -255,17 +590,28 @@ export const Settings = () => {
             {wipePhase === 1 ? (
               <>
                 <h3 className="font-bold text-xl text-red-600 mb-2">Wipe All Data?</h3>
-                <p className="text-sm text-slate-500 mb-6">This will permanently delete ALL transactions, investments, and entities. This cannot be undone.</p>
+                <p className="text-sm text-slate-500 mb-6">
+                  This permanently deletes ALL transactions, investments, and entities. Cannot be undone.
+                </p>
                 <div className="flex gap-3">
-                  <button onClick={() => setConfirmWipe(false)} className="flex-1 py-2.5 border border-slate-200 rounded-xl font-semibold text-slate-600">Cancel</button>
-                  <button onClick={() => setWipePhase(2)} className="flex-1 py-2.5 bg-red-600 text-white rounded-xl font-bold">Continue</button>
+                  <button onClick={() => setConfirmWipe(false)} className="flex-1 py-2.5 border border-slate-200 rounded-xl font-semibold text-slate-600">
+                    Cancel
+                  </button>
+                  <button onClick={() => setWipePhase(2)} className="flex-1 py-2.5 bg-red-600 text-white rounded-xl font-bold">
+                    Continue
+                  </button>
                 </div>
               </>
             ) : (
               <>
                 <h3 className="font-bold text-xl text-red-600 mb-2">Are you absolutely sure?</h3>
-                <p className="text-sm text-slate-500 mb-6">Type <strong>WIPE</strong> to confirm permanent deletion.</p>
-                <WipeConfirmInput onConfirm={() => { wipeData(); setConfirmWipe(false); }} onCancel={() => setConfirmWipe(false)} />
+                <p className="text-sm text-slate-500 mb-6">
+                  Type <strong>WIPE</strong> to confirm permanent deletion.
+                </p>
+                <WipeConfirmInput
+                  onConfirm={() => { wipeData(); setConfirmWipe(false); }}
+                  onCancel={() => setConfirmWipe(false)}
+                />
               </>
             )}
           </div>
@@ -273,7 +619,10 @@ export const Settings = () => {
       )}
 
       {activeEntity && (
-        <EntityManagementModal type={activeEntity as any} onClose={closeEntity} />
+        <EntityManagementModal
+          type={activeEntity as Parameters<typeof EntityManagementModal>[0]["type"]}
+          onClose={() => setActiveEntity(null)}
+        />
       )}
       {showProfileModal && (
         <ProfileManagementModal onClose={() => setShowProfileModal(false)} />
