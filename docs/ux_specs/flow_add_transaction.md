@@ -13,8 +13,8 @@ This is the most critical interaction in the app. It must be blazing fast for po
 ## 3. Data Schema & Form Fields
 
 ### 3.1. Type: Transfer
-*   **Amount & Date:** Top row (Date is an icon defaulting to today).
-*   **From Account & To Account:** Placed in the same row for quick transfers.
+*   **Amount & Date:** Top row (Date is a prominent interactive label defaulting to today).
+*   **From Account & To Account:** Placed in the same row with a visual **Arrow indicator** showing flow direction.
 
 ### 3.2. Type: Income
 *   **Amount & Date:** Top row.
@@ -26,24 +26,46 @@ This is the most critical interaction in the app. It must be blazing fast for po
 Expenses have the most comprehensive data model, structured into 4 sections:
 
 #### Section 1: Basic Details
-*   **Row 1:** Amount | Date picker icon (defaults to current date, selectable via icon)
-*   **Row 2:** From Account | Category
-*   **Row 3:** Payee
+*   **Amount Input:** 3xl font-bold currency symbol (₹) with 4xl font-black input. Placeholder is "0".
+*   **Date Pill Selector:** A grouped label containing:
+    *   **Label:** "DATE" in 10px uppercase bold slate-400.
+    *   **Value:** "MMM dd" formatted date in bold slate-700.
+    *   **Icon:** `Calendar` icon in a slate-50 rounded-lg container.
+    *   *Interaction:* Entire pill is a `pointer` target. Triggers native date picker via invisible absolute input.
+*   **Intelligence (Auto-Sync):**
+    *   Uses a `prevItemsTotal` reference to track state.
+    *   **Sync Condition:** Auto-fills main amount if current amount is `0` OR if it matches the *previous* items total (indicating the user is relying on the inventory list for calculation).
+    *   **Mismatch Warning:** An absolute-positioned, pulsing amber badge (`bg-amber-100`) that appears above the input if `Math.abs(amount - itemsTotal) > 0.01`.
 
 #### Section 2: Detailed View (Context & Inventory)
-*   **Row 1:** Purpose / Short Note
-*   **Row 2:** Sub Category | Tags
-*   **Row 3:** Items - Multi-selectable dropdown from available items. Type to add new items. Can be added/deleted/re-added.
-*   **Row 4:** Item List - Shows selected items with inputs for count/weights/quantity (e.g., grapes - 500 g, oil - 300 ml, headphone - 1).
+*   **Purpose / Short Note:** Full-width input for additional context.
+*   **Sub Category:** 
+    *   Dynamic dropdown matching the selected Category.
+    *   **"On-the-Go" Creation:** Includes a `+ Create New...` option that toggles a custom text input for immediate category expansion.
+*   **Tags:** Multi-input with `Enter` key triggers. Renders as slate-100 chips with bold uppercase text and removal icons.
+*   **Items & Inventory Engine:**
+    *   **Entry Row:** Item Name (input) + Price (total) + Qty (number) + Unit (Select).
+    *   **Units Supported:** `pcs`, `unit`, `kg`, `g`, `L`, `ml`, `pack`, `box`, `bundle`.
+    *   **Price Logic:** The price field represents the **total purchased price** for that specific entry, not unit price.
+    *   **Display:** List items show Name (bold) and Qty/Unit (secondary) with the total price right-aligned in font-black slate-800.
 
 #### Section 3: Classification (Analytics)
-*   **Beneficiary:** Multi-selectable. Choose between: `Self` / `Family` / `Friends` / `Others`.
-*   **Needs vs Wants:** One option only. Choose between: `Need` / `Want` / `Investment` / `Discretionary`.
+*   **Audience:** 4-column grid (SELF | FAMILY | FRIENDS | OTHERS). Active state: `bg-slate-800` with shadow.
+*   **Priority / Type:** 4-column grid (NEED | WANT | INVEST | DISC). 
+    *   *Sizing:* 9px bold uppercase text with `tracking-wider`.
+    *   *Interaction:* One-tap selection. Active state: `bg-indigo-600` with `shadow-md`.
 
 #### Section 4: Split (Khata Engine)
-*   **With (Name):** Select from or add to 'people' entities. Multiple names can be selected and shown as contact chips (can be added, deleted, re-added).
-*   **Share Strategy:** Once names are added, users select a strategy. Shows dynamic share of each person based on the strategy, including a custom option to manually split amounts.
-*   **Due Date:** When the split amount is expected to be settled.
+*   **With (Name):** Contact chips in `bg-indigo-600` with white text. Multi-selection enabled via `Enter`.
+*   **Share Strategy:**
+    *   **Equally:** (Total / (1 + Count)) calculation.
+    *   **Percentages / Exact Amounts:** Opens an inline input row for each person. 
+        *   *Layout:* `[Name] [Symbol + Input] [₹ Final Amount]`.
+    *   **By Items:**
+        *   Shows each item from Section 2 with its price.
+        *   **Assignment Matrix:** A horizontal list of participant chips below each item. 
+        *   *Logic:* Tapping a name assigns/unassigns that person to that item. Price is shared equally among all assigned people for that specific item.
+*   **Totals Card:** A summary box (`bg-white/60`) at the bottom of the section showing the calculated final share for everyone, including "You".
 
 ## 4. Dynamic Custom Fields (Category Specific)
 *   *Transportation:* From/To Location, Mode of Travel.

@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import { format, parseISO, isSameDay, startOfWeek, endOfWeek, startOfMonth, endOfMonth, startOfYear, endOfYear, subDays, subMonths, subYears, parse } from "date-fns";
 import { useSearchParams } from "react-router";
 import { Search, Filter, ArrowUpRight, ArrowDownRight, Wallet, ChevronDown, ChevronRight, Maximize2, Minimize2, Trash2, Edit, X } from "lucide-react";
@@ -154,21 +154,39 @@ export const Transactions = () => {
   };
 
   const toggleAll = () => {
-    if (isAllExpanded) {
-      setExpandedGroups(new Set());
-    } else {
-      const allIds = new Set<string>();
-      groupedTransactions.forEach(g => {
-        g.payeeGroups.forEach(pg => {
-          if (pg.transactions.length > 1) {
-            allIds.add(`${g.date}-${pg.payee.toLowerCase()}`);
-          }
-        });
+    const allIds = new Set<string>();
+    groupedTransactions.forEach(g => {
+      g.payeeGroups.forEach(pg => {
+        if (pg.transactions.length > 1) {
+          allIds.add(`${g.date}-${pg.payee.toLowerCase()}`);
+        }
       });
+    });
+
+    if (expandedGroups.size >= allIds.size && allIds.size > 0) {
+      setExpandedGroups(new Set());
+      setIsAllExpanded(false);
+    } else {
       setExpandedGroups(allIds);
+      setIsAllExpanded(true);
     }
-    setIsAllExpanded(!isAllExpanded);
   };
+
+  // Sync isAllExpanded state with actual expanded count
+  const actualGroupCount = useMemo(() => {
+    let count = 0;
+    groupedTransactions.forEach(g => {
+      g.payeeGroups.forEach(pg => {
+        if (pg.transactions.length > 1) count++;
+      });
+    });
+    return count;
+  }, [groupedTransactions]);
+
+  useEffect(() => {
+    if (expandedGroups.size === 0) setIsAllExpanded(false);
+    else if (expandedGroups.size >= actualGroupCount && actualGroupCount > 0) setIsAllExpanded(true);
+  }, [expandedGroups, actualGroupCount]);
 
   return (
     <div className="p-4 md:p-8 max-w-4xl mx-auto flex flex-col h-full">
