@@ -3,72 +3,85 @@ import { TrendingUp, ArrowUpRight, ArrowDownRight, Landmark, Coins, Home, Plus, 
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from "recharts";
 import { formatINR, cn } from "../utils";
 import { differenceInDays, parseISO, format } from "date-fns";
+import { useFinance } from "../context/FinanceContext";
 
-const mockInvestments = {
+// Default seed data used when context investments list is empty
+const defaultInvestments = {
   marketLinked: [
-    { id: 1, name: "Parag Parikh Flexi Cap", units: 1540.5, avgNav: 45.2, currentNav: 68.4, isSIP: true },
-    { id: 2, name: "UTI Nifty 50 Index Fund", units: 250, avgNav: 150.0, currentNav: 215.5, isSIP: true },
-    { id: 3, name: "HDFC Bank (Direct Equity)", units: 50, avgNav: 1450.0, currentNav: 1410.0, isSIP: false },
+    { id: '1', name: "Parag Parikh Flexi Cap", units: 1540.5, avgNav: 45.2, currentNav: 68.4, isSIP: true },
+    { id: '2', name: "UTI Nifty 50 Index Fund", units: 250, avgNav: 150.0, currentNav: 215.5, isSIP: true },
+    { id: '3', name: "HDFC Bank (Direct Equity)", units: 50, avgNav: 1450.0, currentNav: 1410.0, isSIP: false },
   ],
   fixedIncome: [
-    { id: 1, name: "SBI Tax Saver FD (80C)", principal: 150000, current: 172000, rate: 7.1, startDate: "2023-04-01", maturityDate: "2028-04-01" },
-    { id: 2, name: "EPF (Provident Fund)", principal: 850000, current: 980000, rate: 8.15, startDate: "2019-06-01", maturityDate: "2050-01-01" },
-    { id: 3, name: "Post Office RD", principal: 60000, current: 64500, rate: 6.2, startDate: "2024-01-01", maturityDate: "2029-01-01" },
+    { id: '1', name: "SBI Tax Saver FD (80C)", principal: 150000, current: 172000, rate: 7.1, startDate: "2023-04-01", maturityDate: "2028-04-01" },
+    { id: '2', name: "EPF (Provident Fund)", principal: 850000, current: 980000, rate: 8.15, startDate: "2019-06-01", maturityDate: "2050-01-01" },
   ],
   gold: [
-    { id: 1, name: "Sovereign Gold Bond 2023", grams: 50, avgPrice: 5923, currentPrice: 7250 },
-    { id: 2, name: "Digital Gold (PhonePe)", grams: 12.5, avgPrice: 6100, currentPrice: 7100 },
+    { id: '1', name: "Sovereign Gold Bond 2023", grams: 50, avgPrice: 5923, currentPrice: 7250 },
+    { id: '2', name: "Digital Gold (PhonePe)", grams: 12.5, avgPrice: 6100, currentPrice: 7100 },
   ],
   realEstate: [
-    { id: 1, name: "2BHK Apartment, Bangalore", propertyValue: 8500000, loanOutstanding: 6200000 },
+    { id: '1', name: "2BHK Apartment, Bangalore", propertyValue: 8500000, loanOutstanding: 6200000 },
   ]
 };
 
 const CHART_COLORS = ['#3B82F6', '#10B981', '#F59E0B', '#6366F1'];
 
-export const Instruments = () => {
-  
+export const Investments = () => {
+  const { investments: contextInvestments } = useFinance();
+
+  // Use context investments when available, otherwise use defaults
+  const inv = useMemo(() => {
+    if (contextInvestments.length === 0) return defaultInvestments;
+    return {
+      marketLinked: contextInvestments.filter(i => i.category === 'marketLinked'),
+      fixedIncome: contextInvestments.filter(i => i.category === 'fixedIncome'),
+      gold: contextInvestments.filter(i => i.category === 'gold'),
+      realEstate: contextInvestments.filter(i => i.category === 'realEstate'),
+    };
+  }, [contextInvestments]);
+
   // Calculations
   const marketStats = useMemo(() => {
     let invested = 0, current = 0;
-    mockInvestments.marketLinked.forEach(i => {
-      invested += i.units * i.avgNav;
-      current += i.units * i.currentNav;
+    inv.marketLinked.forEach(i => {
+      invested += (i.units || 0) * (i.avgNav || 0);
+      current += (i.units || 0) * (i.currentNav || 0);
     });
     return { invested, current };
-  }, []);
+  }, [inv.marketLinked]);
 
   const fixedStats = useMemo(() => {
     let invested = 0, current = 0;
-    mockInvestments.fixedIncome.forEach(i => {
-      invested += i.principal;
-      current += i.current;
+    inv.fixedIncome.forEach(i => {
+      invested += (i.principal || 0);
+      current += (i.current || 0);
     });
     return { invested, current };
-  }, []);
+  }, [inv.fixedIncome]);
 
   const goldStats = useMemo(() => {
     let invested = 0, current = 0;
-    mockInvestments.gold.forEach(i => {
-      invested += i.grams * i.avgPrice;
-      current += i.grams * i.currentPrice;
+    inv.gold.forEach(i => {
+      invested += (i.grams || 0) * (i.avgPrice || 0);
+      current += (i.grams || 0) * (i.currentPrice || 0);
     });
     return { invested, current };
-  }, []);
+  }, [inv.gold]);
 
   const realEstateStats = useMemo(() => {
-    let netEquity = 0; // The actual wealth
-    mockInvestments.realEstate.forEach(i => {
-      netEquity += (i.propertyValue - i.loanOutstanding);
+    let netEquity = 0;
+    inv.realEstate.forEach(i => {
+      netEquity += ((i.propertyValue || 0) - (i.loanOutstanding || 0));
     });
-    // For real estate, invested and current represent net equity to align with net worth
-    return { invested: netEquity * 0.7, current: netEquity }; // Mocking some appreciation
-  }, []);
+    return { invested: netEquity, current: netEquity };
+  }, [inv.realEstate]);
 
   const totalInvested = marketStats.invested + fixedStats.invested + goldStats.invested + realEstateStats.invested;
   const totalCurrent = marketStats.current + fixedStats.current + goldStats.current + realEstateStats.current;
   const totalProfit = totalCurrent - totalInvested;
-  const profitPercentage = (totalProfit / totalInvested) * 100;
+  // Guard against divide-by-zero
+  const profitPercentage = totalInvested > 0 ? (totalProfit / totalInvested) * 100 : 0;
 
   const allocationData = [
     { name: "Equity & MFs", value: marketStats.current },
@@ -151,7 +164,7 @@ export const Instruments = () => {
             <span className="font-bold text-slate-900">{formatINR(marketStats.current)}</span>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            {mockInvestments.marketLinked.map(mf => {
+            {inv.marketLinked.map(mf => {
               const invested = mf.units * mf.avgNav;
               const current = mf.units * mf.currentNav;
               const profit = current - invested;
@@ -193,7 +206,7 @@ export const Instruments = () => {
             <span className="font-bold text-slate-900">{formatINR(fixedStats.current)}</span>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            {mockInvestments.fixedIncome.map(fd => {
+            {inv.fixedIncome.map(fd => {
               const start = parseISO(fd.startDate);
               const end = parseISO(fd.maturityDate);
               const totalDays = differenceInDays(end, start);
@@ -240,7 +253,7 @@ export const Instruments = () => {
             <span className="font-bold text-slate-900">{formatINR(goldStats.current)}</span>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            {mockInvestments.gold.map(g => {
+            {inv.gold.map(g => {
               const invested = g.grams * g.avgPrice;
               const current = g.grams * g.currentPrice;
               const profit = current - invested;
@@ -276,7 +289,7 @@ export const Instruments = () => {
             <span className="font-bold text-slate-900">{formatINR(realEstateStats.current)}</span>
           </div>
           <div className="grid grid-cols-1 gap-4">
-            {mockInvestments.realEstate.map(re => {
+            {inv.realEstate.map(re => {
               const netEquity = re.propertyValue - re.loanOutstanding;
               const equityPercentage = (netEquity / re.propertyValue) * 100;
 
@@ -298,11 +311,18 @@ export const Instruments = () => {
                     </div>
                   </div>
 
-                  <div className="w-full md:w-32 flex flex-col items-end">
-                    <div className="w-12 h-12 rounded-full border-4 border-indigo-100 border-t-indigo-600 flex items-center justify-center rotate-45 mb-1" style={{ transform: `rotate(${(equityPercentage / 100) * 360}deg)` }}>
-                       <span className="text-xs font-bold text-indigo-600" style={{ transform: `rotate(-${(equityPercentage / 100) * 360}deg)` }}>{equityPercentage.toFixed(0)}%</span>
-                    </div>
-                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider text-right">Owned</p>
+                  {/* SVG equity arc - correct implementation */}
+                  <div className="w-full md:w-32 flex flex-col items-center md:items-end gap-1">
+                    <svg width="56" height="56" viewBox="0 0 56 56">
+                      <circle cx="28" cy="28" r="22" fill="none" stroke="#E0E7FF" strokeWidth="6" />
+                      <circle cx="28" cy="28" r="22" fill="none" stroke="#4F46E5" strokeWidth="6"
+                        strokeDasharray={`${(equityPercentage / 100) * 138.2} 138.2`}
+                        strokeLinecap="round"
+                        transform="rotate(-90 28 28)"
+                      />
+                      <text x="28" y="32" textAnchor="middle" fontSize="11" fontWeight="bold" fill="#4F46E5">{equityPercentage.toFixed(0)}%</text>
+                    </svg>
+                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Owned</p>
                   </div>
                 </div>
               );

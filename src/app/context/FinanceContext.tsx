@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useEffect, useState } from "react";
-import { format, subDays, subMonths } from "date-fns";
+import { format, subDays, subMonths, startOfMonth, endOfMonth } from "date-fns";
 
 export type TransactionType = "expense" | "income" | "transfer";
 
@@ -22,11 +22,14 @@ export interface Transaction {
     with: string[];
     shareStrategy: string;
     dueDate: string;
+    shares?: Record<string, string>;
+    portionAssignments?: Record<number, Record<string, string>>;
   };
 }
 
 export interface Profile {
   companyName: string;
+  logoDevToken?: string;
 }
 
 export interface Account {
@@ -35,20 +38,35 @@ export interface Account {
   type: "bank" | "UPI" | "wallet" | "cash" | "credit_card" | "loan" | "investment" | "meal_card" | "pf";
   balance: number;
   currency: string;
+  lastFour?: string;       
+  fullAccountNumber?: string; 
+  ifsc?: string;
+  creditLimit?: number;    
+  dueDate?: string;        
+  interestRate?: number;   // for loans
+  tenureMonths?: number;   // for loans
+  emiAmount?: number;      // for loans
+  emiDate?: number;        // day of month (1-31)
+  monthlyContribution?: number; // for PF
+  employeeId?: string;     // for PF
+  logoUrl?: string;        // URL for bank/card logo
+  expiryDate?: string;     // for cards
+  upiId?: string;          // for UPI
+  walletMobile?: string;   // for wallets
 }
 
 export interface Investment {
   id: string;
   category: "marketLinked" | "fixedIncome" | "gold" | "realEstate";
   name: string;
-  [key: string]: any; // dynamic fields based on category
+  [key: string]: any;
 }
 
 export interface Entity {
   id: string;
   type: "shop" | "person" | "recurring" | "subscription" | "giftcard" | "warranty" | "item" | "bank";
   name: string;
-  [key: string]: any; // dynamic fields based on type
+  [key: string]: any;
 }
 
 interface FinanceContextType {
@@ -57,8 +75,9 @@ interface FinanceContextType {
   investments: Investment[];
   entities: Entity[];
 
+  updateProfile: (profile: Partial<Profile>) => void;
   addTransaction: (tx: Omit<Transaction, "id">) => void;
-  updateTransaction: (id: string, tx: Omit<Transaction, "id">) => void;
+  updateTransaction: (id: string, tx: Partial<Transaction>) => void;
   deleteTransaction: (id: string) => void;
 
   addAccount: (acc: Omit<Account, "id">) => void;
@@ -78,7 +97,6 @@ interface FinanceContextType {
   getTotalIncome: (month?: Date) => number;
 
   profile: Profile;
-  updateProfile: (p: Partial<Profile>) => void;
   resetData: () => void;
   wipeData: () => void;
 }
@@ -91,9 +109,15 @@ const lastMonth = format(subMonths(new Date(), 1), "yyyy-MM-dd");
 const twoMonthsAgo = format(subMonths(new Date(), 2), "yyyy-MM-dd");
 
 const defaultAccounts: Account[] = [
-  { id: "acc_1", name: "HDFC Bank", type: "bank", balance: 45000, currency: "INR" },
-  { id: "acc_2", name: "Paytm Wallet", type: "wallet", balance: 2500, currency: "INR" },
-  { id: "acc_3", name: "Amazon Pay ICICI", type: "credit_card", balance: -12500, currency: "INR" },
+  { id: "acc_1", name: "HDFC Salary", type: "bank", balance: 145000, currency: "INR", lastFour: "4521", fullAccountNumber: "501002345678", ifsc: "HDFC0001234", logoUrl: "https://img.logo.dev/hdfcbank.com?size=128" },
+  { id: "acc_2", name: "Paytm Wallet", type: "wallet", balance: 2500, currency: "INR", logoUrl: "https://img.logo.dev/paytm.com?size=128" },
+  { id: "acc_3", name: "Amazon Pay ICICI", type: "credit_card", balance: -12500, currency: "INR", lastFour: "9012", creditLimit: 150000, dueDate: format(subDays(new Date(), -12), "yyyy-MM-dd"), logoUrl: "https://img.logo.dev/icicibank.com?size=128" },
+  { id: "acc_4", name: "PhonePe UPI", type: "UPI", balance: 1200, currency: "INR", logoUrl: "https://img.logo.dev/phonepe.com?size=128" },
+  { id: "acc_5", name: "Physical Cash", type: "cash", balance: 4500, currency: "INR" },
+  { id: "acc_6", name: "Home Loan (SBI)", type: "loan", balance: -3500000, currency: "INR", interestRate: 8.5, tenureMonths: 240, emiAmount: 32000, emiDate: 5, logoUrl: "https://img.logo.dev/sbi.co.in?size=128" },
+  { id: "acc_7", name: "Groww Stocks", type: "investment", balance: 245000, currency: "INR", logoUrl: "https://img.logo.dev/groww.in?size=128" },
+  { id: "acc_8", name: "EPF Account", type: "pf", balance: 450000, currency: "INR", employeeId: "UAN-10023456", monthlyContribution: 1800, logoUrl: "https://img.logo.dev/epfindia.gov.in?size=128" },
+  { id: "acc_9", name: "Pluxee (Sodexo)", type: "meal_card", balance: 12000, currency: "INR", logoUrl: "https://img.logo.dev/pluxee.in?size=128" },
 ];
 
 const defaultTransactions: Transaction[] = [
@@ -115,7 +139,9 @@ const FinanceContext = createContext<FinanceContextType | undefined>(undefined);
 export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [transactions, setTransactions] = useState<Transaction[]>(() => {
     const saved = localStorage.getItem("finance_txns");
-    return saved ? JSON.parse(saved) : defaultTransactions;
+    const raw: Transaction[] = saved ? JSON.parse(saved) : defaultTransactions;
+    // Sanitize: fix any NaN/null amounts from previous buggy partial updates
+    return raw.map(t => ({ ...t, amount: isNaN(Number(t.amount)) ? 0 : Number(t.amount) }));
   });
 
   const [accounts, setAccounts] = useState<Account[]>(() => {
@@ -145,42 +171,48 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
   useEffect(() => { localStorage.setItem("finance_profile", JSON.stringify(profile)); }, [profile]);
 
   // --- Transactions ---
-  const applyTransactionImpact = (tx: Transaction | Omit<Transaction, "id">, reverse: boolean = false) => {
-    const multiplier = reverse ? -1 : 1;
-    setAccounts((prev) =>
-      prev.map((acc) => {
-        if (acc.id === tx.account_id) {
-          if (tx.type === "expense") return { ...acc, balance: acc.balance + (tx.amount * multiplier * -1) };
-          if (tx.type === "income") return { ...acc, balance: acc.balance + (tx.amount * multiplier) };
-          if (tx.type === "transfer") return { ...acc, balance: acc.balance + (tx.amount * multiplier * -1) };
-        }
-        if (tx.type === "transfer" && acc.id === tx.to_account_id) {
-          return { ...acc, balance: acc.balance + (tx.amount * multiplier) };
-        }
-        return acc;
-      })
-    );
+  // Applies or reverses a transaction's balance impact atomically.
+  const applyImpact = (accs: Account[], tx: Omit<Transaction, "id"> | Transaction, reverse = false): Account[] => {
+    const m = reverse ? -1 : 1;
+    return accs.map((acc) => {
+      let delta = 0;
+      if (acc.id === tx.account_id) {
+        if (tx.type === "expense") delta = tx.amount * m * -1;
+        if (tx.type === "income") delta = tx.amount * m;
+        if (tx.type === "transfer") delta = tx.amount * m * -1;
+      }
+      if (tx.type === "transfer" && acc.id === tx.to_account_id) {
+        delta = tx.amount * m;
+      }
+      return delta !== 0 ? { ...acc, balance: acc.balance + delta } : acc;
+    });
   };
 
   const addTransaction = (tx: Omit<Transaction, "id">) => {
     const newTx = { ...tx, id: `tx_${Date.now()}` };
     setTransactions((prev) => [newTx, ...prev]);
-    applyTransactionImpact(newTx);
+    setAccounts((prev) => applyImpact(prev, newTx));
   };
 
-  const updateTransaction = (id: string, updatedTx: Omit<Transaction, "id">) => {
+  const updateTransaction = (id: string, partialTx: Partial<Transaction>) => {
     setTransactions((prev) => {
       const oldTx = prev.find(t => t.id === id);
-      if (oldTx) applyTransactionImpact(oldTx, true); // reverse old
-      applyTransactionImpact(updatedTx); // apply new
-      return prev.map(t => t.id === id ? { ...updatedTx, id } : t);
+      if (!oldTx) return prev;
+      // Deep-merge: only override the fields explicitly passed
+      const updatedTx: Transaction = { ...oldTx, ...partialTx, id };
+      setAccounts((accs) => {
+        // Undo old impact, apply new impact
+        const reverted = applyImpact(accs, oldTx, true);
+        return applyImpact(reverted, updatedTx);
+      });
+      return prev.map(t => t.id === id ? updatedTx : t);
     });
   };
 
   const deleteTransaction = (id: string) => {
     setTransactions((prev) => {
       const oldTx = prev.find(t => t.id === id);
-      if (oldTx) applyTransactionImpact(oldTx, true);
+      if (oldTx) setAccounts((accs) => applyImpact(accs, oldTx, true));
       return prev.filter(t => t.id !== id);
     });
   };
@@ -188,7 +220,12 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
   // --- Accounts ---
   const addAccount = (acc: Omit<Account, "id">) => setAccounts((prev) => [...prev, { ...acc, id: `acc_${Date.now()}` }]);
   const updateAccount = (id: string, acc: Partial<Account>) => setAccounts(prev => prev.map(a => a.id === id ? { ...a, ...acc } : a));
-  const deleteAccount = (id: string) => setAccounts(prev => prev.filter(a => a.id !== id)); // Also implies dropping txns linked? Keeping simple for now.
+
+  const deleteAccount = (id: string) => {
+    // Orphan-safe: remove transactions tied to this account
+    setTransactions(prev => prev.filter(t => t.account_id !== id && t.to_account_id !== id));
+    setAccounts(prev => prev.filter(a => a.id !== id));
+  };
 
   // --- Investments ---
   const addInvestment = (inv: Omit<Investment, "id">) => setInvestments(prev => [...prev, { ...inv, id: `inv_${Date.now()}` } as Investment]);
@@ -197,7 +234,27 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
   // --- Entities ---
   const addEntity = (ent: Omit<Entity, "id">) => setEntities(prev => [...prev, { ...ent, id: `ent_${Date.now()}` } as Entity]);
-  const updateEntity = (id: string, ent: Partial<Entity>) => setEntities(prev => prev.map(e => e.id === id ? { ...e, ...ent } : e));
+  const updateEntity = (id: string, ent: Partial<Entity>) => {
+    setEntities(prev => {
+      const old = prev.find(e => e.id === id);
+      if (old && ent.name && ent.name !== old.name) {
+        // Name changed - sync across transactions
+        setTransactions(txs => txs.map(t => {
+          const payeeMatch = t.payee.toLowerCase() === old.name.toLowerCase();
+          const tagMatch = t.tags.includes(old.name);
+          if (payeeMatch || tagMatch) {
+            return {
+              ...t,
+              payee: payeeMatch ? ent.name! : t.payee,
+              tags: t.tags.map(tag => tag === old.name ? ent.name! : tag)
+            };
+          }
+          return t;
+        }));
+      }
+      return prev.map(e => e.id === id ? { ...e, ...ent } : e);
+    });
+  };
   const deleteEntity = (id: string) => setEntities(prev => prev.filter(e => e.id !== id));
 
   // --- Profile ---
@@ -205,15 +262,35 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
   // --- Helpers ---
   const getNetWorth = () => accounts.reduce((sum, acc) => sum + acc.balance, 0);
-  const getTotalExpenses = () => transactions.filter(t => t.type === "expense").reduce((sum, t) => sum + t.amount, 0);
-  const getTotalIncome = () => transactions.filter(t => t.type === "income").reduce((sum, t) => sum + t.amount, 0);
+
+  const getTotalExpenses = (month?: Date): number => {
+    const txs = month
+      ? transactions.filter(t => {
+          const d = new Date(t.date);
+          return d >= startOfMonth(month) && d <= endOfMonth(month);
+        })
+      : transactions;
+    return txs.filter(t => t.type === "expense").reduce((sum, t) => sum + t.amount, 0);
+  };
+
+  const getTotalIncome = (month?: Date): number => {
+    const txs = month
+      ? transactions.filter(t => {
+          const d = new Date(t.date);
+          return d >= startOfMonth(month) && d <= endOfMonth(month);
+        })
+      : transactions;
+    return txs.filter(t => t.type === "income").reduce((sum, t) => sum + t.amount, 0);
+  };
 
   const resetData = () => {
-    setTransactions([]);
-    // Restore default balances logic omitted for brevity, but basically keeps accounts.
+    // Restore default seed transactions and reset accounts to their seed balances.
+    setTransactions(defaultTransactions);
+    setAccounts(defaultAccounts);
   };
 
   const wipeData = () => {
+    // Full clean slate — removes all user data.
     setTransactions([]);
     setAccounts(defaultAccounts);
     setInvestments([]);
@@ -223,11 +300,12 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
   return (
     <FinanceContext.Provider value={{
       transactions, accounts, investments, entities,
+      updateProfile,
       addTransaction, updateTransaction, deleteTransaction,
       addAccount, updateAccount, deleteAccount,
       addInvestment, updateInvestment, deleteInvestment,
       addEntity, updateEntity, deleteEntity,
-      profile, updateProfile,
+      profile,
       getNetWorth, getTotalExpenses, getTotalIncome,
       resetData, wipeData
     }}>

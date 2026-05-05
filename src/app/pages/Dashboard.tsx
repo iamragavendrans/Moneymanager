@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from "react";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import { ArrowUpRight, ArrowDownRight, Eye, EyeOff, MoreVertical, LayoutGrid, ChevronDown, TrendingUp, X, Check, Clock, ChevronLeft, ChevronRight } from "lucide-react";
-import { format, subDays, getDaysInMonth, getWeekOfMonth, getDay, startOfMonth, startOfWeek, endOfWeek, subWeeks, eachDayOfInterval, addWeeks, subMonths, addMonths, subYears, addYears, isSameDay, isSameMonth, endOfDay } from "date-fns";
+import { format, subDays, getDaysInMonth, getWeekOfMonth, getDay, startOfMonth, endOfMonth, startOfWeek, endOfWeek, subWeeks, eachDayOfInterval, addWeeks, subMonths, addMonths, subYears, addYears, isSameDay, isSameMonth, endOfDay, startOfYear, endOfYear } from "date-fns";
 import { useFinance } from "../context/FinanceContext";
 import { formatINR } from "../utils";
 import { Link, useNavigate } from "react-router";
@@ -35,9 +35,7 @@ const ListCard = ({ icon, title, subtitle, amount, badgeText, badgeType }: any) 
   </div>
 );
 
-// mock data for mini bar charts
-const mockBarsIncome = [30, 45, 25, 60, 40, 70, 85, 50, 65, 80];
-const mockBarsExpense = [50, 30, 40, 20, 60, 45, 35, 70, 55, 40];
+// Real sparkline bars are computed from actual transaction data - see barsIncome/barsExpense useMemo below
 
 // Swipeable wrapper for ListCard
 const SwipeableCard = ({ children, onSwipeLeft, onSwipeRight, rightActionLabel, leftActionLabel, rightActionIcon, leftActionIcon, onClick }: any) => {
@@ -106,12 +104,14 @@ export const Dashboard = () => {
   // Dynamic Filtering based on global filter
   const now = referenceDate;
   const filteredTransactions = useMemo(() => {
-    let startDate = subDays(now, 7);
-    if (globalFilter === "1M") startDate = subDays(now, 30);
-    if (globalFilter === "1Y") startDate = subDays(now, 365);
+    let startDate: Date;
+    let endDate: Date = endOfDay(now);
+    if (globalFilter === "1W") { startDate = startOfWeek(now); endDate = endOfWeek(now); }
+    else if (globalFilter === "1M") { startDate = startOfMonth(now); endDate = endOfMonth(now); }
+    else { startDate = startOfYear(now); endDate = endOfYear(now); }
     return transactions.filter(t => {
       const txDate = new Date(t.date);
-      return txDate >= startDate && txDate <= endOfDay(now);
+      return txDate >= startDate && txDate <= endDate;
     });
   }, [transactions, globalFilter, referenceDate]);
 
@@ -187,6 +187,27 @@ export const Dashboard = () => {
     const pNW = prevAccounts.reduce((sum, a) => sum + a.balance, 0);
     return { pInc, pExp, pNW };
   }, [transactions, accounts, globalFilter, referenceDate]);
+
+  // Real sparkline bars: last 10 days income/expense normalised to 0–100
+  const barsIncome = useMemo(() => {
+    const days = Array.from({ length: 10 }, (_, i) => subDays(now, 9 - i));
+    const vals = days.map(d => {
+      const ds = format(d, "yyyy-MM-dd");
+      return transactions.filter(t => t.date === ds && t.type === 'income').reduce((s, t) => s + t.amount, 0);
+    });
+    const max = Math.max(...vals, 1);
+    return vals.map(v => Math.round((v / max) * 100));
+  }, [transactions, referenceDate]);
+
+  const barsExpense = useMemo(() => {
+    const days = Array.from({ length: 10 }, (_, i) => subDays(now, 9 - i));
+    const vals = days.map(d => {
+      const ds = format(d, "yyyy-MM-dd");
+      return transactions.filter(t => t.date === ds && t.type === 'expense').reduce((s, t) => s + t.amount, 0);
+    });
+    const max = Math.max(...vals, 1);
+    return vals.map(v => Math.round((v / max) * 100));
+  }, [transactions, referenceDate]);
 
   const netWorthChange = getPercentageChange(historicalNetWorth, prevPeriodStats.pNW);
   const incomeChange = getPercentageChange(periodIncome, prevPeriodStats.pInc);
@@ -279,8 +300,10 @@ export const Dashboard = () => {
 
     if (globalFilter === "1M" || globalFilter === "1W") {
       const weeksToSubtract = globalFilter === "1W" ? 0 : 4;
-      const start = startOfWeek(subWeeks(now, weeksToSubtract));
-      const end = endOfWeek(now);
+      const refStart = globalFilter === "1W" ? startOfWeek(referenceDate) : startOfMonth(referenceDate);
+      const refEnd = globalFilter === "1W" ? endOfWeek(referenceDate) : endOfMonth(referenceDate);
+      const start = startOfWeek(subWeeks(refStart, weeksToSubtract));
+      const end = endOfWeek(refEnd);
       const days = eachDayOfInterval({ start, end });
 
       const matrixRows = Math.ceil(days.length / 7);
@@ -359,23 +382,36 @@ export const Dashboard = () => {
 
       <div className="px-4 pb-10 space-y-6">
 
-      {selectedDate && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4">
-          <div className="bg-white rounded-3xl p-6 w-full max-w-md shadow-2xl animate-in zoom-in-95 duration-200">
-            <div className="flex justify-between items-center mb-6">
-              <h3 className="font-bold text-xl text-slate-800">{format(selectedDate, "MMM dd, yyyy")}</h3>
-              <button onClick={() => setSelectedDate(null)} className="p-2 bg-slate-100 rounded-full text-slate-500 hover:text-slate-800 hover:bg-slate-200 transition-colors"><X className="w-5 h-5" /></button>
-            </div>
-            <div className="space-y-4">
-              <div className="text-sm text-slate-500 text-center py-10 px-4 bg-slate-50 rounded-2xl border border-slate-200 border-dashed">
-                <p className="font-medium text-slate-700 mb-1">Filtering engine ready</p>
-                <p>In the final build, this will fetch and list all transactions matching exactly <strong className="text-indigo-600">{format(selectedDate, "yyyy-MM-dd")}</strong> from the ledger.</p>
+      {selectedDate && (() => {
+        const dayTxs = transactions.filter(t => t.date === format(selectedDate, "yyyy-MM-dd"));
+        return (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4">
+            <div className="bg-white rounded-3xl p-6 w-full max-w-md shadow-2xl animate-in zoom-in-95 duration-200 max-h-[80vh] flex flex-col">
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="font-bold text-xl text-slate-800">{format(selectedDate, "MMM dd, yyyy")}</h3>
+                <button onClick={() => setSelectedDate(null)} className="p-2 bg-slate-100 rounded-full text-slate-500 hover:text-slate-800 hover:bg-slate-200 transition-colors"><X className="w-5 h-5" /></button>
               </div>
-              <button onClick={() => setSelectedDate(null)} className="w-full py-3.5 bg-slate-900 hover:bg-slate-800 text-white rounded-xl font-bold transition-all shadow-md active:scale-[0.98]">Close View</button>
+              <div className="overflow-y-auto flex-1 space-y-2">
+                {dayTxs.length === 0 ? (
+                  <p className="text-sm text-slate-400 text-center py-10">No transactions on this day.</p>
+                ) : dayTxs.map(tx => (
+                  <div key={tx.id} onClick={() => { setSelectedDate(null); setEditTxId(tx.id); }} className="flex items-center justify-between p-3 bg-slate-50 rounded-xl hover:bg-indigo-50 cursor-pointer transition-colors">
+                    <div className="flex items-center gap-3">
+                      <div className={`w-9 h-9 rounded-xl flex items-center justify-center font-bold text-sm ${tx.type === 'expense' ? 'bg-orange-50 text-orange-500' : tx.type === 'income' ? 'bg-emerald-50 text-emerald-600' : 'bg-purple-50 text-purple-600'}`}>{tx.payee.charAt(0)}</div>
+                      <div>
+                        <p className="font-semibold text-sm text-slate-800">{tx.payee}</p>
+                        <p className="text-xs text-slate-400">{tx.category}</p>
+                      </div>
+                    </div>
+                    <span className={`font-black text-sm ${tx.type === 'expense' ? 'text-red-500' : 'text-emerald-600'}`}>{tx.type === 'expense' ? '-' : '+'}{formatINR(tx.amount)}</span>
+                  </div>
+                ))}
+              </div>
+              <button onClick={() => setSelectedDate(null)} className="mt-4 w-full py-3 bg-slate-900 hover:bg-slate-800 text-white rounded-xl font-bold transition-all">Close</button>
             </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       {/* Hero Card */}
       <div className="bg-[#0B1220] text-white rounded-[24px] p-6 md:p-8 shadow-xl relative overflow-hidden transition-all duration-300 w-full min-h-[220px] flex flex-col justify-between group">
@@ -435,7 +471,7 @@ export const Dashboard = () => {
             <div className={`flex items-center gap-1 text-[10px] md:text-xs font-medium px-1.5 md:px-2 py-0.5 md:py-1 rounded-md ${incomeChange >= 0 ? 'text-emerald-600 bg-emerald-50' : 'text-red-600 bg-red-50'}`}>
               {incomeChange >= 0 ? <ArrowUpRight className="w-3 h-3" /> : <ArrowDownRight className="w-3 h-3" />} {Math.abs(incomeChange).toFixed(1)}% <span className="hidden lg:inline">vs last {periodTitle.toLowerCase().replace('ly', '')}</span>
             </div>
-            <div className="flex items-end gap-1 h-8 opacity-80">{mockBarsIncome.map((h, i) => <div key={i} className="w-1 md:w-1.5 bg-emerald-200 rounded-t-sm" style={{ height: `${h}%` }}></div>)}</div>
+            <div className="flex items-end gap-1 h-8 opacity-80">{barsIncome.map((h, i) => <div key={i} className="w-1 md:w-1.5 bg-emerald-200 rounded-t-sm" style={{ height: `${h}%` }}></div>)}</div>
           </div>
         </Card>
 
@@ -449,10 +485,10 @@ export const Dashboard = () => {
           </div>
           <h3 className="text-xl md:text-3xl font-bold text-slate-800 truncate mb-1">{isMasked ? '₹ •••••' : formatINR(periodExpense)}</h3>
           <div className="flex justify-between items-end">
-            <div className="flex items-center gap-1 text-[10px] md:text-xs font-medium text-red-500 bg-red-50 px-1.5 md:px-2 py-0.5 md:py-1 rounded-md">
-              <ArrowUpRight className="w-3 h-3" /> 8.2% <span className="hidden lg:inline">vs last {periodTitle.toLowerCase().replace('ly', '')}</span>
+            <div className={`flex items-center gap-1 text-[10px] md:text-xs font-medium px-1.5 md:px-2 py-0.5 md:py-1 rounded-md ${expenseChange <= 0 ? 'text-emerald-600 bg-emerald-50' : 'text-red-600 bg-red-50'}`}>
+              {expenseChange <= 0 ? <ArrowDownRight className="w-3 h-3" /> : <ArrowUpRight className="w-3 h-3" />} {Math.abs(expenseChange).toFixed(1)}% <span className="hidden lg:inline">vs last {periodTitle.toLowerCase().replace('ly', '')}</span>
             </div>
-            <div className="flex items-end gap-1 h-8 opacity-80">{mockBarsExpense.map((h, i) => <div key={i} className="w-1 md:w-1.5 bg-red-300 rounded-t-sm" style={{ height: `${h}%` }}></div>)}</div>
+            <div className="flex items-end gap-1 h-8 opacity-80">{barsExpense.map((h, i) => <div key={i} className="w-1 md:w-1.5 bg-red-300 rounded-t-sm" style={{ height: `${h}%` }}></div>)}</div>
           </div>
         </Card>
       </div>

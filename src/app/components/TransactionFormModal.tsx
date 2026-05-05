@@ -1,8 +1,9 @@
 import React, { useState } from "react";
 import { format } from "date-fns";
-import { X, ArrowDownRight, ArrowUpRight, ArrowRightLeft, ChevronDown, ChevronUp, MapPin, Tag, Users, Calendar, Plus } from "lucide-react";
+import { X, ArrowDownRight, ArrowUpRight, ArrowRightLeft, ChevronDown, ChevronUp, MapPin, Tag, Users, Calendar, Plus, Edit } from "lucide-react";
 import { cn } from "../utils";
 import { useFinance, TransactionType } from "../context/FinanceContext";
+import { toast } from "sonner";
 
 const subCategoryMapping: Record<string, string[]> = {
   Food: ["Groceries", "Dining Out", "Street Food", "Zomato/Swiggy", "Coffee", "Alcohol"],
@@ -12,10 +13,14 @@ const subCategoryMapping: Record<string, string[]> = {
   Entertainment: ["Movies", "Gaming", "Streaming", "Events"],
   Health: ["Medicine", "Doctor", "Gym", "Insurance"],
   Housing: ["Rent", "Maintenance", "Furniture", "Domestic Help"],
-  Investment: ["Stocks", "Mutual Funds", "Gold", "Crypto"],
+  Investment: ["Stocks", "Mutual Funds", "Gold", "Crypto", "Dividends", "Interest", "Capital Gains", "Mutual Fund Redemption"],
   Education: ["Course Fee", "Books", "Stationery"],
   Travel: ["Flights", "Hotels", "Sightseeing"],
-  Salary: ["Base Pay", "Bonus", "RSU/Stocks"],
+  Salary: ["Base Pay", "Bonus", "RSU/Stocks", "Arrears"],
+  Freelance: ["Design", "Development", "Consulting", "Writing", "Teaching"],
+  Gift: ["Birthday Gift", "Wedding Gift", "Festival Gift", "Cashback"],
+  Rental: ["House Rent", "Commercial Rent", "Vehicle Rent"],
+  Others: ["Refund", "Reimbursement", "Inheritance", "Lottery"],
 };
 
 const categories = {
@@ -23,12 +28,12 @@ const categories = {
   income: ["Salary", "Freelance", "Investment", "Gift", "Others"]
 };
 
-export const TransactionFormModal: React.FC<{ onClose: () => void, txId?: string }> = ({ onClose, txId }) => {
+export const TransactionFormModal: React.FC<{ onClose: () => void, txId?: string, initialType?: TransactionType }> = ({ onClose, txId, initialType }) => {
   const { accounts, addTransaction, updateTransaction, transactions, profile } = useFinance();
   const [viewMode, setViewMode] = useState<"normal" | "detailed">("normal");
 
   // Basic Fields
-  const [type, setType] = useState<TransactionType>("expense");
+  const [type, setType] = useState<TransactionType>(initialType || "expense");
   const [amount, setAmount] = useState("");
   const [accountId, setAccountId] = useState(accounts[0]?.id || "");
   const [toAccountId, setToAccountId] = useState(accounts[1]?.id || accounts[0]?.id || "");
@@ -93,6 +98,10 @@ export const TransactionFormModal: React.FC<{ onClose: () => void, txId?: string
     }
   };
   const removeItem = (idx: number) => setItemsList(itemsList.filter((_, i) => i !== idx));
+  const updateItem = (idx: number, field: string, value: string) => {
+    setItemsList(prev => prev.map((itm, i) => i === idx ? { ...itm, [field]: field === 'price' ? (value ? Number(value) : undefined) : value } : itm));
+  };
+  const [editingItemIdx, setEditingItemIdx] = useState<number | null>(null);
 
   const addTag = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && tagInput.trim()) {
@@ -167,6 +176,8 @@ export const TransactionFormModal: React.FC<{ onClose: () => void, txId?: string
           setSplitWithList(tx.split.with || []);
           setSplitShare(tx.split.shareStrategy || "Equally");
           setSplitDueDate(tx.split.dueDate || "");
+          if (tx.split.shares) setSplitValues(tx.split.shares);
+          if (tx.split.portionAssignments) setPortionAssignments(tx.split.portionAssignments);
         }
         
         const needWantTags = ["need", "want", "investment", "discretionary"];
@@ -192,6 +203,12 @@ export const TransactionFormModal: React.FC<{ onClose: () => void, txId?: string
     e.preventDefault();
     if (!amount || isNaN(Number(amount))) return;
 
+    // Validate: transfer cannot be to/from same account
+    if (type === 'transfer' && accountId === toAccountId) {
+      toast.error("Transfer source and destination cannot be the same account.");
+      return;
+    }
+
     const txData: any = {
       amount: Number(amount),
       type,
@@ -200,7 +217,7 @@ export const TransactionFormModal: React.FC<{ onClose: () => void, txId?: string
       payee: payee || (type === "transfer" ? "Self Transfer" : "Unknown"),
       date,
       notes,
-      tags: [needWant, ...forWhom, ...tagsList],
+      tags: [needWant, ...forWhom.filter(Boolean), ...tagsList].filter(Boolean),
       mode: mode,
       status: "cleared" as const,
       subCategory: isCustomSubCat ? customSubCat : (subCategory || undefined),
@@ -212,7 +229,8 @@ export const TransactionFormModal: React.FC<{ onClose: () => void, txId?: string
         with: splitWithList,
         shareStrategy: splitShare,
         dueDate: splitDueDate,
-        shares: splitShare !== 'Equally' ? splitValues : undefined
+        shares: (splitShare === 'Percentages' || splitShare === 'Exact Amounts') ? splitValues : undefined,
+        portionAssignments: splitShare === 'By Items' ? portionAssignments : undefined
       };
     }
 
@@ -220,13 +238,38 @@ export const TransactionFormModal: React.FC<{ onClose: () => void, txId?: string
       txData.to_account_id = toAccountId;
     }
 
+    if (isSplit && splitShare === 'By Items') {
+      const overAssignedItem = itemsList.find((itm, idx) => {
+        const assignments = portionAssignments[idx] || {};
+        const totalAssigned = Object.values(assignments).reduce((sum, val) => sum + Number(val || 0), 0);
+        return totalAssigned > Number(itm.qty);
+      });
+      if (overAssignedItem) {
+        toast.error(`"${overAssignedItem.name}" is over-assigned! Total assigned quantity exceeds purchased quantity.`);
+        return;
+      }
+    }
+
     if (txId) {
       updateTransaction(txId, txData);
+      toast.success("Transaction updated!");
     } else {
       addTransaction(txData);
+      toast.success("Transaction saved!");
     }
 
     onClose();
+  };
+
+  // Portion-based split: track what fraction of each item each person gets
+  // portionAssignments[itemIdx][person] = qty shared (number string)
+  const [portionAssignments, setPortionAssignments] = useState<Record<number, Record<string, string>>>({});
+
+  const setPortionFor = (itemIdx: number, person: string, qty: string) => {
+    setPortionAssignments(prev => ({
+      ...prev,
+      [itemIdx]: { ...(prev[itemIdx] || {}), [person]: qty }
+    }));
   };
 
   const calculateSplit = (personName?: string): string => {
@@ -238,14 +281,20 @@ export const TransactionFormModal: React.FC<{ onClose: () => void, txId?: string
     }
 
     if (splitShare === "By Items") {
+      const target = personName || "You";
       let sum = 0;
       itemsList.forEach((itm, idx) => {
-        const assigned = itemAssignments[idx] || [];
-        if (assigned.length === 0) return; // Unassigned items don't count toward anyone yet? 
-        // Or should unassigned items be shared equally? User said "calculate exactly" so maybe unassigned is 0.
-        const target = personName || "You";
-        if (assigned.includes(target)) {
-          sum += (itm.price || 0) / assigned.length;
+        const assignments = portionAssignments[idx] || {};
+        const totalQty = Number(itm.qty) || 1;
+        const personQty = Number(assignments[target] || 0);
+        if (personQty > 0 && itm.price) {
+          sum += (itm.price / totalQty) * personQty;
+        } else if (!personQty) {
+          // Fall back to old boolean assignment if no portion set
+          const oldAssigned = itemAssignments[idx] || [];
+          if (oldAssigned.includes(target)) {
+            sum += (itm.price || 0) / Math.max(oldAssigned.length, 1);
+          }
         }
       });
       return sum.toFixed(2);
@@ -276,7 +325,7 @@ export const TransactionFormModal: React.FC<{ onClose: () => void, txId?: string
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-slate-900/50 backdrop-blur-sm sm:p-4">
+    <div className="fixed inset-0 z-[100] flex justify-end bg-slate-900/50 backdrop-blur-sm sm:p-4">
       <div className="fixed inset-0 sm:hidden" onClick={onClose} />
 
       <div className="relative w-full max-w-md bg-white rounded-t-3xl sm:rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh] animate-in slide-in-from-bottom-full sm:slide-in-from-bottom-0 sm:zoom-in-95 duration-200">
@@ -312,7 +361,8 @@ export const TransactionFormModal: React.FC<{ onClose: () => void, txId?: string
 
           <form id="tx-form" onSubmit={handleSubmit} className="space-y-5 pb-4">
             
-            {/* ROW 1: Amount & Date Icon */}
+            {/* ROW 1: Amount & Date Icon — hidden when By Items drives total */}
+            {!(splitShare === 'By Items' && itemsTotal > 0) && (
             <div className="bg-white rounded-2xl p-4 shadow-sm border border-slate-100">
               <div className="relative flex items-center justify-between bg-slate-50 rounded-xl p-3 focus-within:ring-2 focus-within:ring-indigo-600 transition-all">
                 <div className="flex items-center flex-1">
@@ -344,6 +394,24 @@ export const TransactionFormModal: React.FC<{ onClose: () => void, txId?: string
                 </label>
               </div>
             </div>
+            )}
+            {/* When By Items drives total: show derived total + date picker only */}
+            {splitShare === 'By Items' && itemsTotal > 0 && (
+              <div className="bg-white rounded-2xl p-4 shadow-sm border border-slate-100 flex items-center justify-between">
+                <div>
+                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Total (from items)</p>
+                  <p className="text-3xl font-black text-slate-900">₹{itemsTotal.toFixed(2)}</p>
+                </div>
+                <label className="flex items-center gap-2 px-3 py-2 bg-white border border-slate-200 rounded-xl shadow-sm text-slate-500 hover:text-indigo-600 hover:border-indigo-200 transition-all cursor-pointer group relative">
+                  <div className="flex flex-col items-end">
+                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider leading-none">Date</span>
+                    <span className="text-xs font-bold text-slate-700 group-hover:text-indigo-600 transition-colors">{format(new Date(date), "MMM dd")}</span>
+                  </div>
+                  <div className="w-8 h-8 flex items-center justify-center rounded-lg bg-slate-50"><Calendar className="w-4 h-4" /></div>
+                  <input type="date" value={date} onChange={(e) => setDate(e.target.value)} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" />
+                </label>
+              </div>
+            )}
 
             {/* Type Specific Basic Fields */}
             {type === "transfer" && (
@@ -358,9 +426,18 @@ export const TransactionFormModal: React.FC<{ onClose: () => void, txId?: string
                       {accounts.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
                     </select>
                   </div>
-                  <div className="mt-5 text-slate-300">
-                    <ArrowRightLeft className="w-4 h-4" />
-                  </div>
+                  <button 
+                    type="button"
+                    onClick={() => {
+                      const temp = accountId;
+                      setAccountId(toAccountId);
+                      setToAccountId(temp);
+                    }}
+                    className="mt-5 p-2 rounded-lg bg-slate-50 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 transition-all active:scale-90 group"
+                    title="Swap accounts"
+                  >
+                    <ArrowRightLeft className="w-4 h-4 group-hover:rotate-180 transition-transform duration-300" />
+                  </button>
                   <div className="flex-1">
                     <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">To</label>
                     <select
@@ -549,15 +626,46 @@ export const TransactionFormModal: React.FC<{ onClose: () => void, txId?: string
                     {itemsList.length > 0 && (
                       <div className="space-y-2">
                         {itemsList.map((itm, i) => (
-                          <div key={i} className="flex items-center justify-between bg-white px-3 py-2 rounded-lg border border-slate-100 shadow-sm">
-                            <div className="flex flex-col">
-                               <span className="text-sm font-bold text-slate-700">{itm.name}</span>
-                               <span className="text-[10px] font-medium text-slate-400">{itm.qty} {itm.unit}</span>
-                            </div>
-                            <div className="flex items-center gap-3">
-                              {itm.price !== undefined && <span className="text-sm font-black text-slate-800">₹{itm.price}</span>}
-                              <button type="button" onClick={() => removeItem(i)} className="text-slate-300 hover:text-red-600 transition-colors"><X className="w-4 h-4" /></button>
-                            </div>
+                          <div key={i}>
+                            {editingItemIdx === i ? (
+                              // Inline edit mode
+                              <div className="bg-indigo-50 rounded-xl p-3 border border-indigo-200 space-y-2 animate-in zoom-in-95 duration-150">
+                                <div className="flex gap-2">
+                                  <input
+                                    autoFocus
+                                    value={itm.name}
+                                    onChange={e => updateItem(i, 'name', e.target.value)}
+                                    className="flex-1 text-sm font-bold bg-white border border-indigo-200 px-2 py-1.5 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none"
+                                    placeholder="Item name"
+                                  />
+                                  <button type="button" onClick={() => setEditingItemIdx(null)} className="px-3 py-1.5 bg-indigo-600 text-white text-xs font-bold rounded-lg hover:bg-indigo-700">Done</button>
+                                  <button type="button" onClick={() => { removeItem(i); setEditingItemIdx(null); }} className="px-2 py-1.5 bg-red-100 text-red-600 text-xs font-bold rounded-lg hover:bg-red-200">✕</button>
+                                </div>
+                                <div className="flex gap-2">
+                                  <div className="flex-1 bg-white border border-indigo-200 rounded-lg px-2 py-1 flex items-center">
+                                    <span className="text-xs font-bold text-slate-400 mr-1">₹</span>
+                                    <input type="number" value={itm.price ?? ''} onChange={e => updateItem(i, 'price', e.target.value)} placeholder="Price" className="w-full text-sm bg-transparent border-0 p-0.5 focus:ring-0 outline-none" />
+                                  </div>
+                                  <input type="number" value={itm.qty} onChange={e => updateItem(i, 'qty', e.target.value)} className="w-14 text-sm bg-white border border-indigo-200 px-2 py-1 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none text-center" />
+                                  <select value={itm.unit} onChange={e => updateItem(i, 'unit', e.target.value)} className="w-20 text-sm bg-white border border-indigo-200 px-1 py-1 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none font-semibold">
+                                    {["pcs", "unit", "kg", "g", "L", "ml", "pack", "box", "bundle"].map(u => <option key={u} value={u}>{u}</option>)}
+                                  </select>
+                                </div>
+                              </div>
+                            ) : (
+                              // Display mode
+                              <div className="flex items-center justify-between bg-white px-3 py-2 rounded-lg border border-slate-100 shadow-sm group/item">
+                                <div className="flex flex-col">
+                                  <span className="text-sm font-bold text-slate-700">{itm.name}</span>
+                                  <span className="text-[10px] font-medium text-slate-400">{itm.qty} {itm.unit}</span>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  {itm.price !== undefined && <span className="text-sm font-black text-slate-800">₹{itm.price}</span>}
+                                  <button type="button" onClick={() => setEditingItemIdx(i)} className="text-slate-300 hover:text-indigo-600 transition-colors opacity-0 group-hover/item:opacity-100"><Edit className="w-4 h-4" /></button>
+                                  <button type="button" onClick={() => removeItem(i)} className="text-slate-300 hover:text-red-600 transition-colors"><X className="w-4 h-4" /></button>
+                                </div>
+                              </div>
+                            )}
                           </div>
                         ))}
                       </div>
@@ -656,35 +764,52 @@ export const TransactionFormModal: React.FC<{ onClose: () => void, txId?: string
 
                             {splitShare === "By Items" && itemsList.length > 0 && (
                                <div className="space-y-4 pt-4 border-t border-indigo-100/30">
-                                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest px-1">Assign Items</p>
-                                  {itemsList.map((itm, idx) => (
-                                     <div key={idx} className="bg-white/40 p-3 rounded-xl border border-indigo-100/50 space-y-2">
-                                        <div className="flex justify-between items-center mb-1">
+                                 <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest px-1">Assign Portions</p>
+                                 <p className="text-[9px] text-slate-400 px-1">For each item, enter how many units each person consumed. Leave 0 to exclude.</p>
+                                 {itemsList.map((itm, idx) => {
+                                   const totalQty = Number(itm.qty) || 1;
+                                   const assignments = portionAssignments[idx] || {};
+                                   const assignedSum = Object.values(assignments).reduce((sum, val) => sum + Number(val || 0), 0);
+                                   const isOver = assignedSum > totalQty;
+
+                                   return (
+                                     <div key={idx} className={cn("bg-white/60 p-3 rounded-xl border space-y-3 transition-colors", isOver ? "border-red-300 bg-red-50/50" : "border-indigo-100/50")}>
+                                       <div className="flex justify-between items-center">
+                                         <div>
                                            <span className="text-xs font-bold text-slate-700">{itm.name}</span>
-                                           <span className="text-xs font-black text-indigo-600">₹{itm.price || 0}</span>
-                                        </div>
-                                        <div className="flex flex-wrap gap-1.5">
-                                           {["You", ...splitWithList].map(p => {
-                                              const isAssigned = (itemAssignments[idx] || []).includes(p);
-                                              return (
-                                                 <button 
-                                                   key={p} type="button"
-                                                   onClick={() => {
-                                                      const current = itemAssignments[idx] || [];
-                                                      const next = current.includes(p) ? current.filter(x => x !== p) : [...current, p];
-                                                      setItemAssignments({...itemAssignments, [idx]: next});
-                                                   }}
-                                                   className={cn("px-2.5 py-1 text-[9px] font-bold rounded-lg border transition-all", isAssigned ? "bg-indigo-600 border-indigo-600 text-white" : "bg-white border-slate-200 text-slate-400 hover:border-indigo-300")}
-                                                 >
-                                                   {p}
-                                                 </button>
-                                              );
-                                           })}
-                                        </div>
+                                           <span className="text-[10px] text-slate-400 ml-1.5">{itm.qty} {itm.unit} total • ₹{itm.price || 0}</span>
+                                         </div>
+                                         <div className="text-right">
+                                           <span className="text-[10px] font-bold text-indigo-600 block">₹{itm.price ? (itm.price / totalQty).toFixed(2) : 0}/{itm.unit}</span>
+                                           <span className={cn("text-[9px] font-bold px-1.5 py-0.5 rounded-full", isOver ? "bg-red-100 text-red-600" : assignedSum === totalQty ? "bg-emerald-100 text-emerald-600" : "bg-slate-100 text-slate-500")}>
+                                             Assigned: {assignedSum}/{totalQty} {itm.unit}
+                                           </span>
+                                         </div>
+                                       </div>
+                                       <div className="grid grid-cols-2 gap-2">
+                                         {["You", ...splitWithList].map(person => {
+                                           const portionVal = (portionAssignments[idx] || {})[person] || "";
+                                           return (
+                                             <div key={person} className="flex items-center gap-2 bg-white rounded-lg border border-slate-200 px-2 py-1.5">
+                                               <span className="text-[10px] font-bold text-slate-500 min-w-[36px] truncate">{person}</span>
+                                               <input
+                                                 type="number"
+                                                 min="0" max={itm.qty}
+                                                 value={portionVal}
+                                                 onChange={e => setPortionFor(idx, person, e.target.value)}
+                                                 placeholder="0"
+                                                 className="flex-1 text-xs font-bold border-0 bg-transparent focus:ring-0 outline-none text-right w-0 min-w-0"
+                                               />
+                                               <span className="text-[10px] text-slate-400 shrink-0">{itm.unit}</span>
+                                             </div>
+                                           );
+                                         })}
+                                       </div>
                                      </div>
-                                  ))}
+                                   );
+                                 })}
                                </div>
-                            )}
+                             )}
 
                            <div className="bg-white/60 rounded-xl p-3 space-y-4 border border-indigo-100/50">
                               <div className="flex justify-between items-center px-2 py-1 bg-slate-50/50 rounded-lg">
@@ -697,7 +822,7 @@ export const TransactionFormModal: React.FC<{ onClose: () => void, txId?: string
                                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest leading-tight">{person}</p>
                                     </div>
                                     
-                                    {splitShare !== 'Equally' ? (
+                                    {(splitShare === 'Percentages' || splitShare === 'Exact Amounts') ? (
                                        <div className="flex-1 flex items-center gap-2 bg-white px-3 py-1.5 rounded-xl border border-slate-100 shadow-sm focus-within:ring-2 focus-within:ring-indigo-100 transition-all">
                                           <span className="text-[10px] font-bold text-slate-400">{splitShare === 'Percentages' ? '%' : '₹'}</span>
                                           <input
@@ -708,6 +833,8 @@ export const TransactionFormModal: React.FC<{ onClose: () => void, txId?: string
                                              className="w-full text-xs font-bold border-0 p-0 focus:ring-0 outline-none placeholder:text-slate-200"
                                           />
                                        </div>
+                                    ) : splitShare === 'By Items' ? (
+                                       <div className="flex-1 text-[10px] font-bold text-slate-400 italic">Itemized Share</div>
                                     ) : (
                                        <div className="flex-1 text-[10px] font-bold text-slate-300 italic">Equal Share</div>
                                     )}
