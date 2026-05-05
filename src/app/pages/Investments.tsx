@@ -1,5 +1,5 @@
 import React, { useMemo } from "react";
-import { TrendingUp, ArrowUpRight, ArrowDownRight, Landmark, Coins, Home, Plus, Info, Clock } from "lucide-react";
+import { TrendingUp, ArrowUpRight, ArrowDownRight, Landmark, Coins, Home, Plus, Info, Clock, ShieldCheck } from "lucide-react";
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from "recharts";
 import { formatINR, cn } from "../utils";
 import { differenceInDays, parseISO, format } from "date-fns";
@@ -47,7 +47,7 @@ export const Investments = () => {
   // Calculations
   const marketStats = useMemo(() => {
     let invested = 0, current = 0;
-    inv.marketLinked.forEach(i => {
+    inv.marketLinked.forEach((i: any) => {
       invested += (i.units || 0) * (i.avgNav || 0);
       current += (i.units || 0) * (i.currentNav || 0);
     });
@@ -56,7 +56,7 @@ export const Investments = () => {
 
   const fixedStats = useMemo(() => {
     let invested = 0, current = 0;
-    inv.fixedIncome.forEach(i => {
+    inv.fixedIncome.forEach((i: any) => {
       invested += (i.principal || 0);
       current += (i.current || 0);
     });
@@ -65,7 +65,7 @@ export const Investments = () => {
 
   const goldStats = useMemo(() => {
     let invested = 0, current = 0;
-    inv.gold.forEach(i => {
+    inv.gold.forEach((i: any) => {
       invested += (i.grams || 0) * (i.avgPrice || 0);
       current += (i.grams || 0) * (i.currentPrice || 0);
     });
@@ -74,7 +74,7 @@ export const Investments = () => {
 
   const realEstateStats = useMemo(() => {
     let netEquity = 0;
-    inv.realEstate.forEach(i => {
+    inv.realEstate.forEach((i: any) => {
       netEquity += ((i.propertyValue || 0) - (i.loanOutstanding || 0));
     });
     return { invested: netEquity, current: netEquity };
@@ -96,55 +96,40 @@ export const Investments = () => {
   return (
     <div className="p-4 md:p-8 max-w-5xl mx-auto space-y-8 pb-24">
       
-      {/* 3.1. Portfolio Dashboard */}
-      <div className="bg-slate-900 rounded-[24px] shadow-xl p-6 md:p-8 flex flex-col md:flex-row items-center gap-8 relative overflow-hidden">
-        <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-emerald-500/20 rounded-full blur-[100px] pointer-events-none translate-x-1/2 -translate-y-1/2"></div>
-        
-        <div className="flex-1 space-y-4 relative z-10 w-full">
-          <div>
-            <p className="text-slate-400 text-sm font-semibold uppercase tracking-wider mb-1">Total Portfolio Value</p>
-            <h1 className="text-4xl md:text-5xl font-black text-white tracking-tight">{formatINR(totalCurrent)}</h1>
+      {/* 3.1. Portfolio Dashboard - Minimalist Redesign */}
+      <div className="bg-[#0A0F1B] rounded-[24px] shadow-lg p-5 md:p-6 relative overflow-hidden border border-white/5">
+        <div className="flex flex-col gap-8 relative z-10">
+          <div className="flex flex-row items-start justify-between w-full">
+            <div className="space-y-1">
+              <p className="text-slate-500 text-[10px] font-black uppercase tracking-[0.2em]">Net Portfolio Value</p>
+              <h1 className="text-3xl md:text-5xl font-black text-white tracking-tighter leading-none">{formatINR(totalCurrent)}</h1>
+            </div>
+            
+            <div className="flex flex-col items-end">
+              <p className="text-slate-500 text-[9px] md:text-[11px] font-black uppercase tracking-[0.2em] mb-2">Overall Returns</p>
+              <span className={cn("text-3xl md:text-6xl font-black tracking-tighter leading-none", totalProfit >= 0 ? "text-emerald-400" : "text-red-400")}>
+                {profitPercentage.toFixed(1)}%
+              </span>
+            </div>
           </div>
           
-          <div className="flex flex-wrap gap-4 pt-2">
-            <div>
-              <p className="text-slate-400 text-xs font-semibold uppercase tracking-wider mb-0.5">Total Invested</p>
-              <p className="text-xl font-bold text-slate-200">{formatINR(totalInvested)}</p>
+          <div className="flex items-center justify-between gap-4 md:gap-12 border-t border-white/5 pt-6">
+            <div className="flex-1">
+              <p className="text-slate-500 text-[9px] font-black uppercase tracking-widest mb-1.5 whitespace-nowrap">Invested</p>
+              <p className="text-sm md:text-xl font-bold text-slate-200 tracking-tight">{formatINR(totalInvested)}</p>
             </div>
-            <div className="w-px h-10 bg-slate-700/50 hidden sm:block"></div>
-            <div>
-              <p className="text-slate-400 text-xs font-semibold uppercase tracking-wider mb-0.5">Overall Returns</p>
-              <div className="flex items-center gap-2">
-                <span className={cn("text-xl font-bold flex items-center", totalProfit >= 0 ? "text-emerald-400" : "text-red-400")}>
-                  {totalProfit >= 0 ? "+" : ""}{formatINR(totalProfit)}
-                </span>
-                <span className={cn("text-xs font-bold px-2 py-0.5 rounded-md", totalProfit >= 0 ? "bg-emerald-400/10 text-emerald-400" : "bg-red-400/10 text-red-400")}>
-                  {totalProfit >= 0 ? "+" : ""}{profitPercentage.toFixed(2)}%
-                </span>
-              </div>
+            
+            <div className="flex-1 text-center">
+              <p className="text-slate-500 text-[9px] font-black uppercase tracking-widest mb-1.5 whitespace-nowrap">Gains</p>
+              <p className={cn("text-sm md:text-xl font-bold tracking-tight", totalProfit >= 0 ? "text-emerald-400" : "text-red-400")}>
+                {totalProfit >= 0 ? "+" : ""}{formatINR(totalProfit)}
+              </p>
             </div>
-            <div className="w-px h-10 bg-slate-700/50 hidden sm:block"></div>
-            <div>
-              <p className="text-slate-400 text-xs font-semibold uppercase tracking-wider mb-0.5">Est. XIRR</p>
-              <p className="text-xl font-bold text-indigo-400">14.2%</p>
-            </div>
-          </div>
-        </div>
 
-        {/* Allocation Donut */}
-        <div className="w-full md:w-64 h-48 relative z-10">
-          <ResponsiveContainer width="100%" height="100%">
-            <PieChart>
-              <Pie data={allocationData} cx="50%" cy="50%" innerRadius="70%" outerRadius="90%" paddingAngle={2} dataKey="value" stroke="none">
-                {allocationData.map((entry, index) => (
-                  <Cell key={`cell-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />
-                ))}
-              </Pie>
-              <Tooltip formatter={(value: number) => formatINR(value)} contentStyle={{ backgroundColor: '#1E293B', borderColor: '#334155', color: '#F8FAFC' }} />
-            </PieChart>
-          </ResponsiveContainer>
-          <div className="absolute inset-0 flex items-center justify-center flex-col pointer-events-none">
-            <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">Assets</span>
+            <div className="flex-1 text-right">
+              <p className="text-slate-500 text-[9px] font-black uppercase tracking-widest mb-1.5 whitespace-nowrap">Est. XIRR</p>
+              <p className="text-sm md:text-xl font-bold text-indigo-400 tracking-tight">14.2%</p>
+            </div>
           </div>
         </div>
       </div>
@@ -170,9 +155,9 @@ export const Investments = () => {
             <span className="font-bold text-slate-900">{formatINR(marketStats.current)}</span>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            {inv.marketLinked.map(mf => {
-              const invested = mf.units * mf.avgNav;
-              const current = mf.units * mf.currentNav;
+            {inv.marketLinked.map((mf: any) => {
+              const invested = (mf.units || 0) * (mf.avgNav || 0);
+              const current = (mf.units || 0) * (mf.currentNav || 0);
               const profit = current - invested;
               const isProfitable = profit >= 0;
               return (
@@ -184,7 +169,7 @@ export const Investments = () => {
                   <div className="flex justify-between items-start mb-4">
                     <div className="pr-4">
                       <h4 className="font-bold text-slate-900 line-clamp-1">{mf.name}</h4>
-                      <p className="text-xs text-slate-500 font-medium mt-0.5">Units: {mf.units.toFixed(3)} • Avg: ₹{mf.avgNav.toFixed(1)}</p>
+                      <p className="text-xs text-slate-500 font-medium mt-0.5">Units: {(mf.units || 0).toFixed(3)} • Avg: ₹{(mf.avgNav || 0).toFixed(1)}</p>
                     </div>
                     {mf.isSIP && <span className="shrink-0 bg-blue-50 text-blue-700 border border-blue-200 text-[10px] font-bold px-2 py-0.5 rounded-md uppercase tracking-wider">SIP</span>}
                   </div>
@@ -198,7 +183,7 @@ export const Investments = () => {
                         {isProfitable ? <ArrowUpRight className="w-4 h-4" /> : <ArrowDownRight className="w-4 h-4" />}
                         {formatINR(Math.abs(profit))}
                       </p>
-                      <p className="text-xs font-semibold text-slate-400">Current NAV: ₹{mf.currentNav.toFixed(1)}</p>
+                      <p className="text-xs font-semibold text-slate-400">Current NAV: ₹{(mf.currentNav || 0).toFixed(1)}</p>
                     </div>
                   </div>
                 </div>
@@ -216,9 +201,9 @@ export const Investments = () => {
             <span className="font-bold text-slate-900">{formatINR(fixedStats.current)}</span>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            {inv.fixedIncome.map(fd => {
-              const start = parseISO(fd.startDate);
-              const end = parseISO(fd.maturityDate);
+            {inv.fixedIncome.map((fd: any) => {
+              const start = parseISO(fd.startDate || new Date().toISOString());
+              const end = parseISO(fd.maturityDate || new Date().toISOString());
               const totalDays = differenceInDays(end, start);
               const daysPassed = differenceInDays(new Date(), start);
               const progress = Math.min(100, Math.max(0, (daysPassed / totalDays) * 100));
@@ -232,14 +217,14 @@ export const Investments = () => {
                   <div className="flex justify-between items-start mb-4">
                     <div>
                       <h4 className="font-bold text-slate-900">{fd.name}</h4>
-                      <p className="text-xs text-slate-500 font-medium mt-0.5">Principal: {formatINR(fd.principal)}</p>
+                      <p className="text-xs text-slate-500 font-medium mt-0.5">Principal: {formatINR(fd.principal || 0)}</p>
                     </div>
-                    <span className="bg-emerald-50 text-emerald-700 border border-emerald-200 text-xs font-bold px-2 py-0.5 rounded-md">{fd.rate}% p.a.</span>
+                    <span className="bg-emerald-50 text-emerald-700 border border-emerald-200 text-xs font-bold px-2 py-0.5 rounded-md">{(fd.rate || 0)}% p.a.</span>
                   </div>
                   
                   <div className="mb-4">
                     <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-0.5">Est. Current Value</p>
-                    <p className="text-xl font-black text-slate-900 tracking-tight">{formatINR(fd.current)}</p>
+                    <p className="text-xl font-black text-slate-900 tracking-tight">{formatINR(fd.current || 0)}</p>
                   </div>
 
                   {/* Psychological Progress Bar */}
@@ -267,9 +252,9 @@ export const Investments = () => {
             <span className="font-bold text-slate-900">{formatINR(goldStats.current)}</span>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            {inv.gold.map(g => {
-              const invested = g.grams * g.avgPrice;
-              const current = g.grams * g.currentPrice;
+            {inv.gold.map((g: any) => {
+              const invested = (g.grams || 0) * (g.avgPrice || 0);
+              const current = (g.grams || 0) * (g.currentPrice || 0);
               const profit = current - invested;
               return (
                 <div 
@@ -278,7 +263,7 @@ export const Investments = () => {
                   className="bg-gradient-to-br from-amber-50/50 to-white p-5 rounded-2xl border border-amber-100 shadow-sm hover:shadow-md transition-all cursor-pointer"
                 >
                   <h4 className="font-bold text-slate-900 mb-1">{g.name}</h4>
-                  <p className="text-xs text-amber-700 font-medium">Holding: {g.grams}g • Avg Cost: ₹{g.avgPrice}/g</p>
+                  <p className="text-xs text-amber-700 font-medium">Holding: {(g.grams || 0)}g • Avg Cost: ₹{(g.avgPrice || 0)}/g</p>
                   
                   <div className="flex items-end justify-between mt-4">
                     <div>
@@ -289,7 +274,7 @@ export const Investments = () => {
                       <p className={cn("text-sm font-bold", profit >= 0 ? "text-emerald-600" : "text-red-600")}>
                         {profit >= 0 ? "+" : ""}{formatINR(profit)}
                       </p>
-                      <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Current rate: ₹{g.currentPrice}/g</p>
+                      <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Current rate: ₹{(g.currentPrice || 0)}/g</p>
                     </div>
                   </div>
                 </div>
@@ -307,9 +292,9 @@ export const Investments = () => {
             <span className="font-bold text-slate-900">{formatINR(realEstateStats.current)}</span>
           </div>
           <div className="grid grid-cols-1 gap-4">
-            {inv.realEstate.map(re => {
-              const netEquity = re.propertyValue - re.loanOutstanding;
-              const equityPercentage = (netEquity / re.propertyValue) * 100;
+            {inv.realEstate.map((re: any) => {
+              const netEquity = (re.propertyValue || 0) - (re.loanOutstanding || 0);
+              const equityPercentage = (re.propertyValue || 0) > 0 ? (netEquity / (re.propertyValue || 0)) * 100 : 0;
 
               return (
                 <div 
@@ -319,13 +304,13 @@ export const Investments = () => {
                 >
                   <div className="flex-1">
                     <h4 className="font-bold text-slate-900 text-lg mb-1">{re.name}</h4>
-                    <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Property Valuation: {formatINR(re.propertyValue)}</p>
+                    <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Property Valuation: {formatINR(re.propertyValue || 0)}</p>
                   </div>
 
                   <div className="flex-1 grid grid-cols-2 gap-4 border-l-0 md:border-l border-t md:border-t-0 border-slate-100 pt-4 md:pt-0 md:pl-6">
                     <div>
                       <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-0.5">Loan Outstanding</p>
-                      <p className="text-lg font-bold text-red-500">{formatINR(re.loanOutstanding)}</p>
+                      <p className="text-lg font-bold text-red-500">{formatINR(re.loanOutstanding || 0)}</p>
                     </div>
                     <div>
                       <p className="text-[10px] font-bold text-indigo-500 uppercase tracking-wider mb-0.5">Net Equity (Wealth)</p>

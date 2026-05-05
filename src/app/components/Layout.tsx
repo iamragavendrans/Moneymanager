@@ -124,9 +124,9 @@ export const Layout = () => {
         {/* Mobile Floating Action Button */}
         <button
           onClick={currentAction.action}
-          className="md:hidden fixed bottom-20 right-4 w-14 h-14 bg-indigo-600 text-white rounded-full flex items-center justify-center shadow-lg hover:bg-indigo-700 active:scale-95 transition-all z-20"
+          className="md:hidden fixed bottom-24 right-6 w-14 h-14 bg-indigo-600 text-white rounded-full flex items-center justify-center shadow-2xl hover:bg-indigo-700 active:scale-95 transition-all z-20 border-4 border-white group"
         >
-          <Plus className="w-6 h-6" />
+          <Plus className="w-8 h-8 group-hover:rotate-90 transition-transform duration-300" />
         </button>
       </main>
 
