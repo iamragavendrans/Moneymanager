@@ -17,12 +17,16 @@ export interface Transaction {
   mode?: "UPI" | "card" | "cash" | "netbanking" | "cheque";
   status?: "cleared" | "pending";
   subCategory?: string;
-  items?: { name: string; qty: string; unit: string }[];
+  items?: { name: string; qty: string; unit: string; price?: number }[];
   split?: {
     with: string[];
     shareStrategy: string;
     dueDate: string;
   };
+}
+
+export interface Profile {
+  companyName: string;
 }
 
 export interface Account {
@@ -73,6 +77,8 @@ interface FinanceContextType {
   getTotalExpenses: (month?: Date) => number;
   getTotalIncome: (month?: Date) => number;
 
+  profile: Profile;
+  updateProfile: (p: Partial<Profile>) => void;
   resetData: () => void;
   wipeData: () => void;
 }
@@ -127,10 +133,16 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
     return saved ? JSON.parse(saved) : [];
   });
 
+  const [profile, setProfile] = useState<Profile>(() => {
+    const saved = localStorage.getItem("finance_profile");
+    return saved ? JSON.parse(saved) : { companyName: "Acme Corp" };
+  });
+
   useEffect(() => { localStorage.setItem("finance_txns", JSON.stringify(transactions)); }, [transactions]);
   useEffect(() => { localStorage.setItem("finance_accounts", JSON.stringify(accounts)); }, [accounts]);
   useEffect(() => { localStorage.setItem("finance_investments", JSON.stringify(investments)); }, [investments]);
   useEffect(() => { localStorage.setItem("finance_entities", JSON.stringify(entities)); }, [entities]);
+  useEffect(() => { localStorage.setItem("finance_profile", JSON.stringify(profile)); }, [profile]);
 
   // --- Transactions ---
   const applyTransactionImpact = (tx: Transaction | Omit<Transaction, "id">, reverse: boolean = false) => {
@@ -188,6 +200,9 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const updateEntity = (id: string, ent: Partial<Entity>) => setEntities(prev => prev.map(e => e.id === id ? { ...e, ...ent } : e));
   const deleteEntity = (id: string) => setEntities(prev => prev.filter(e => e.id !== id));
 
+  // --- Profile ---
+  const updateProfile = (p: Partial<Profile>) => setProfile(prev => ({ ...prev, ...p }));
+
   // --- Helpers ---
   const getNetWorth = () => accounts.reduce((sum, acc) => sum + acc.balance, 0);
   const getTotalExpenses = () => transactions.filter(t => t.type === "expense").reduce((sum, t) => sum + t.amount, 0);
@@ -212,6 +227,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
       addAccount, updateAccount, deleteAccount,
       addInvestment, updateInvestment, deleteInvestment,
       addEntity, updateEntity, deleteEntity,
+      profile, updateProfile,
       getNetWorth, getTotalExpenses, getTotalIncome,
       resetData, wipeData
     }}>

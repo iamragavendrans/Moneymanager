@@ -6,13 +6,13 @@ Provide a frictionless, lightning-fast interface to log, search, and categorize 
 ## 2. Indian Consumer Psychology & UX Considerations
 *   **UPI Dominance:** 80%+ of transactions in India are via UPI (PhonePe, GPay, Paytm). The UI must cater to high-frequency, low-ticket transactions (e.g., ₹20 for Chai, ₹150 for Auto rickshaw).
 *   **SMS Parsing Expectation:** Users are conditioned by apps like Walnut/Axio to expect automated transaction logging via SMS. We must design manual entry to be so fast it rivals automated entry, while keeping architecture open for future SMS/Notification scraping.
-*   **Split Payments & "Khata":** The culture of splitting bills with roommates/colleagues or maintaining a running tab ("Khata" with the local grocer) means we need robust tagging and splitting capabilities.
+*   **Split Payments & "Khata":** The culture of splitting bills with roommates/colleagues or maintaining a running tab ("Khata" with the local grocer) is supported via an advanced split engine. This includes **item-level assignments** (split by specific items purchased) and automated share calculations.
 
 ## 3. Low-Level Component Details
 
 ### 3.1. The "Quick Add" FAB (Floating Action Button)
 *   Because the transaction entry flow is so critical and detailed (with smart splits, normal vs detailed views, custom category fields, etc.), the logic has been broken out into a dedicated architectural document.
-*   **See detailed spec here:** [Add Transaction Flow Spec](file:///C:/Users/Demo/.gemini/antigravity/brain/3a730a6a-7cb7-4b72-818d-a2061c94fa8a/flow_add_transaction.md)
+*   **See detailed spec here:** [Add Transaction Flow Spec](./flow_add_transaction.md)
 
 ### 3.2. Transaction Feed (The Ledger)
 *   **GroUPIng:** Transactions must be grouped by Date (e.g., "Today", "Yesterday", "Mon, 12 May").
