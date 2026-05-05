@@ -28,17 +28,29 @@ const categories = {
   income: ["Salary", "Freelance", "Investment", "Gift", "Others"]
 };
 
-export const TransactionFormModal: React.FC<{ onClose: () => void, txId?: string, initialType?: TransactionType }> = ({ onClose, txId, initialType }) => {
+export const TransactionFormModal: React.FC<{ 
+  onClose: () => void, 
+  txId?: string, 
+  initialType?: TransactionType,
+  initialData?: {
+    payee?: string;
+    category?: string;
+    type?: TransactionType;
+    amount?: number;
+    notes?: string;
+    accountId?: string;
+  }
+}> = ({ onClose, txId, initialType, initialData }) => {
   const { accounts, addTransaction, updateTransaction, transactions, profile, entities } = useFinance();
   const [viewMode, setViewMode] = useState<"normal" | "detailed">("normal");
 
   // Basic Fields
-  const [type, setType] = useState<TransactionType>(initialType || "expense");
-  const [amount, setAmount] = useState("");
-  const [accountId, setAccountId] = useState(accounts[0]?.id || "");
+  const [type, setType] = useState<TransactionType>(initialData?.type || initialType || "expense");
+  const [amount, setAmount] = useState(initialData?.amount?.toString() || "");
+  const [accountId, setAccountId] = useState(initialData?.accountId || accounts[0]?.id || "");
   const [toAccountId, setToAccountId] = useState(accounts[1]?.id || accounts[0]?.id || "");
-  const [payee, setPayee] = useState("");
-  const [category, setCategory] = useState(categories.expense[0]);
+  const [payee, setPayee] = useState(initialData?.payee || "");
+  const [category, setCategory] = useState(initialData?.category || categories.expense[0]);
 
   // Detailed Fields
   const [date, setDate] = useState(format(new Date(), "yyyy-MM-dd"));
@@ -137,6 +149,14 @@ export const TransactionFormModal: React.FC<{ onClose: () => void, txId?: string
     setType(newType);
     setIsCustomSubCat(false);
     setCustomSubCat("");
+    
+    // Reset split and item states when moving away from expense
+    if (newType !== "expense") {
+      setIsSplit(false);
+      setSplitShare("Equally");
+      setItemsList([]);
+    }
+
     if (newType !== 'transfer') {
       const defaultCat = categories[newType as 'expense' | 'income'][0];
       setCategory(defaultCat);
@@ -362,8 +382,8 @@ export const TransactionFormModal: React.FC<{ onClose: () => void, txId?: string
 
           <form id="tx-form" onSubmit={handleSubmit} className="space-y-5 pb-4">
             
-            {/* ROW 1: Amount & Date Icon — hidden when By Items drives total */}
-            {!(splitShare === 'By Items' && itemsTotal > 0) && (
+            {/* ROW 1: Amount & Date Icon — hidden when By Items drives total in expense mode */}
+            {!(type === 'expense' && splitShare === 'By Items' && itemsTotal > 0) && (
             <div className="bg-white rounded-2xl p-4 shadow-sm border border-slate-100">
               <div className="relative flex items-center justify-between bg-slate-50 rounded-xl p-3 focus-within:ring-2 focus-within:ring-indigo-600 transition-all">
                 <div className="flex items-center flex-1">
@@ -397,7 +417,7 @@ export const TransactionFormModal: React.FC<{ onClose: () => void, txId?: string
             </div>
             )}
             {/* When By Items drives total: show derived total + date picker only */}
-            {splitShare === 'By Items' && itemsTotal > 0 && (
+            {type === 'expense' && splitShare === 'By Items' && itemsTotal > 0 && (
               <div className="bg-white rounded-2xl p-4 shadow-sm border border-slate-100 flex items-center justify-between">
                 <div>
                   <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Total (from items)</p>

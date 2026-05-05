@@ -1,37 +1,33 @@
 import React, { useState, useEffect } from "react";
-import { Lock, Fingerprint, Palette, Cloud, Database, Download, Upload, Shield, IndianRupee, Globe, LayoutTemplate, Store, Users, Repeat, CreditCard as CreditCardIcon, Gift, ShieldCheck, Bell, AlertTriangle, Briefcase, ChevronRight, X, Calendar, Tags, Package } from "lucide-react";
+import { 
+  Lock, Fingerprint, Palette, Cloud, Database, Download, Upload, Shield, 
+  IndianRupee, Globe, LayoutTemplate, Store, Users, Repeat, 
+  CreditCard as CreditCardIcon, Gift, ShieldCheck, Bell, AlertTriangle, 
+  Briefcase, ChevronRight, X, Calendar, Tags, Package, FileText,
+  Clock, PieChart, Layers, Settings as SettingsIcon, LogOut, Building
+} from "lucide-react";
 import { cn } from "../utils";
 import { EntityManagementModal } from "../components/EntityManagementModal";
 import { ProfileManagementModal } from "../components/ProfileManagementModal";
 import { useFinance } from "../context/FinanceContext";
 
-const SettingRow = ({ icon: Icon, title, subtitle, action, destructive = false, onClick }: any) => (
-  <div 
-    onClick={onClick}
-    className={cn(
-      "p-5 flex items-center justify-between gap-4 transition-colors", 
-      destructive ? "hover:bg-red-50" : "hover:bg-slate-50",
-      onClick ? "cursor-pointer active:bg-slate-100" : ""
-    )}
+const SettingCell = ({ icon: Icon, title, sub, color, bg, onClick, active = null, onToggle = null }: any) => (
+  <button 
+    onClick={onClick || onToggle}
+    className="group p-4 rounded-2xl border border-slate-100 hover:border-indigo-100 hover:bg-slate-50 transition-all flex flex-col items-center text-center gap-3 active:scale-95 bg-white shadow-sm relative overflow-hidden"
   >
-    <div className="flex items-center gap-4 min-w-0">
-      <div className={cn("w-10 h-10 rounded-xl flex items-center justify-center shrink-0", destructive ? "bg-red-50 text-red-600" : "bg-indigo-50 text-indigo-600")}>
-        <Icon className="w-5 h-5" />
+    {active !== null && (
+      <div className="absolute top-2 right-2">
+        <div className={cn("w-2 h-2 rounded-full", active ? "bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]" : "bg-slate-200")} />
       </div>
-      <div className="min-w-0">
-        <p className={cn("font-semibold truncate", destructive ? "text-red-600" : "text-slate-800")}>{title}</p>
-        <p className="text-sm text-slate-500 mt-0.5 truncate sm:whitespace-normal">{subtitle}</p>
-      </div>
+    )}
+    <div className={cn("w-12 h-12 rounded-xl flex items-center justify-center transition-transform group-hover:scale-110", bg, color)}>
+      <Icon className="w-6 h-6" />
     </div>
-    <div className="shrink-0">
-      {action}
+    <div>
+      <p className="font-bold text-slate-800 text-xs leading-tight">{title}</p>
+      <p className="text-[9px] text-slate-400 font-bold mt-1 uppercase tracking-tighter opacity-70">{sub}</p>
     </div>
-  </div>
-);
-
-const Toggle = ({ active, onToggle }: { active: boolean, onToggle: () => void }) => (
-  <button onClick={onToggle} className={cn("w-12 h-6 rounded-full relative transition-colors duration-200", active ? "bg-indigo-600" : "bg-slate-200")}>
-    <span className={cn("absolute top-1 w-4 h-4 rounded-full bg-white shadow-sm transition-all duration-200", active ? "left-7" : "left-1")} />
   </button>
 );
 
@@ -57,9 +53,11 @@ export const Settings = () => {
   const [locks, setLocks] = useState({ biometric: getStoredBool('s_biometric', true), hideBalances: getStoredBool('s_hideBalances', false) });
   const [sync, setSync] = useState({ drive: getStoredBool('s_drive', true) });
   const [reminders, setReminders] = useState({ bills: getStoredBool('s_bills', true), dailyLog: getStoredBool('s_dailyLog', true) });
+  
   const [confirmReset, setConfirmReset] = useState(false);
   const [confirmWipe, setConfirmWipe] = useState(false);
   const [showProfileModal, setShowProfileModal] = useState(false);
+  const [showLogoModal, setShowLogoModal] = useState(false);
   const [wipePhase, setWipePhase] = useState(1);
 
   useEffect(() => { localStorage.setItem('s_biometric', String(locks.biometric)); }, [locks.biometric]);
@@ -77,169 +75,175 @@ export const Settings = () => {
     a.click(); URL.revokeObjectURL(url);
   };
 
-  // Entity Modal State
   const [activeEntity, setActiveEntity] = useState<string | null>(null);
   const openEntity = (entity: string) => setActiveEntity(entity);
   const closeEntity = () => setActiveEntity(null);
 
-  return (
-    <div className="p-4 md:p-8 max-w-4xl mx-auto space-y-8 pb-24">
-      <h2 className="text-2xl font-bold text-slate-800">Preferences</h2>
+  const SectionHeader = ({ icon: Icon, title, desc }: any) => (
+    <div className="flex items-center gap-3 mb-4 px-1">
+      <div className="w-8 h-8 rounded-lg bg-indigo-50 flex items-center justify-center">
+        <Icon className="w-4 h-4 text-indigo-600" />
+      </div>
+      <div>
+        <h3 className="font-black text-slate-800 text-sm uppercase tracking-wider leading-none">{title}</h3>
+        {desc && <p className="text-[10px] text-slate-400 font-bold uppercase mt-1 tracking-tight">{desc}</p>}
+      </div>
+    </div>
+  );
 
-      {/* 1. Profile & Sync */}
-      <div className="bg-white border border-slate-100 rounded-[24px] shadow-sm overflow-hidden">
-        <div className="p-6 border-b border-slate-100 flex items-center gap-4 bg-slate-50/50">
-          <img src="/profile.png" alt="Profile" className="w-16 h-16 rounded-full border-2 border-white shadow-sm object-cover bg-indigo-100" onError={(e) => { e.currentTarget.style.display = 'none' }} />
-          <div>
-            <h3 className="font-bold text-slate-800 text-lg">{profile.userName || "My Profile"}</h3>
-            <p className="text-sm text-slate-500 font-medium tracking-tight">{profile.userEmail || "Pro Local-First Account"}</p>
-          </div>
-        </div>
-        
-        <div className="divide-y divide-slate-100">
-          <SettingRow icon={Cloud} title="Google Drive Backup" subtitle="Last synced: 2 mins ago" action={<Toggle active={sync.drive} onToggle={() => setSync(s => ({ ...s, drive: !s.drive }))} />} />
-          <SettingRow icon={Download} title="Restore Data from Cloud" subtitle="Sync across devices seamlessly" action={<button className="text-sm font-bold text-indigo-600 bg-indigo-50 px-3 py-1.5 rounded-lg">Restore</button>} />
-          <SettingRow icon={Upload} title="Export Data (JSON)" subtitle="Download a full backup of your data" action={<button onClick={handleExport} className="text-sm font-bold text-indigo-600 bg-indigo-50 px-3 py-1.5 rounded-lg">Export</button>} />
+  return (
+    <div className="p-4 md:p-8 max-w-4xl mx-auto space-y-12 pb-24">
+      <div className="flex items-center justify-between">
+        <h2 className="text-3xl font-black text-slate-800 tracking-tight">Settings</h2>
+        <div className="flex items-center gap-3 bg-white px-4 py-2 rounded-2xl border border-slate-100 shadow-sm">
+           <img src="/profile.png" alt="P" className="w-8 h-8 rounded-full bg-indigo-100" />
+           <div className="text-left">
+             <p className="text-[10px] font-black text-slate-800 leading-none">{profile.userName || "Guest"}</p>
+             <p className="text-[8px] font-bold text-slate-400 uppercase mt-1 tracking-tighter">Pro Member</p>
+           </div>
         </div>
       </div>
 
-      {/* 2. Branding & Appearance */}
-      <div className="bg-white border border-slate-100 rounded-[24px] shadow-sm overflow-hidden">
-        <div className="p-5 border-b border-slate-100 bg-indigo-50/30">
-          <h3 className="font-bold text-slate-800 flex items-center gap-2">
-            <Palette className="w-5 h-5 text-indigo-600" /> Branding & Identity
-          </h3>
-          <p className="text-xs text-slate-500 mt-1">Personalize how brands and logos appear</p>
+      {/* 1. Advanced Entities Management */}
+      <div>
+        <SectionHeader icon={Database} title="Entities Management" desc="Core financial ledgers & relations" />
+        <div className="grid grid-cols-3 gap-3">
+          {[
+            { id: 'shop', icon: Store, title: "Shops", sub: "Merchants", color: "text-blue-600", bg: "bg-blue-50" },
+            { id: 'person', icon: Users, title: "People", sub: "Khata / Split", color: "text-emerald-600", bg: "bg-emerald-50" },
+            { id: 'recurring', icon: Repeat, title: "Recurring", sub: "Utility Bills", color: "text-amber-600", bg: "bg-amber-50" },
+            { id: 'subscription', icon: CreditCardIcon, title: "Subs", sub: "Digital Services", color: "text-pink-600", bg: "bg-pink-50" },
+            { id: 'giftcard', icon: Gift, title: "Gift Cards", sub: "Balances", color: "text-orange-600", bg: "bg-orange-50" },
+            { id: 'protection', icon: ShieldCheck, title: "Protection", sub: "Insure & Warranty", color: "text-cyan-600", bg: "bg-cyan-50" },
+            { id: 'asset', icon: Building, title: "Assets", sub: "Vehicles & Home", color: "text-indigo-600", bg: "bg-indigo-50" },
+            { id: 'inventory', icon: Package, title: "Inventory", sub: "Consumables", color: "text-orange-600", bg: "bg-orange-50" },
+            { id: 'employment', icon: Briefcase, title: "Employment", sub: "Tax & Salary", color: "text-slate-600", bg: "bg-slate-50", isSpecial: true },
+          ].map((item) => (
+            <SettingCell 
+              key={item.id} 
+              icon={item.icon} title={item.title} sub={item.sub} color={item.color} bg={item.bg} 
+              onClick={() => item.isSpecial ? setShowProfileModal(true) : openEntity(item.id)}
+            />
+          ))}
         </div>
-        <div className="p-6 space-y-6">
-          <div>
-            <div className="flex items-center justify-between mb-2">
-              <label className="text-sm font-bold text-slate-700">Logo.dev API Token</label>
-              <a href="https://logo.dev" target="_blank" rel="noreferrer" className="text-[10px] font-bold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-md hover:bg-indigo-100 transition-colors uppercase">Get Token</a>
-            </div>
+      </div>
+
+      {/* 2. Localization */}
+      <div>
+        <SectionHeader icon={Globe} title="Localization" desc="Currency & Regional Standards" />
+        <div className="grid grid-cols-3 gap-3">
+          <SettingCell icon={IndianRupee} title="Currency" sub="INR (₹) Lakhs" color="text-indigo-600" bg="bg-indigo-50" />
+          <SettingCell icon={Clock} title="Timezone" sub="GMT +5:30 (IST)" color="text-indigo-600" bg="bg-indigo-50" />
+          <SettingCell icon={Calendar} title="Fiscal Year" sub="April Start" color="text-indigo-600" bg="bg-indigo-50" />
+        </div>
+      </div>
+
+      {/* 3. Categories */}
+      <div>
+        <SectionHeader icon={Tags} title="Categories" desc="Structure & Tagging Insights" />
+        <div className="grid grid-cols-3 gap-3">
+          <SettingCell icon={Tags} title="Categories" sub="Master List" color="text-emerald-600" bg="bg-emerald-50" />
+          <SettingCell icon={Layers} title="Sub Categories" sub="Granular Tracking" color="text-emerald-600" bg="bg-emerald-50" />
+          <SettingCell icon={PieChart} title="Classification" sub="Needs / Wants" color="text-emerald-600" bg="bg-emerald-50" />
+        </div>
+      </div>
+
+      {/* 4. Reminders */}
+      <div>
+        <SectionHeader icon={Bell} title="Reminders" desc="Automated Financial Alerts" />
+        <div className="grid grid-cols-3 gap-3">
+          <SettingCell 
+            icon={Bell} title="Bills" sub="Due Notifications" color="text-amber-600" bg="bg-amber-50" 
+            active={reminders.bills} onToggle={() => setReminders(r => ({ ...r, bills: !r.bills }))}
+          />
+          <SettingCell 
+            icon={Clock} title="Daily Log" sub="9:00 PM Prompt" color="text-amber-600" bg="bg-amber-50" 
+            active={reminders.dailyLog} onToggle={() => setReminders(r => ({ ...r, dailyLog: !r.dailyLog }))}
+          />
+          <SettingCell icon={AlertTriangle} title="Overdue" sub="Critical Alerts" color="text-amber-600" bg="bg-amber-50" active={true} />
+        </div>
+      </div>
+
+      {/* 5. My Profile */}
+      <div>
+        <SectionHeader icon={Users} title="Profile" desc="Data Sync & Portability" />
+        <div className="grid grid-cols-3 gap-3">
+          <SettingCell 
+            icon={Cloud} title="Drive Sync" sub="Auto Backup" color="text-blue-600" bg="bg-blue-50" 
+            active={sync.drive} onToggle={() => setSync(s => ({ ...s, drive: !s.drive }))}
+          />
+          <SettingCell icon={Download} title="Restore" sub="From Cloud" color="text-blue-600" bg="bg-blue-50" />
+          <SettingCell icon={Upload} title="Export" sub="JSON Backup" color="text-blue-600" bg="bg-blue-50" onClick={handleExport} />
+        </div>
+      </div>
+
+      {/* 6. Privacy & Security */}
+      <div>
+        <SectionHeader icon={Shield} title="Privacy" desc="Access Control & Masking" />
+        <div className="grid grid-cols-3 gap-3">
+          <SettingCell 
+            icon={Fingerprint} title="App Lock" sub="Biometrics" color="text-indigo-600" bg="bg-indigo-50" 
+            active={locks.biometric} onToggle={() => setLocks(s => ({ ...s, biometric: !s.biometric }))}
+          />
+          <SettingCell 
+            icon={Lock} title="Hide Balances" sub="Mask Values" color="text-indigo-600" bg="bg-indigo-50" 
+            active={profile.maskBalances} onToggle={() => updateProfile({ maskBalances: !profile.maskBalances })}
+          />
+          <SettingCell icon={ShieldCheck} title="Two Factor" sub="Email Auth" color="text-indigo-600" bg="bg-indigo-50" active={false} />
+        </div>
+      </div>
+
+      {/* 7. Brand & Identity */}
+      <div>
+        <SectionHeader icon={Palette} title="Brand" desc="Personalize Visual Identity" />
+        <div className="grid grid-cols-3 gap-3">
+          <SettingCell 
+            icon={Palette} title="API Token" sub="Logo.dev Config" color="text-indigo-600" bg="bg-indigo-50" 
+            onClick={() => setShowLogoModal(true)}
+          />
+          <SettingCell icon={LayoutTemplate} title="Theme" sub="Elite Dark Mode" color="text-indigo-600" bg="bg-indigo-50" />
+          <SettingCell icon={Store} title="Merchant Logos" sub="Auto Fetching" color="text-indigo-600" bg="bg-indigo-50" active={true} />
+        </div>
+      </div>
+
+      {/* 8. Danger Zone */}
+      <div>
+        <SectionHeader icon={AlertTriangle} title="Danger Zone" desc="Destructive System Actions" />
+        <div className="grid grid-cols-3 gap-3">
+          <SettingCell icon={Database} title="Reset" sub="Keep Accounts" color="text-red-600" bg="bg-red-50" onClick={() => setConfirmReset(true)} />
+          <SettingCell icon={Database} title="Seed" sub="2 Year History" color="text-red-600" bg="bg-red-50" onClick={() => setConfirmReset(true)} />
+          <SettingCell icon={LogOut} title="Wipe" sub="Nuclear Reset" color="text-red-600" bg="bg-red-50" onClick={() => { setWipePhase(1); setConfirmWipe(true); }} />
+        </div>
+      </div>
+
+      <div className="text-center mt-12 pb-12">
+        <p className="text-[10px] font-black text-slate-300 uppercase tracking-[0.3em]">MoneyManager v1.2.0 • Pro Edition</p>
+      </div>
+
+      {/* Logo Modal */}
+      {showLogoModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4">
+          <div className="bg-white rounded-3xl p-6 w-full max-w-sm shadow-2xl">
+            <h3 className="font-bold text-xl text-slate-800 mb-2">Logo.dev API Token</h3>
+            <p className="text-xs text-slate-500 mb-4">Required for high-definition merchant logos.</p>
             <input 
               type="password"
               value={profile.logoDevToken || ''}
               onChange={(e) => updateProfile({ logoDevToken: e.target.value })}
-              placeholder="pk_xxxxxxxxxxxxxxxxxxxxxxxx"
-              className="w-full text-sm font-mono bg-slate-50 border-0 px-4 py-3 rounded-xl focus:ring-2 focus:ring-indigo-600 outline-none"
+              placeholder="pk_xxxxxxxxxxxxxxxx"
+              className="w-full text-sm font-mono bg-slate-50 border px-4 py-3 rounded-xl focus:ring-2 focus:ring-indigo-600 outline-none mb-4"
             />
-            <p className="text-[10px] text-slate-400 mt-2 leading-relaxed">
-              Required for high-definition bank logos. If not provided, the app will use standard icons as fallback.
-            </p>
+            <button onClick={() => setShowLogoModal(false)} className="w-full py-3 bg-indigo-600 text-white rounded-xl font-bold">Save & Close</button>
           </div>
         </div>
-      </div>
-
-      {/* 2. Employment & Tax Profiling (New) */}
-      <div className="bg-gradient-to-br from-indigo-900 to-slate-900 border border-slate-800 rounded-[24px] shadow-xl overflow-hidden relative">
-         <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-500/20 rounded-full blur-[80px] pointer-events-none translate-x-1/3 -translate-y-1/3"></div>
-         <div className="p-6 relative z-10 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-           <div className="flex gap-4 items-start">
-             <div className="w-12 h-12 rounded-xl bg-white/10 flex items-center justify-center shrink-0 border border-white/10">
-               <Briefcase className="w-6 h-6 text-indigo-300" />
-             </div>
-             <div>
-               <h3 className="font-bold text-white text-lg">Employment & Tax Profile</h3>
-               <p className="text-sm text-indigo-200 mt-1 max-w-sm">Configure your Salary Band and Employer to unlock Smart Tax Engine suggestions and automatic PF tracking.</p>
-             </div>
-           </div>
-            <button 
-              onClick={() => setShowProfileModal(true)}
-              className="w-full sm:w-auto shrink-0 bg-indigo-500 hover:bg-indigo-600 text-white px-5 py-2.5 rounded-xl font-bold transition-all shadow-sm mt-2 sm:mt-0"
-            >
-              Configure Profile
-            </button>
-         </div>
-      </div>
-
-      {/* 3. Entity Management (Khata, Shops, Subs) */}
-      <div className="bg-white border border-slate-100 rounded-[24px] shadow-sm overflow-hidden">
-        <div className="p-5 border-b border-slate-100 bg-slate-50/50">
-          <h3 className="font-bold text-slate-800 flex items-center gap-2">
-            <Database className="w-5 h-5 text-indigo-500" />
-            Advanced Entities Management
-          </h3>
-          <p className="text-sm text-slate-500 mt-1 ml-7">Manage your dedicated ledgers to speed up transaction logging.</p>
-        </div>
-        <div className="divide-y divide-slate-100">
-          <SettingRow onClick={() => openEntity('shop')} icon={Store} title="Shops / Merchants" subtitle="Save frequent stores & default categories" action={<ChevronRight className="w-5 h-5 text-slate-300" />} />
-          <SettingRow onClick={() => openEntity('person')} icon={Users} title="People / Payees (Khata)" subtitle="Track lending, borrowing, and split expenses" action={<ChevronRight className="w-5 h-5 text-slate-300" />} />
-          <SettingRow onClick={() => openEntity('recurring')} icon={Repeat} title="Recurring Bills" subtitle="Utilities, mobile recharge, gas, electricity" action={<ChevronRight className="w-5 h-5 text-slate-300" />} />
-          <SettingRow onClick={() => openEntity('subscription')} icon={CreditCardIcon} title="Subscriptions" subtitle="Discretionary active digital services (Netflix, Gym)" action={<ChevronRight className="w-5 h-5 text-slate-300" />} />
-          <SettingRow onClick={() => openEntity('giftcard')} icon={Gift} title="Gift Cards" subtitle="Track unused gift card balances & expiry" action={<ChevronRight className="w-5 h-5 text-slate-300" />} />
-          <SettingRow onClick={() => openEntity('warranty')} icon={ShieldCheck} title="Warranties" subtitle="Upload warranty cards for major electronics" action={<ChevronRight className="w-5 h-5 text-slate-300" />} />
-          <SettingRow onClick={() => openEntity('item')} icon={Package} title="Items / Inventory" subtitle="Manage purchased items & assets" action={<ChevronRight className="w-5 h-5 text-slate-300" />} />
-          <SettingRow onClick={() => openEntity('bank')} icon={IndianRupee} title="Bank Details" subtitle="Manage account numbers, IFSC & branch info" action={<ChevronRight className="w-5 h-5 text-slate-300" />} />
-        </div>
-      </div>
-
-      {/* 4. Localization & Format */}
-      <div className="bg-white border border-slate-100 rounded-[24px] shadow-sm overflow-hidden">
-        <div className="p-5 border-b border-slate-100 bg-slate-50/50">
-          <h3 className="font-bold text-slate-800 flex items-center gap-2">
-            <Globe className="w-5 h-5 text-indigo-500" />
-            Localization & Categories
-          </h3>
-        </div>
-        <div className="divide-y divide-slate-100">
-          <SettingRow icon={IndianRupee} title="Currency & Number System" subtitle="Indian Rupee (INR) • Lakhs & Crores (1,00,000)" action={<button className="text-sm font-bold text-indigo-600 bg-indigo-50 px-3 py-1.5 rounded-lg">Edit</button>} />
-          <SettingRow icon={Calendar} title="Financial Year Start" subtitle="April 1 (India Tax Standard)" action={<button className="text-sm font-bold text-indigo-600 bg-indigo-50 px-3 py-1.5 rounded-lg">Edit</button>} />
-          <SettingRow icon={Tags} title="Categories & Insight Tagging" subtitle="Manage sub-categories & Needs/Wants/Savings tags" action={<button className="text-sm font-bold text-indigo-600 bg-indigo-50 px-3 py-1.5 rounded-lg">Edit</button>} />
-        </div>
-      </div>
-
-      {/* 5. Security & Notifications */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-        <div className="bg-white border border-slate-100 rounded-[24px] shadow-sm overflow-hidden h-fit">
-          <div className="p-5 border-b border-slate-100 bg-slate-50/50">
-            <h3 className="font-bold text-slate-800 flex items-center gap-2">
-              <Shield className="w-5 h-5 text-indigo-500" /> Privacy & Security
-            </h3>
-          </div>
-          <div className="divide-y divide-slate-100">
-            <SettingRow icon={Fingerprint} title="App Lock" subtitle="Require Biometrics to open" action={<Toggle active={locks.biometric} onToggle={() => setLocks(s => ({ ...s, biometric: !s.biometric }))} />} />
-            <SettingRow icon={Lock} title="Hide Balances" subtitle="Mask numbers by default" action={<Toggle active={profile.maskBalances || false} onToggle={() => updateProfile({ maskBalances: !profile.maskBalances })} />} />
-          </div>
-        </div>
-
-        <div className="bg-white border border-slate-100 rounded-[24px] shadow-sm overflow-hidden h-fit">
-          <div className="p-5 border-b border-slate-100 bg-slate-50/50">
-            <h3 className="font-bold text-slate-800 flex items-center gap-2">
-              <Bell className="w-5 h-5 text-indigo-500" /> Reminders
-            </h3>
-          </div>
-          <div className="divide-y divide-slate-100">
-            <SettingRow icon={Bell} title="Bill Reminders" subtitle="Push notifications for due dates" action={<Toggle active={reminders.bills} onToggle={() => setReminders(s => ({ ...s, bills: !s.bills }))} />} />
-            <SettingRow icon={Bell} title="Daily Log Prompt" subtitle="Ping at 9:00 PM to log expenses" action={<Toggle active={reminders.dailyLog} onToggle={() => setReminders(s => ({ ...s, dailyLog: !s.dailyLog }))} />} />
-          </div>
-        </div>
-      </div>
-
-      {/* 6. Danger Zone */}
-      <div className="bg-white border border-red-100 rounded-[24px] shadow-sm overflow-hidden">
-        <div className="p-5 border-b border-red-50 bg-red-50/30">
-          <h3 className="font-bold text-red-600 flex items-center gap-2">
-            <AlertTriangle className="w-5 h-5" /> Danger Zone
-          </h3>
-        </div>
-        <div className="divide-y divide-slate-100">
-          <SettingRow icon={Database} title="Reset Data" subtitle="Restore seed transactions & keep accounts." destructive action={<button onClick={() => setConfirmReset(true)} className="text-sm font-bold text-red-600 bg-red-50 px-3 py-1.5 rounded-lg border border-red-100">Reset</button>} />
-          <SettingRow icon={Database} title="Seed Data (2 Years)" subtitle="Generate 2 years of realistic testing data." destructive onClick={() => setConfirmReset(true)} action={<button onClick={() => setConfirmReset(true)} className="text-sm font-bold text-red-600 bg-red-50 px-3 py-1.5 rounded-lg border border-red-100">Seed</button>} />
-          <SettingRow icon={AlertTriangle} title="Wipe Data" subtitle="Total nuclear reset. Erase absolutely everything." destructive action={<button onClick={() => { setWipePhase(1); setConfirmWipe(true); }} className="text-sm font-bold text-white bg-red-600 hover:bg-red-700 transition-colors px-3 py-1.5 rounded-lg">Wipe</button>} />
-        </div>
-      </div>
-
-      <div className="text-center mt-8 text-sm text-slate-400 font-medium">
-        MoneyManager v1.0.0 • Made in India
-      </div>
+      )}
 
       {/* Confirm Reset Modal */}
       {confirmReset && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4">
           <div className="bg-white rounded-3xl p-6 w-full max-w-sm shadow-2xl">
             <h3 className="font-bold text-xl text-slate-800 mb-2">Reset Data?</h3>
-            <p className="text-sm text-slate-500 mb-6">This will restore the default seed transactions and reset account balances. Your accounts and settings will be kept.</p>
+            <p className="text-sm text-slate-500 mb-6">This will restore the default seed transactions. Your accounts and settings will be kept.</p>
             <div className="flex gap-3">
               <button onClick={() => setConfirmReset(false)} className="flex-1 py-2.5 border border-slate-200 rounded-xl font-semibold text-slate-600 hover:bg-slate-50">Cancel</button>
               <button onClick={() => { resetData(); setConfirmReset(false); }} className="flex-1 py-2.5 bg-red-600 text-white rounded-xl font-bold hover:bg-red-700">Reset</button>
@@ -255,7 +259,7 @@ export const Settings = () => {
             {wipePhase === 1 ? (
               <>
                 <h3 className="font-bold text-xl text-red-600 mb-2">Wipe All Data?</h3>
-                <p className="text-sm text-slate-500 mb-6">This will permanently delete ALL transactions, investments, and entities. This cannot be undone.</p>
+                <p className="text-sm text-slate-500 mb-6">This will permanently delete EVERYTHING. This cannot be undone.</p>
                 <div className="flex gap-3">
                   <button onClick={() => setConfirmWipe(false)} className="flex-1 py-2.5 border border-slate-200 rounded-xl font-semibold text-slate-600">Cancel</button>
                   <button onClick={() => setWipePhase(2)} className="flex-1 py-2.5 bg-red-600 text-white rounded-xl font-bold">Continue</button>
@@ -264,7 +268,7 @@ export const Settings = () => {
             ) : (
               <>
                 <h3 className="font-bold text-xl text-red-600 mb-2">Are you absolutely sure?</h3>
-                <p className="text-sm text-slate-500 mb-6">Type <strong>WIPE</strong> to confirm permanent deletion.</p>
+                <p className="text-sm text-slate-500 mb-6">Type <strong>WIPE</strong> to confirm.</p>
                 <WipeConfirmInput onConfirm={() => { wipeData(); setConfirmWipe(false); }} onCancel={() => setConfirmWipe(false)} />
               </>
             )}

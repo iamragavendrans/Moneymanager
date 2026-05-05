@@ -90,10 +90,11 @@ export interface Investment {
 
 export interface Entity {
   id: string;
-  type: "shop" | "person" | "recurring" | "subscription" | "giftcard" | "warranty" | "item" | "bank";
+  type: "shop" | "person" | "recurring" | "subscription" | "giftcard" | "protection" | "asset" | "inventory" | "document";
   name: string;
   category?: string;
   logoUrl?: string;
+  configDetails?: Record<string, any>;
   // Extra metadata
   url?: string;
   location?: string;
@@ -105,6 +106,19 @@ export interface Entity {
   nextDue?: string;
   expiry?: string;
   balance?: number;
+  status?: "active" | "paused";
+  provider?: string;
+  quantity?: number;
+  unit?: string;
+  policyNo?: string;
+  itemId?: string;
+  price?: number;
+  picUrl?: string;
+  warrantyDetails?: string;
+  totalBalance?: number;
+  billingDetails?: string;
+  recurringDuration?: string;
+  notes?: string;
 }
 
 interface FinanceContextType {

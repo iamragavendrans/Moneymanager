@@ -154,7 +154,7 @@ export const Investments = () => {
             </h3>
             <span className="font-bold text-slate-900">{formatINR(marketStats.current)}</span>
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             {inv.marketLinked.map((mf: any) => {
               const invested = (mf.units || 0) * (mf.avgNav || 0);
               const current = (mf.units || 0) * (mf.currentNav || 0);
@@ -200,7 +200,7 @@ export const Investments = () => {
             </h3>
             <span className="font-bold text-slate-900">{formatINR(fixedStats.current)}</span>
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             {inv.fixedIncome.map((fd: any) => {
               const start = parseISO(fd.startDate || new Date().toISOString());
               const end = parseISO(fd.maturityDate || new Date().toISOString());
@@ -251,7 +251,7 @@ export const Investments = () => {
             </h3>
             <span className="font-bold text-slate-900">{formatINR(goldStats.current)}</span>
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             {inv.gold.map((g: any) => {
               const invested = (g.grams || 0) * (g.avgPrice || 0);
               const current = (g.grams || 0) * (g.currentPrice || 0);
