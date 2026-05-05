@@ -101,6 +101,7 @@ export const Settings = () => {
           <SettingRow onClick={() => openEntity('giftcard')} icon={Gift} title="Gift Cards" subtitle="Track unused gift card balances & expiry" action={<ChevronRight className="w-5 h-5 text-slate-300" />} />
           <SettingRow onClick={() => openEntity('warranty')} icon={ShieldCheck} title="Warranties" subtitle="Upload warranty cards for major electronics" action={<ChevronRight className="w-5 h-5 text-slate-300" />} />
           <SettingRow onClick={() => openEntity('item')} icon={Package} title="Items / Inventory" subtitle="Manage purchased items & assets" action={<ChevronRight className="w-5 h-5 text-slate-300" />} />
+          <SettingRow onClick={() => openEntity('bank')} icon={IndianRupee} title="Bank Details" subtitle="Manage account numbers, IFSC & branch info" action={<ChevronRight className="w-5 h-5 text-slate-300" />} />
         </div>
       </div>
 

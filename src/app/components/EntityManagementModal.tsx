@@ -231,6 +231,25 @@ export const EntityManagementModal = ({ type, onClose }: { type: string; onClose
           </div>
         </div>
       );
+    } else if (type === "bank") {
+      stats = (
+        <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm space-y-4 mb-6">
+          <div>
+            <p className="text-[10px] text-slate-400 uppercase font-bold tracking-wider mb-1">Account Number</p>
+            <p className="text-lg font-bold text-slate-800 tracking-wider">{activeEntity.accountNo || "N/A"}</p>
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <p className="text-[10px] text-slate-400 uppercase font-bold tracking-wider mb-1">IFSC Code</p>
+              <p className="text-sm font-bold text-slate-800 uppercase">{activeEntity.ifsc || "N/A"}</p>
+            </div>
+            <div>
+              <p className="text-[10px] text-slate-400 uppercase font-bold tracking-wider mb-1">Branch</p>
+              <p className="text-sm font-bold text-slate-800">{activeEntity.branch || "N/A"}</p>
+            </div>
+          </div>
+        </div>
+      );
     }
 
     return (

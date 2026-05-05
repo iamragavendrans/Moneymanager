@@ -42,7 +42,7 @@ export interface Investment {
 
 export interface Entity {
   id: string;
-  type: "shop" | "person" | "recurring" | "subscription" | "giftcard" | "warranty" | "item";
+  type: "shop" | "person" | "recurring" | "subscription" | "giftcard" | "warranty" | "item" | "bank";
   name: string;
   [key: string]: any; // dynamic fields based on type
 }
