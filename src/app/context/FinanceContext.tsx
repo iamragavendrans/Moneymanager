@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useEffect, useState } from "react";
-import { format, subDays, subMonths, startOfMonth, endOfMonth } from "date-fns";
+import { startOfMonth, endOfMonth } from "date-fns";
 import { seedAllData } from "../utils/seedData";
 
 export type TransactionType = "expense" | "income" | "transfer";
@@ -46,17 +46,17 @@ export interface Account {
   type: "bank" | "UPI" | "wallet" | "cash" | "credit_card" | "loan" | "investment" | "meal_card" | "pf";
   balance: number;
   currency: string;
-  lastFour?: string;       
-  fullAccountNumber?: string; 
+  lastFour?: string;
+  fullAccountNumber?: string;
   ifsc?: string;
-  creditLimit?: number;    
-  dueDate?: string;        
-  interestRate?: number;   // for loans
-  tenureMonths?: number;   // for loans
-  emiAmount?: number;      // for loans
-  emiDate?: number;        // day of month (1-31)
-  monthlyContribution?: number; // for PF
-  employeeId?: string;     // for PF
+  creditLimit?: number;
+  dueDate?: string;
+  interestRate?: number;
+  tenureMonths?: number;
+  emiAmount?: number;
+  emiDate?: number;
+  monthlyContribution?: number;
+  employeeId?: string;
   logoUrl?: string;
 }
 
@@ -64,14 +64,13 @@ export interface Investment {
   id: string;
   name: string;
   type: "Stock" | "Mutual Fund" | "Fixed Income" | "Gold" | "Real Estate";
-  category?: 'marketLinked' | 'fixedIncome' | 'gold' | 'realEstate';
+  category?: "marketLinked" | "fixedIncome" | "gold" | "realEstate";
   investedAmount: number;
   currentValue: number;
   quantity?: number;
   purchaseDate?: string;
   broker?: string;
   notes?: string;
-  // Financial Tracking Fields
   units?: number;
   avgNav?: number;
   currentNav?: number;
@@ -94,17 +93,28 @@ export interface Entity {
   name: string;
   category?: string;
   logoUrl?: string;
-  // Extra metadata
+  // Contact & location
   url?: string;
   location?: string;
   mode?: "online" | "offline";
   relationship?: string;
   phone?: string;
+  // Recurring / subscription billing
   frequency?: string;
   amount?: number;
   nextDue?: string;
+  provider?: string;
+  // Gift card
   expiry?: string;
   balance?: number;
+  // Warranty
+  warrantyDetails?: string;
+  // Item / inventory
+  price?: number;
+  quantity?: string;
+  // Bank details
+  accountNo?: string;
+  branch?: string;
 }
 
 interface FinanceContextType {
@@ -135,41 +145,59 @@ interface FinanceContextType {
 
 const FinanceContext = createContext<FinanceContextType | undefined>(undefined);
 
+function safeParse<T>(key: string, fallback: T): T {
+  try {
+    const raw = localStorage.getItem(key);
+    return raw ? (JSON.parse(raw) as T) : fallback;
+  } catch {
+    console.warn(`[MoneyManager] Failed to parse localStorage key "${key}". Using default.`);
+    return fallback;
+  }
+}
+
+function safeStore(key: string, value: unknown): void {
+  try {
+    localStorage.setItem(key, JSON.stringify(value));
+  } catch (e) {
+    console.warn(`[MoneyManager] Failed to store key "${key}":`, e);
+  }
+}
+
+function genId(prefix: string): string {
+  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+    return `${prefix}_${crypto.randomUUID()}`;
+  }
+  return `${prefix}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2)}`;
+}
+
 export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [transactions, setTransactions] = useState<Transaction[]>(() => {
-    const saved = localStorage.getItem("finance_txns");
-    const raw: Transaction[] = saved ? JSON.parse(saved) : [];
-    return raw;
-  });
+  const [transactions, setTransactions] = useState<Transaction[]>(() =>
+    safeParse<Transaction[]>("finance_txns", [])
+  );
+  const [accounts, setAccounts] = useState<Account[]>(() =>
+    safeParse<Account[]>("finance_accounts", [])
+  );
+  const [investments, setInvestments] = useState<Investment[]>(() =>
+    safeParse<Investment[]>("finance_investments", [])
+  );
+  const [entities, setEntities] = useState<Entity[]>(() =>
+    safeParse<Entity[]>("finance_entities", [])
+  );
+  const [profile, setProfile] = useState<Profile>(() =>
+    safeParse<Profile>("finance_profile", { companyName: "Acme Corp" })
+  );
 
-  const [accounts, setAccounts] = useState<Account[]>(() => {
-    const saved = localStorage.getItem("finance_accounts");
-    return saved ? JSON.parse(saved) : [];
-  });
+  useEffect(() => { safeStore("finance_txns", transactions); }, [transactions]);
+  useEffect(() => { safeStore("finance_accounts", accounts); }, [accounts]);
+  useEffect(() => { safeStore("finance_investments", investments); }, [investments]);
+  useEffect(() => { safeStore("finance_entities", entities); }, [entities]);
+  useEffect(() => { safeStore("finance_profile", profile); }, [profile]);
 
-  const [investments, setInvestments] = useState<Investment[]>(() => {
-    const saved = localStorage.getItem("finance_investments");
-    return saved ? JSON.parse(saved) : [];
-  });
-
-  const [entities, setEntities] = useState<Entity[]>(() => {
-    const saved = localStorage.getItem("finance_entities");
-    return saved ? JSON.parse(saved) : [];
-  });
-
-  const [profile, setProfile] = useState<Profile>(() => {
-    const saved = localStorage.getItem("finance_profile");
-    return saved ? JSON.parse(saved) : { companyName: "Acme Corp" };
-  });
-
-  useEffect(() => { localStorage.setItem("finance_txns", JSON.stringify(transactions)); }, [transactions]);
-  useEffect(() => { localStorage.setItem("finance_accounts", JSON.stringify(accounts)); }, [accounts]);
-  useEffect(() => { localStorage.setItem("finance_investments", JSON.stringify(investments)); }, [investments]);
-  useEffect(() => { localStorage.setItem("finance_entities", JSON.stringify(entities)); }, [entities]);
-  useEffect(() => { localStorage.setItem("finance_profile", JSON.stringify(profile)); }, [profile]);
-
-  // --- Transactions ---
-  const applyImpact = (accs: Account[], tx: Omit<Transaction, "id"> | Transaction, reverse = false): Account[] => {
+  const applyImpact = (
+    accs: Account[],
+    tx: Omit<Transaction, "id"> | Transaction,
+    reverse = false
+  ): Account[] => {
     const m = reverse ? -1 : 1;
     return accs.map((acc) => {
       let delta = 0;
@@ -185,75 +213,86 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
     });
   };
 
+  // --- Transactions ---
   const addTransaction = (tx: Omit<Transaction, "id">) => {
-    const newTx = { ...tx, id: `tx_${Date.now()}` };
-    setTransactions((prev: Transaction[]) => [newTx, ...prev]);
-    setAccounts((prev: Account[]) => applyImpact(prev, newTx));
+    const newTx: Transaction = { ...tx, id: genId("tx") };
+    setTransactions((prev) => [newTx, ...prev]);
+    setAccounts((prev) => applyImpact(prev, newTx));
   };
 
   const updateTransaction = (id: string, partialTx: Partial<Transaction>) => {
-    setTransactions((prev: Transaction[]) => {
-      const oldTx = prev.find((t: Transaction) => t.id === id);
-      if (!oldTx) return prev;
-      const updatedTx: Transaction = { ...oldTx, ...partialTx, id };
-      setAccounts((accs: Account[]) => {
-        const reverted = applyImpact(accs, oldTx, true);
-        return applyImpact(reverted, updatedTx);
-      });
-      return prev.map((t: Transaction) => t.id === id ? updatedTx : t);
-    });
+    // Read current state from closure — avoids nested setState race condition
+    const oldTx = transactions.find((t) => t.id === id);
+    if (!oldTx) return;
+    const updatedTx: Transaction = { ...oldTx, ...partialTx, id };
+    setAccounts((accs) => applyImpact(applyImpact(accs, oldTx, true), updatedTx));
+    setTransactions((prev) => prev.map((t) => (t.id === id ? updatedTx : t)));
   };
 
   const deleteTransaction = (id: string) => {
-    setTransactions((prev: Transaction[]) => {
-      const oldTx = prev.find((t: Transaction) => t.id === id);
-      if (oldTx) setAccounts((accs: Account[]) => applyImpact(accs, oldTx, true));
-      return prev.filter((t: Transaction) => t.id !== id);
-    });
+    const oldTx = transactions.find((t) => t.id === id);
+    if (oldTx) setAccounts((accs) => applyImpact(accs, oldTx, true));
+    setTransactions((prev) => prev.filter((t) => t.id !== id));
   };
 
   // --- Accounts ---
-  const addAccount = (acc: Omit<Account, "id">) => setAccounts((prev: Account[]) => [...prev, { ...acc, id: `acc_${Date.now()}` }]);
-  const updateAccount = (id: string, acc: Partial<Account>) => setAccounts((prev: Account[]) => prev.map((a: Account) => a.id === id ? { ...a, ...acc } : a));
+  const addAccount = (acc: Omit<Account, "id">) =>
+    setAccounts((prev) => [...prev, { ...acc, id: genId("acc") }]);
+  const updateAccount = (id: string, acc: Partial<Account>) =>
+    setAccounts((prev) => prev.map((a) => (a.id === id ? { ...a, ...acc } : a)));
   const deleteAccount = (id: string) => {
-    setTransactions((prev: Transaction[]) => prev.filter((t: Transaction) => t.account_id !== id && t.to_account_id !== id));
-    setAccounts((prev: Account[]) => prev.filter((a: Account) => a.id !== id));
+    setTransactions((prev) =>
+      prev.filter((t) => t.account_id !== id && t.to_account_id !== id)
+    );
+    setAccounts((prev) => prev.filter((a) => a.id !== id));
   };
 
   // --- Investments ---
-  const addInvestment = (inv: Omit<Investment, "id">) => setInvestments((prev: Investment[]) => [...prev, { ...inv, id: `inv_${Date.now()}` } as Investment]);
-  const updateInvestment = (id: string, inv: Partial<Investment>) => setInvestments((prev: Investment[]) => prev.map((i: Investment) => i.id === id ? { ...i, ...inv } : i));
-  const deleteInvestment = (id: string) => setInvestments((prev: Investment[]) => prev.filter((i: Investment) => i.id !== id));
+  const addInvestment = (inv: Omit<Investment, "id">) =>
+    setInvestments((prev) => [...prev, { ...inv, id: genId("inv") } as Investment]);
+  const updateInvestment = (id: string, inv: Partial<Investment>) =>
+    setInvestments((prev) => prev.map((i) => (i.id === id ? { ...i, ...inv } : i)));
+  const deleteInvestment = (id: string) =>
+    setInvestments((prev) => prev.filter((i) => i.id !== id));
 
   // --- Entities ---
-  const addEntity = (ent: Omit<Entity, "id">) => setEntities((prev: Entity[]) => [...prev, { ...ent, id: `ent_${Date.now()}` } as Entity]);
-  const updateEntity = (id: string, ent: Partial<Entity>) => setEntities((prev: Entity[]) => prev.map((e: Entity) => e.id === id ? { ...e, ...ent } : e));
-  const deleteEntity = (id: string) => setEntities((prev: Entity[]) => prev.filter((e: Entity) => e.id !== id));
+  const addEntity = (ent: Omit<Entity, "id">) =>
+    setEntities((prev) => [...prev, { ...ent, id: genId("ent") } as Entity]);
+  const updateEntity = (id: string, ent: Partial<Entity>) =>
+    setEntities((prev) => prev.map((e) => (e.id === id ? { ...e, ...ent } : e)));
+  const deleteEntity = (id: string) =>
+    setEntities((prev) => prev.filter((e) => e.id !== id));
 
   // --- Profile ---
-  const updateProfile = (p: Partial<Profile>) => setProfile((prev: Profile) => ({ ...prev, ...p }));
+  const updateProfile = (p: Partial<Profile>) =>
+    setProfile((prev) => ({ ...prev, ...p }));
 
-  // --- Helpers ---
-  const getNetWorth = () => accounts.reduce((sum: number, acc: Account) => sum + acc.balance, 0);
+  // --- Computed helpers ---
+  const getNetWorth = () =>
+    accounts.reduce((sum, acc) => sum + acc.balance, 0);
 
   const getTotalExpenses = (month?: Date): number => {
     const txs = month
-      ? transactions.filter((t: Transaction) => {
+      ? transactions.filter((t) => {
           const d = new Date(t.date);
           return d >= startOfMonth(month) && d <= endOfMonth(month);
         })
       : transactions;
-    return txs.filter((t: Transaction) => t.type === "expense").reduce((sum: number, t: Transaction) => sum + t.amount, 0);
+    return txs
+      .filter((t) => t.type === "expense")
+      .reduce((sum, t) => sum + t.amount, 0);
   };
 
   const getTotalIncome = (month?: Date): number => {
     const txs = month
-      ? transactions.filter((t: Transaction) => {
+      ? transactions.filter((t) => {
           const d = new Date(t.date);
           return d >= startOfMonth(month) && d <= endOfMonth(month);
         })
       : transactions;
-    return txs.filter((t: Transaction) => t.type === "income").reduce((sum: number, t: Transaction) => sum + t.amount, 0);
+    return txs
+      .filter((t) => t.type === "income")
+      .reduce((sum, t) => sum + t.amount, 0);
   };
 
   const resetData = () => {
@@ -273,16 +312,33 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
   };
 
   return (
-    <FinanceContext.Provider value={{
-      transactions, accounts, investments, entities,
-      addTransaction, updateTransaction, deleteTransaction,
-      addAccount, updateAccount, deleteAccount,
-      addInvestment, updateInvestment, deleteInvestment,
-      addEntity, updateEntity, deleteEntity,
-      profile, updateProfile,
-      getNetWorth, getTotalExpenses, getTotalIncome,
-      resetData, wipeData
-    }}>
+    <FinanceContext.Provider
+      value={{
+        transactions,
+        accounts,
+        investments,
+        entities,
+        addTransaction,
+        updateTransaction,
+        deleteTransaction,
+        addAccount,
+        updateAccount,
+        deleteAccount,
+        addInvestment,
+        updateInvestment,
+        deleteInvestment,
+        addEntity,
+        updateEntity,
+        deleteEntity,
+        profile,
+        updateProfile,
+        getNetWorth,
+        getTotalExpenses,
+        getTotalIncome,
+        resetData,
+        wipeData,
+      }}
+    >
       {children}
     </FinanceContext.Provider>
   );
@@ -290,6 +346,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
 export const useFinance = () => {
   const context = useContext(FinanceContext);
-  if (context === undefined) throw new Error("useFinance must be used within a FinanceProvider");
+  if (context === undefined)
+    throw new Error("useFinance must be used within a FinanceProvider");
   return context;
 };
