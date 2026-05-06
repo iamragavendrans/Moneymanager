@@ -18,6 +18,8 @@ export interface Transaction {
   mode?: "UPI" | "card" | "cash" | "netbanking" | "cheque";
   status?: "cleared" | "pending";
   subCategory?: string;
+  fromLocation?: string;
+  toLocation?: string;
   items?: { name: string; qty: string; unit: string; price?: number }[];
   split?: {
     with: string[];

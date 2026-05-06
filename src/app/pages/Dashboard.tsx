@@ -503,17 +503,15 @@ export const Dashboard = () => {
               <button onClick={() => setIsMasked(!isMasked)} className="text-slate-400 hover:text-white transition-colors outline-none">{isMasked ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}</button>
             </div>
           </div>
-          <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-3">
-            <div>
-              <h1 className="text-[40px] md:text-[48px] font-bold tracking-tight mb-1">{isMasked ? '₹ •••••••' : formatINR(historicalNetWorth)}</h1>
-              <div className="flex items-center gap-2">
-                {netWorthChange >= 0 ? <ArrowUpRight className="w-4 h-4 text-emerald-400" /> : <ArrowDownRight className="w-4 h-4 text-red-400" />}
-                <span className={`${netWorthChange >= 0 ? 'text-emerald-400' : 'text-red-400'} font-medium text-sm`}>{Math.abs(netWorthChange).toFixed(1)}% vs last {periodTitle.toLowerCase().replace('ly', '')}</span>
-              </div>
+          <div>
+            <h1 className="text-[40px] md:text-[48px] font-bold tracking-tight mb-1">{isMasked ? '₹ •••••••' : formatINR(historicalNetWorth)}</h1>
+            <div className="flex items-center gap-3 flex-wrap">
+              {netWorthChange >= 0 ? <ArrowUpRight className="w-4 h-4 text-emerald-400" /> : <ArrowDownRight className="w-4 h-4 text-red-400" />}
+              <span className={`${netWorthChange >= 0 ? 'text-emerald-400' : 'text-red-400'} font-medium text-sm`}>{Math.abs(netWorthChange).toFixed(1)}% vs last {periodTitle.toLowerCase().replace('ly', '')}</span>
+              <button onClick={() => setShowHeroBreakdown(!showHeroBreakdown)} className="flex items-center gap-1.5 bg-white/10 hover:bg-white/20 px-3 py-1.5 rounded-xl text-xs font-semibold transition-colors backdrop-blur-md border border-white/10 active:scale-95 outline-none focus:outline-none">
+                Breakdown <ChevronDown className={`w-3.5 h-3.5 transition-transform ${showHeroBreakdown ? 'rotate-180' : ''}`} />
+              </button>
             </div>
-            <button onClick={() => setShowHeroBreakdown(!showHeroBreakdown)} className="flex items-center gap-1.5 bg-white/10 hover:bg-white/20 px-4 py-2 rounded-xl text-sm font-semibold transition-colors backdrop-blur-md border border-white/10 w-fit active:scale-95 outline-none focus:outline-none">
-              Breakdown <ChevronDown className={`w-4 h-4 transition-transform ${showHeroBreakdown ? 'rotate-180' : ''}`} />
-            </button>
           </div>
         </div>
 
@@ -584,14 +582,12 @@ export const Dashboard = () => {
                   <div className="flex items-center gap-4">
                     <div className="flex items-center gap-1.5 text-xs font-medium text-slate-500"><div className="w-2 h-2 rounded-full bg-emerald-500"></div> Income</div>
                     <div className="flex items-center gap-1.5 text-xs font-medium text-slate-500"><div className="w-2 h-2 rounded-full bg-red-500"></div> Expense</div>
-                    <div className="flex items-center gap-1.5 text-xs font-medium text-slate-500"><div className="w-2 h-2 rounded-full bg-blue-500"></div> Net</div>
                   </div>
                 ) : globalFilter === "1M" || globalFilter === "1W" ? (
                   <div className="flex items-center gap-4">
                     <div className="flex items-center gap-1.5 text-xs font-medium text-slate-500"><div className="w-2 h-2 rounded-sm bg-emerald-400"></div> Income</div>
                     <div className="flex items-center gap-1.5 text-xs font-medium text-slate-500"><div className="w-2 h-2 rounded-sm bg-red-400"></div> Expense</div>
                     <div className="flex items-center gap-1.5 text-xs font-medium text-slate-500"><div className="w-2 h-2 rounded-sm bg-blue-400"></div> Transfer</div>
-                    <div className="flex items-center gap-1.5 text-xs font-medium text-slate-500"><div className="w-2 h-2 rounded-sm bg-yellow-400"></div> Balance</div>
                   </div>
                 ) : (
                   <div className="flex items-center gap-1 text-xs font-medium text-slate-500">
@@ -614,7 +610,6 @@ export const Dashboard = () => {
                     <Tooltip contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }} formatter={(value: number, name: string) => [formatINR(value), name.charAt(0).toUpperCase() + name.slice(1)]} />
                     <Line type="monotone" dataKey="income" stroke="#22C55E" strokeWidth={2.5} dot={false} />
                     <Line type="monotone" dataKey="expense" stroke="#EF4444" strokeWidth={2.5} dot={false} />
-                    <Line type="monotone" dataKey="net" stroke="#3B82F6" strokeWidth={2.5} dot={false} />
                   </LineChart>
                 </ResponsiveContainer>
               </div>

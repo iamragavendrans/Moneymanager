@@ -283,7 +283,7 @@ export const Accounts = () => {
           
           <div className={cn(
             "relative transition-all duration-500",
-            expanded.cards ? "space-y-6" : "h-[280px]"
+            expanded.cards ? "space-y-6" : "h-[220px]"
           )}>
             {/* Carousel Controls */}
             {!expanded.cards && creditCards.length > 1 && (
@@ -345,13 +345,13 @@ export const Accounts = () => {
                     pointerEvents: !expanded.cards ? (isActive ? 'auto' : 'none') : 'auto'
                   }}
                   className={cn(
-                    "group w-full max-w-xl mx-auto rounded-3xl p-6 shadow-2xl relative overflow-hidden cursor-pointer transition-all duration-700 border border-white/10",
-                    !expanded.cards ? "absolute top-0 left-0 right-0" : "relative mb-6",
+                    "group w-full max-w-xl mx-auto rounded-3xl p-5 shadow-2xl relative overflow-hidden cursor-pointer transition-all duration-700 border border-white/10",
+                    !expanded.cards ? "absolute top-0 left-0 right-0 h-full" : "relative mb-6",
                     `bg-gradient-to-br ${cardColor}`
                   )}
                 >
                   {/* Card Chip & Signal */}
-                  <div className="absolute top-8 left-8 flex flex-col gap-2 opacity-80">
+                  <div className="absolute top-5 left-5 flex flex-col gap-1.5 opacity-80">
                     <div className="w-10 h-7 bg-gradient-to-br from-yellow-200 to-yellow-500 rounded-md shadow-inner flex items-center justify-center">
                       <div className="w-6 h-4 border border-black/10 rounded-sm"></div>
                     </div>
@@ -363,7 +363,7 @@ export const Accounts = () => {
                   </div>
 
                   {/* Brand Logo & Network */}
-                  <div className="absolute top-8 right-8 flex items-center gap-3">
+                  <div className="absolute top-5 right-5 flex items-center gap-3">
                     <div className="text-white/40 text-[10px] font-black italic uppercase tracking-tighter mr-1">
                       {getCardNetwork(acc.fullAccountNumber || acc.lastFour)}
                     </div>
@@ -376,10 +376,10 @@ export const Accounts = () => {
                     </div>
                   </div>
 
-                  <div className="mt-16 mb-10">
+                  <div className="mt-10 mb-3">
                     <h4 className="text-white/60 text-[10px] uppercase font-bold tracking-widest mb-1">Card Holder / Issuer</h4>
                     <p className="text-white font-bold tracking-wider text-sm">{acc.name}</p>
-                    <p className="text-white/90 font-mono text-xl tracking-[0.2em] mt-4 flex gap-4">
+                    <p className="text-white/90 font-mono text-base tracking-[0.15em] mt-2 flex gap-3">
                       <span>****</span>
                       <span>****</span>
                       <span>****</span>
@@ -390,7 +390,7 @@ export const Accounts = () => {
                   <div className="flex items-end justify-between">
                     <div>
                       <p className="text-[10px] font-bold text-white/40 uppercase tracking-wider mb-0.5">Outstanding Balance</p>
-                      <p className="text-2xl font-black text-white tracking-tight">{formatINR(outstanding)}</p>
+                      <p className="text-xl font-black text-white tracking-tight">{formatINR(outstanding)}</p>
                     </div>
                     <div className="text-right">
                       <p className="text-[10px] font-bold text-white/40 uppercase tracking-wider mb-0.5">Available Limit</p>

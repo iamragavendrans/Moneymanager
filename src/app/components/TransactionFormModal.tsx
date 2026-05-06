@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { format } from "date-fns";
+import { format, parseISO } from "date-fns";
 import { X, ArrowDownRight, ArrowUpRight, ArrowRightLeft, ChevronDown, ChevronUp, MapPin, Tag, Users, Calendar, Plus, Edit } from "lucide-react";
 import { cn } from "../utils";
 import { useFinance, TransactionType } from "../context/FinanceContext";
@@ -68,6 +68,10 @@ export const TransactionFormModal: React.FC<{
   const [itemUnit, setItemUnit] = useState("pcs");
   const [itemPrice, setItemPrice] = useState("");
   const [itemsList, setItemsList] = useState<{name: string, qty: string, unit: string, price?: number}[]>([]);
+
+  // Transport fields
+  const [travelFrom, setTravelFrom] = useState("");
+  const [travelTo, setTravelTo] = useState("");
 
   // Tags
   const [tagInput, setTagInput] = useState("");
@@ -190,7 +194,9 @@ export const TransactionFormModal: React.FC<{
         setMode(tx.mode as any || "UPI");
         setNotes(tx.notes);
         setSubCategory(tx.subCategory || "");
-        
+        if (tx.fromLocation) setTravelFrom(tx.fromLocation);
+        if (tx.toLocation) setTravelTo(tx.toLocation);
+
         if (tx.items) setItemsList(tx.items);
         if (tx.split) {
           setIsSplit(true);
@@ -242,6 +248,8 @@ export const TransactionFormModal: React.FC<{
       mode: mode,
       status: "cleared" as const,
       subCategory: isCustomSubCat ? customSubCat : (subCategory || undefined),
+      fromLocation: (category === 'Transport' && travelFrom) ? travelFrom : undefined,
+      toLocation: (category === 'Transport' && travelTo) ? travelTo : undefined,
       items: itemsList.length > 0 ? itemsList : undefined,
     };
 
@@ -400,17 +408,17 @@ export const TransactionFormModal: React.FC<{
                     Mismatch: Item total is ₹{itemsTotal.toFixed(2)}
                   </div>
                 )}
-                <label className="flex items-center gap-2 px-3 py-2 bg-white border border-slate-200 rounded-xl shadow-sm text-slate-500 hover:text-indigo-600 hover:border-indigo-200 transition-all cursor-pointer group">
+                <label className="relative flex items-center gap-2 px-3 py-2 bg-white border border-slate-200 rounded-xl shadow-sm text-slate-500 hover:text-indigo-600 hover:border-indigo-200 transition-all cursor-pointer group">
                   <div className="flex flex-col items-end">
                     <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider leading-none">Date</span>
-                    <span className="text-xs font-bold text-slate-700 group-hover:text-indigo-600 transition-colors">{format(new Date(date), "MMM dd")}</span>
+                    <span className="text-xs font-bold text-slate-700 group-hover:text-indigo-600 transition-colors">{date && date.length >= 8 ? format(parseISO(date), "MMM dd") : "Date"}</span>
                   </div>
                   <div className="w-8 h-8 flex items-center justify-center rounded-lg bg-slate-50">
                     <Calendar className="w-4 h-4" />
                   </div>
                   <input
                     type="date" value={date} onChange={(e) => setDate(e.target.value)}
-                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
                   />
                 </label>
               </div>
@@ -423,13 +431,13 @@ export const TransactionFormModal: React.FC<{
                   <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Total (from items)</p>
                   <p className="text-3xl font-black text-slate-900">₹{itemsTotal.toFixed(2)}</p>
                 </div>
-                <label className="flex items-center gap-2 px-3 py-2 bg-white border border-slate-200 rounded-xl shadow-sm text-slate-500 hover:text-indigo-600 hover:border-indigo-200 transition-all cursor-pointer group relative">
+                <label className="relative flex items-center gap-2 px-3 py-2 bg-white border border-slate-200 rounded-xl shadow-sm text-slate-500 hover:text-indigo-600 hover:border-indigo-200 transition-all cursor-pointer group">
                   <div className="flex flex-col items-end">
                     <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider leading-none">Date</span>
-                    <span className="text-xs font-bold text-slate-700 group-hover:text-indigo-600 transition-colors">{format(new Date(date), "MMM dd")}</span>
+                    <span className="text-xs font-bold text-slate-700 group-hover:text-indigo-600 transition-colors">{date && date.length >= 8 ? format(parseISO(date), "MMM dd") : "Date"}</span>
                   </div>
                   <div className="w-8 h-8 flex items-center justify-center rounded-lg bg-slate-50"><Calendar className="w-4 h-4" /></div>
-                  <input type="date" value={date} onChange={(e) => setDate(e.target.value)} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" />
+                  <input type="date" value={date} onChange={(e) => setDate(e.target.value)} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" />
                 </label>
               </div>
             )}
@@ -633,6 +641,27 @@ export const TransactionFormModal: React.FC<{
                     </div>
                   )}
 
+                  {category === 'Transport' && (
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">From</label>
+                        <input
+                          type="text" value={travelFrom} onChange={(e) => setTravelFrom(e.target.value)}
+                          placeholder="e.g. Home"
+                          className="w-full text-sm bg-slate-50 px-3 py-2.5 rounded-xl border-0 focus:ring-2 focus:ring-indigo-600 outline-none"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">To</label>
+                        <input
+                          type="text" value={travelTo} onChange={(e) => setTravelTo(e.target.value)}
+                          placeholder="e.g. Office"
+                          className="w-full text-sm bg-slate-50 px-3 py-2.5 rounded-xl border-0 focus:ring-2 focus:ring-indigo-600 outline-none"
+                        />
+                      </div>
+                    </div>
+                  )}
+
                   <div>
                     <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Purpose / Short Note</label>
                     <input
@@ -641,7 +670,7 @@ export const TransactionFormModal: React.FC<{
                       className="w-full text-sm bg-slate-50 px-3 py-2.5 rounded-xl border-0 focus:ring-2 focus:ring-indigo-600 outline-none"
                     />
                   </div>
-                  
+
                   {/* Items Inventory */}
                   <div className="space-y-3 bg-slate-50/50 p-3 rounded-xl border border-slate-100">
                     <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Items & Inventory</label>

@@ -362,7 +362,7 @@ export const Transactions = () => {
                         filterMode === (t as any) ? "bg-white text-slate-900 shadow-sm" : "text-slate-500 hover:text-slate-700"
                       )}
                     >
-                      {t}
+                      {t === "netbanking" ? "Bank Transfer" : t}
                     </button>
                   ))}
                 </div>
