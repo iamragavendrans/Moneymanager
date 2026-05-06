@@ -1,1 +1,12 @@
 node_modules
+
+# Android build artifacts (project is generated in CI)
+android/app/build/
+android/.gradle/
+android/local.properties
+
+# Temporary signing key copied into the android project during CI
+android/app/release.keystore
+
+# Other keystore / key formats (signing/release.keystore IS intentionally tracked)
+*.jks

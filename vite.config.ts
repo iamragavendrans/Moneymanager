@@ -17,6 +17,10 @@ function figmaAssetResolver() {
 }
 
 export default defineConfig({
+  define: {
+    __BUILD_NUMBER__: JSON.stringify(process.env.VITE_BUILD_NUMBER ?? '0'),
+    __BUILD_SHA__: JSON.stringify((process.env.VITE_BUILD_SHA ?? 'dev').slice(0, 7)),
+  },
   plugins: [
     figmaAssetResolver(),
     // The React and Tailwind plugins are both required for Make, even if
