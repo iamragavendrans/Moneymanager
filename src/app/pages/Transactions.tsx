@@ -49,7 +49,7 @@ export const Transactions = () => {
     setSearchParams(searchParams);
   };
   const [filterType, setFilterType] = useState<"all" | "expense" | "income" | "transfer">((searchParams.get("type") as any) || "all");
-  const [filterMode, setFilterMode] = useState<"all" | "UPI" | "card" | "cash" | "netbanking" | "cheque">("all");
+  const [filterMode, setFilterMode] = useState<"all" | "UPI" | "card" | "cash" | "netbanking">("all");
   const [filterStatus, setFilterStatus] = useState<"all" | "cleared" | "pending">("all");
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
   const [isAllExpanded, setIsAllExpanded] = useState(false);
@@ -314,6 +314,13 @@ export const Transactions = () => {
             />
           </div>
           <button
+            onClick={toggleAll}
+            className="p-3 border border-slate-200 rounded-xl flex items-center justify-center gap-1.5 transition-colors shadow-sm shrink-0 bg-white text-slate-500 hover:bg-slate-50 text-xs font-semibold"
+            title={isAllExpanded ? "Collapse All Groups" : "Expand All Groups"}
+          >
+            {isAllExpanded ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
+          </button>
+          <button
             onClick={() => setShowFilters(!showFilters)}
             className={cn("p-3 border rounded-xl flex items-center justify-center transition-colors shadow-sm shrink-0", showFilters ? "bg-indigo-50 border-indigo-200 text-indigo-600" : "bg-white border-slate-200 text-slate-500 hover:bg-slate-50")}
           >
@@ -323,12 +330,8 @@ export const Transactions = () => {
         {/* Advanced Filters */}
         {showFilters && (
           <div className="flex flex-col gap-3 p-4 bg-white border border-slate-200 rounded-xl shadow-sm animate-in fade-in slide-in-from-top-2">
-            <div className="flex flex-wrap items-center justify-between gap-4">
+            <div className="flex items-center gap-2">
               <h4 className="font-semibold text-slate-700 text-sm">Filters</h4>
-              <button onClick={toggleAll} className="flex items-center gap-1.5 text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 px-2 py-1 rounded-lg text-xs font-semibold transition-colors">
-                {isAllExpanded ? <Minimize2 className="w-3.5 h-3.5" /> : <Maximize2 className="w-3.5 h-3.5" />}
-                <span>{isAllExpanded ? "Collapse All" : "Expand All Groups"}</span>
-              </button>
             </div>
 
             <div className="flex flex-wrap gap-x-6 gap-y-5">
@@ -353,7 +356,7 @@ export const Transactions = () => {
               <div className="flex flex-col gap-1.5 flex-1 min-w-[240px]">
                 <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Payment Mode</span>
                 <div className="flex bg-slate-100 p-1 rounded-lg shrink-0 overflow-x-auto scrollbar-hide">
-                  {(["all", "UPI", "card", "cash", "netbanking", "cheque"] as const).map((t) => (
+                  {(["all", "UPI", "card", "cash", "netbanking"] as const).map((t) => (
                     <button
                       key={t}
                       onClick={() => setFilterMode(t as any)}

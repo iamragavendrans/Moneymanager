@@ -69,9 +69,9 @@ export const TransactionFormModal: React.FC<{
   const [itemPrice, setItemPrice] = useState("");
   const [itemsList, setItemsList] = useState<{name: string, qty: string, unit: string, price?: number}[]>([]);
 
-  // Transport fields
-  const [travelFrom, setTravelFrom] = useState("");
-  const [travelTo, setTravelTo] = useState("");
+  // Transport route fields (used in items entry when category is Transport)
+  const [routeFrom, setRouteFrom] = useState("");
+  const [routeTo, setRouteTo] = useState("");
 
   // Tags
   const [tagInput, setTagInput] = useState("");
@@ -194,8 +194,6 @@ export const TransactionFormModal: React.FC<{
         setMode(tx.mode as any || "UPI");
         setNotes(tx.notes);
         setSubCategory(tx.subCategory || "");
-        if (tx.fromLocation) setTravelFrom(tx.fromLocation);
-        if (tx.toLocation) setTravelTo(tx.toLocation);
 
         if (tx.items) setItemsList(tx.items);
         if (tx.split) {
@@ -248,8 +246,6 @@ export const TransactionFormModal: React.FC<{
       mode: mode,
       status: "cleared" as const,
       subCategory: isCustomSubCat ? customSubCat : (subCategory || undefined),
-      fromLocation: (category === 'Transport' && travelFrom) ? travelFrom : undefined,
-      toLocation: (category === 'Transport' && travelTo) ? travelTo : undefined,
       items: itemsList.length > 0 ? itemsList : undefined,
     };
 
@@ -354,7 +350,7 @@ export const TransactionFormModal: React.FC<{
   };
 
   return (
-    <div className="fixed inset-0 z-[100] flex justify-end bg-slate-900/50 backdrop-blur-sm sm:p-4">
+    <div className="fixed inset-0 z-[100] flex items-end sm:items-center sm:justify-center bg-slate-900/50 backdrop-blur-sm sm:p-4">
       <div className="fixed inset-0 sm:hidden" onClick={onClose} />
 
       <div className="relative w-full max-w-md bg-white rounded-t-3xl sm:rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh] animate-in slide-in-from-bottom-full sm:slide-in-from-bottom-0 sm:zoom-in-95 duration-200">
@@ -641,27 +637,6 @@ export const TransactionFormModal: React.FC<{
                     </div>
                   )}
 
-                  {category === 'Transport' && (
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">From</label>
-                        <input
-                          type="text" value={travelFrom} onChange={(e) => setTravelFrom(e.target.value)}
-                          placeholder="e.g. Home"
-                          className="w-full text-sm bg-slate-50 px-3 py-2.5 rounded-xl border-0 focus:ring-2 focus:ring-indigo-600 outline-none"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">To</label>
-                        <input
-                          type="text" value={travelTo} onChange={(e) => setTravelTo(e.target.value)}
-                          placeholder="e.g. Office"
-                          className="w-full text-sm bg-slate-50 px-3 py-2.5 rounded-xl border-0 focus:ring-2 focus:ring-indigo-600 outline-none"
-                        />
-                      </div>
-                    </div>
-                  )}
-
                   <div>
                     <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Purpose / Short Note</label>
                     <input
@@ -671,35 +646,84 @@ export const TransactionFormModal: React.FC<{
                     />
                   </div>
 
-                  {/* Items Inventory */}
+                  {/* Items / Routes section — Transport shows route entry, others show generic items */}
                   <div className="space-y-3 bg-slate-50/50 p-3 rounded-xl border border-slate-100">
-                    <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Items & Inventory</label>
+                    <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">
+                      {category === 'Transport' ? 'Routes & Tickets' : 'Items & Inventory'}
+                    </label>
                     <div className="space-y-2">
-                      <input
-                        type="text" value={itemInput} onChange={(e) => setItemInput(e.target.value)}
-                        onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), addItem())}
-                        placeholder="Add new item (e.g. Grapes)"
-                        className="w-full text-sm bg-white px-3 py-2.5 rounded-xl border border-slate-200 focus:ring-2 focus:ring-indigo-600 outline-none shadow-sm"
-                      />
-                      <div className="flex items-center gap-2">
-                        <div className="flex-1 bg-white border border-slate-200 rounded-xl px-3 py-1 flex items-center shadow-sm">
-                           <span className="text-xs font-bold text-slate-400 mr-2">₹</span>
-                           <input type="number" value={itemPrice} onChange={e => setItemPrice(e.target.value)} placeholder="Price" className="w-full text-sm bg-transparent border-0 p-1.5 focus:ring-0 outline-none" />
-                        </div>
-                        <input
-                          type="number" value={itemQty} onChange={(e) => setItemQty(e.target.value)}
-                          className="w-16 text-sm bg-white border border-slate-200 px-2 py-2.5 rounded-xl focus:ring-2 focus:ring-indigo-600 outline-none text-center shadow-sm"
-                        />
-                        <select
-                          value={itemUnit} onChange={(e) => setItemUnit(e.target.value)}
-                          className="w-24 text-sm bg-white border border-slate-200 px-2 py-2.5 rounded-xl focus:ring-2 focus:ring-indigo-600 outline-none shadow-sm font-semibold"
-                        >
-                          {["pcs", "unit", "kg", "g", "L", "ml", "pack", "box", "bundle"].map(u => <option key={u} value={u}>{u}</option>)}
-                        </select>
-                        <button type="button" onClick={addItem} className="w-10 h-[40px] flex items-center justify-center bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 transition-colors shrink-0">
-                          <Plus className="w-5 h-5" />
-                        </button>
-                      </div>
+                      {category === 'Transport' ? (
+                        <>
+                          <div className="grid grid-cols-2 gap-2">
+                            <input
+                              type="text" value={routeFrom} onChange={(e) => setRouteFrom(e.target.value)}
+                              placeholder="From (e.g. Home)"
+                              className="text-sm bg-white px-3 py-2.5 rounded-xl border border-slate-200 focus:ring-2 focus:ring-indigo-600 outline-none shadow-sm"
+                            />
+                            <input
+                              type="text" value={routeTo} onChange={(e) => setRouteTo(e.target.value)}
+                              onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); if (routeFrom.trim() && routeTo.trim()) { setItemInput(`${routeFrom.trim()} → ${routeTo.trim()}`); setItemUnit('ticket'); addItem(); setRouteFrom(''); setRouteTo(''); } } }}
+                              placeholder="To (e.g. Office)"
+                              className="text-sm bg-white px-3 py-2.5 rounded-xl border border-slate-200 focus:ring-2 focus:ring-indigo-600 outline-none shadow-sm"
+                            />
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <div className="flex-1 bg-white border border-slate-200 rounded-xl px-3 py-1 flex items-center shadow-sm">
+                              <span className="text-xs font-bold text-slate-400 mr-2">₹</span>
+                              <input type="number" value={itemPrice} onChange={e => setItemPrice(e.target.value)} placeholder="Fare / ticket" className="w-full text-sm bg-transparent border-0 p-1.5 focus:ring-0 outline-none" />
+                            </div>
+                            <div className="flex items-center gap-1 bg-white border border-slate-200 rounded-xl px-3 py-2.5 shadow-sm">
+                              <input type="number" min="1" value={itemQty} onChange={(e) => setItemQty(e.target.value)} className="w-10 text-sm bg-transparent border-0 p-0 focus:ring-0 outline-none text-center font-bold" />
+                              <span className="text-xs text-slate-400 font-semibold">ticket{Number(itemQty) > 1 ? 's' : ''}</span>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                if (routeFrom.trim() && routeTo.trim()) {
+                                  setItemsList(prev => [...prev, {
+                                    name: `${routeFrom.trim()} → ${routeTo.trim()}`,
+                                    qty: itemQty,
+                                    unit: 'ticket',
+                                    price: itemPrice ? Number(itemPrice) * Number(itemQty) : undefined
+                                  }]);
+                                  setRouteFrom(''); setRouteTo(''); setItemQty('1'); setItemPrice('');
+                                }
+                              }}
+                              className="w-10 h-[40px] flex items-center justify-center bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 transition-colors shrink-0"
+                            >
+                              <Plus className="w-5 h-5" />
+                            </button>
+                          </div>
+                        </>
+                      ) : (
+                        <>
+                          <input
+                            type="text" value={itemInput} onChange={(e) => setItemInput(e.target.value)}
+                            onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), addItem())}
+                            placeholder="Add new item (e.g. Grapes)"
+                            className="w-full text-sm bg-white px-3 py-2.5 rounded-xl border border-slate-200 focus:ring-2 focus:ring-indigo-600 outline-none shadow-sm"
+                          />
+                          <div className="flex items-center gap-2">
+                            <div className="flex-1 bg-white border border-slate-200 rounded-xl px-3 py-1 flex items-center shadow-sm">
+                               <span className="text-xs font-bold text-slate-400 mr-2">₹</span>
+                               <input type="number" value={itemPrice} onChange={e => setItemPrice(e.target.value)} placeholder="Price" className="w-full text-sm bg-transparent border-0 p-1.5 focus:ring-0 outline-none" />
+                            </div>
+                            <input
+                              type="number" value={itemQty} onChange={(e) => setItemQty(e.target.value)}
+                              className="w-16 text-sm bg-white border border-slate-200 px-2 py-2.5 rounded-xl focus:ring-2 focus:ring-indigo-600 outline-none text-center shadow-sm"
+                            />
+                            <select
+                              value={itemUnit} onChange={(e) => setItemUnit(e.target.value)}
+                              className="w-24 text-sm bg-white border border-slate-200 px-2 py-2.5 rounded-xl focus:ring-2 focus:ring-indigo-600 outline-none shadow-sm font-semibold"
+                            >
+                              {["pcs", "unit", "kg", "g", "L", "ml", "pack", "box", "bundle"].map(u => <option key={u} value={u}>{u}</option>)}
+                            </select>
+                            <button type="button" onClick={addItem} className="w-10 h-[40px] flex items-center justify-center bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 transition-colors shrink-0">
+                              <Plus className="w-5 h-5" />
+                            </button>
+                          </div>
+                        </>
+                      )}
                     </div>
                     
                     {itemsList.length > 0 && (

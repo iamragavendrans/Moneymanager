@@ -283,7 +283,7 @@ export const Accounts = () => {
           
           <div className={cn(
             "relative transition-all duration-500",
-            expanded.cards ? "space-y-6" : "h-[220px]"
+            expanded.cards ? "space-y-6" : "h-[220px] max-w-[360px] mx-auto"
           )}>
             {/* Carousel Controls */}
             {!expanded.cards && creditCards.length > 1 && (
@@ -345,8 +345,8 @@ export const Accounts = () => {
                     pointerEvents: !expanded.cards ? (isActive ? 'auto' : 'none') : 'auto'
                   }}
                   className={cn(
-                    "group w-full max-w-xl mx-auto rounded-3xl p-5 shadow-2xl relative overflow-hidden cursor-pointer transition-all duration-700 border border-white/10",
-                    !expanded.cards ? "absolute top-0 left-0 right-0 h-full" : "relative mb-6",
+                    "group w-full max-w-[360px] mx-auto rounded-3xl p-5 shadow-2xl relative overflow-hidden cursor-pointer transition-all duration-700 border border-white/10",
+                    !expanded.cards ? "absolute top-0 inset-x-0 h-full" : "relative mb-6 aspect-[1.586]",
                     `bg-gradient-to-br ${cardColor}`
                   )}
                 >
@@ -458,9 +458,9 @@ export const Accounts = () => {
                         )}
                       </div>
                       <p className="text-sm text-slate-500 mb-4 flex items-center gap-2">
-                        Outstanding: <span className="font-black text-red-600">{formatINR(Math.abs(acc.balance))}</span>
+                        Next Due: <span className="font-black text-slate-700">Day {acc.emiDate || '05'} of month</span>
                       </p>
-                      
+
                       {acc.emiAmount && (
                         <div className="flex items-center justify-between pt-4 border-t border-slate-50">
                           <div>
@@ -468,8 +468,8 @@ export const Accounts = () => {
                             <p className="text-lg font-black text-slate-800">{formatINR(acc.emiAmount)}</p>
                           </div>
                           <div className="text-right">
-                             <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-0.5">Next Due</p>
-                             <p className="text-xs font-bold text-slate-600">Day {acc.emiDate || '05'} of month</p>
+                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-0.5">Outstanding</p>
+                            <p className="text-base font-black text-red-600">{formatINR(Math.abs(acc.balance))}</p>
                           </div>
                         </div>
                       )}

@@ -446,7 +446,7 @@ export const Dashboard = () => {
     <div className="max-w-[1200px] mx-auto w-full relative">
 
       {/* Sticky Header with Filters */}
-      <div className="sticky top-0 z-40 bg-slate-50/80 backdrop-blur-md px-4 py-3 -mx-4 border-b border-slate-200/50 mb-4 flex items-center justify-between">
+      <div className="sticky top-0 z-40 bg-slate-50/80 backdrop-blur-md px-4 py-3 border-b border-slate-200/50 mb-4 flex items-center justify-between">
         <div className="bg-slate-200/50 rounded-lg p-1 flex gap-1 border border-slate-300/30">
           {['1W', '1M', '1Y'].map(f => (
             <button key={f} onClick={() => handleGlobalFilter(f)} className={`px-3 py-1.5 text-xs font-bold rounded-md transition-all ${globalFilter === f ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>{f}</button>
@@ -505,10 +505,12 @@ export const Dashboard = () => {
           </div>
           <div>
             <h1 className="text-[40px] md:text-[48px] font-bold tracking-tight mb-1">{isMasked ? '₹ •••••••' : formatINR(historicalNetWorth)}</h1>
-            <div className="flex items-center gap-3 flex-wrap">
-              {netWorthChange >= 0 ? <ArrowUpRight className="w-4 h-4 text-emerald-400" /> : <ArrowDownRight className="w-4 h-4 text-red-400" />}
-              <span className={`${netWorthChange >= 0 ? 'text-emerald-400' : 'text-red-400'} font-medium text-sm`}>{Math.abs(netWorthChange).toFixed(1)}% vs last {periodTitle.toLowerCase().replace('ly', '')}</span>
-              <button onClick={() => setShowHeroBreakdown(!showHeroBreakdown)} className="flex items-center gap-1.5 bg-white/10 hover:bg-white/20 px-3 py-1.5 rounded-xl text-xs font-semibold transition-colors backdrop-blur-md border border-white/10 active:scale-95 outline-none focus:outline-none">
+            <div className="flex items-center justify-between gap-2 mt-1">
+              <div className="flex items-center gap-1.5">
+                {netWorthChange >= 0 ? <ArrowUpRight className="w-4 h-4 text-emerald-400" /> : <ArrowDownRight className="w-4 h-4 text-red-400" />}
+                <span className={`${netWorthChange >= 0 ? 'text-emerald-400' : 'text-red-400'} font-medium text-sm`}>{Math.abs(netWorthChange).toFixed(1)}% vs last {periodTitle.toLowerCase().replace('ly', '')}</span>
+              </div>
+              <button onClick={() => setShowHeroBreakdown(!showHeroBreakdown)} className="flex items-center gap-1.5 bg-white/10 hover:bg-white/20 px-3 py-1.5 rounded-xl text-xs font-semibold transition-colors backdrop-blur-md border border-white/10 active:scale-95 outline-none focus:outline-none shrink-0">
                 Breakdown <ChevronDown className={`w-3.5 h-3.5 transition-transform ${showHeroBreakdown ? 'rotate-180' : ''}`} />
               </button>
             </div>
@@ -603,10 +605,10 @@ export const Dashboard = () => {
             ) : (
               <div className="h-[250px] w-full animate-in fade-in duration-300" style={{ minHeight: 250, minWidth: 0 }}>
                 <ResponsiveContainer width="100%" height={250}>
-                  <LineChart data={chartData} margin={{ top: 10, right: 0, left: -20, bottom: 0 }}>
+                  <LineChart data={chartData} margin={{ top: 10, right: 4, left: -10, bottom: 0 }}>
                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0" />
-                    <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#64748B', fontWeight: 500 }} dy={10} />
-                    <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#64748B', fontWeight: 500 }} tickFormatter={(val) => `₹${val / 1000}k`} allowDecimals={false} tickCount={4} minTickGap={30} />
+                    <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#94A3B8', fontWeight: 500 }} dy={8} />
+                    <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#94A3B8', fontWeight: 500 }} tickFormatter={(val) => val === 0 ? '0' : val >= 100000 ? `${(val/100000).toFixed(0)}L` : `${Math.round(val/1000)}k`} allowDecimals={false} tickCount={4} minTickGap={30} width={30} />
                     <Tooltip contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }} formatter={(value: number, name: string) => [formatINR(value), name.charAt(0).toUpperCase() + name.slice(1)]} />
                     <Line type="monotone" dataKey="income" stroke="#22C55E" strokeWidth={2.5} dot={false} />
                     <Line type="monotone" dataKey="expense" stroke="#EF4444" strokeWidth={2.5} dot={false} />
