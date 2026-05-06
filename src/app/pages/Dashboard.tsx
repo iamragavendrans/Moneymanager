@@ -1,9 +1,10 @@
 import React, { useState, useMemo } from "react";
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from "recharts";
 import { ArrowUpRight, ArrowDownRight, Eye, EyeOff, LayoutGrid, ChevronDown, TrendingUp, X, Check, Clock, ChevronLeft, ChevronRight } from "lucide-react";
 import { format, subDays, getDaysInMonth, getDay, startOfMonth, endOfMonth, startOfWeek, endOfWeek, subWeeks, eachDayOfInterval, addWeeks, subMonths, addMonths, subYears, addYears, addDays, differenceInCalendarDays, isSameDay, isSameMonth, endOfDay, startOfYear, endOfYear } from "date-fns";
 import { useFinance, Transaction, Account } from "../context/FinanceContext";
 import { formatINR } from "../utils";
+import { CATEGORY_CLASSIFICATION } from "../utils/categories";
 import { Link, useNavigate } from "react-router";
 import { TransactionFormModal } from "../components/TransactionFormModal";
 import { toast } from "sonner";
@@ -353,6 +354,23 @@ export const Dashboard = () => {
         frequency: e.frequency,
       }));
   }, [entities]);
+
+  const NW_LABELS = ['need', 'want', 'investment', 'discretionary'] as const;
+  const NW_COLORS = { need: '#3B82F6', want: '#F59E0B', investment: '#10B981', discretionary: '#A855F7' };
+
+  const discretionaryData = useMemo(() => {
+    const expenseTx = filteredTransactions.filter(t => t.type === 'expense');
+    const totals: Record<string, number> = { need: 0, want: 0, investment: 0, discretionary: 0 };
+    expenseTx.forEach(t => {
+      const tagCls = t.tags.find(tag => NW_LABELS.includes(tag as any));
+      const cls = tagCls || CATEGORY_CLASSIFICATION[t.category] || 'want';
+      totals[cls] = (totals[cls] || 0) + t.amount;
+    });
+    const grandTotal = Object.values(totals).reduce((s, v) => s + v, 0);
+    return NW_LABELS
+      .filter(key => totals[key] > 0)
+      .map(key => ({ name: key, value: totals[key], pct: grandTotal > 0 ? Math.round((totals[key] / grandTotal) * 100) : 0 }));
+  }, [filteredTransactions]);
 
   const renderHeatmap = () => {
     const getDayStats = (d: Date) => {
@@ -713,6 +731,45 @@ export const Dashboard = () => {
               </div>
             </Card>
           </div>
+
+          {/* Spend Breakdown Card */}
+          <Card className="p-5">
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <h3 className="font-bold text-[15px] text-slate-800">Spend Breakdown</h3>
+                <p className="text-[10px] text-slate-400 font-medium mt-0.5 uppercase tracking-wide">{periodLabel} · Expenses only</p>
+              </div>
+            </div>
+            {discretionaryData.length === 0 ? (
+              <p className="text-sm text-slate-400 text-center py-6">No expense data for this period.</p>
+            ) : (
+              <div className="flex items-center gap-4">
+                <div className="shrink-0">
+                  <PieChart width={100} height={100}>
+                    <Pie data={discretionaryData} cx={45} cy={45} innerRadius={28} outerRadius={45} dataKey="value" paddingAngle={2}>
+                      {discretionaryData.map((entry) => (
+                        <Cell key={entry.name} fill={NW_COLORS[entry.name as keyof typeof NW_COLORS]} />
+                      ))}
+                    </Pie>
+                  </PieChart>
+                </div>
+                <div className="flex-1 space-y-2">
+                  {discretionaryData.map(entry => (
+                    <div key={entry.name} className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <div className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: NW_COLORS[entry.name as keyof typeof NW_COLORS] }} />
+                        <span className="text-xs font-semibold text-slate-600 capitalize">{entry.name}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-[10px] font-bold text-slate-400">{entry.pct}%</span>
+                        <span className="text-xs font-bold text-slate-700">{formatINR(entry.value)}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </Card>
 
           <Card className="p-5 lg:hidden">
             <div className="flex items-center justify-between mb-4">

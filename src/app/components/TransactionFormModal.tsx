@@ -4,28 +4,11 @@ import { X, ArrowDownRight, ArrowUpRight, ArrowRightLeft, ChevronDown, ChevronUp
 import { cn } from "../utils";
 import { useFinance, TransactionType } from "../context/FinanceContext";
 import { toast } from "sonner";
-
-const subCategoryMapping: Record<string, string[]> = {
-  Food: ["Groceries", "Dining Out", "Street Food", "Zomato/Swiggy", "Coffee", "Alcohol"],
-  Transport: ["Fuel", "Uber/Ola", "Public Transport", "Service/Repairs", "Parking"],
-  Shopping: ["Electronics", "Clothing", "Home Decor", "Gifts", "Personal Care"],
-  Bills: ["Electricity", "Water", "Gas", "Internet", "Mobile", "DTH"],
-  Entertainment: ["Movies", "Gaming", "Streaming", "Events"],
-  Health: ["Medicine", "Doctor", "Gym", "Insurance"],
-  Housing: ["Rent", "Maintenance", "Furniture", "Domestic Help"],
-  Investment: ["Stocks", "Mutual Funds", "Gold", "Crypto", "Dividends", "Interest", "Capital Gains", "Mutual Fund Redemption"],
-  Education: ["Course Fee", "Books", "Stationery"],
-  Travel: ["Flights", "Hotels", "Sightseeing"],
-  Salary: ["Base Pay", "Bonus", "RSU/Stocks", "Arrears"],
-  Freelance: ["Design", "Development", "Consulting", "Writing", "Teaching"],
-  Gift: ["Birthday Gift", "Wedding Gift", "Festival Gift", "Cashback"],
-  Rental: ["House Rent", "Commercial Rent", "Vehicle Rent"],
-  Others: ["Refund", "Reimbursement", "Inheritance", "Lottery"],
-};
+import { SUBCATEGORY_MAP, CATEGORY_CLASSIFICATION, EXPENSE_CATEGORY_NAMES, INCOME_CATEGORY_NAMES } from "../utils/categories";
 
 const categories = {
-  expense: ["Food", "Transport", "Shopping", "Bills", "Entertainment", "Health", "Housing", "Investment", "Education", "Travel", "Others"],
-  income: ["Salary", "Freelance", "Investment", "Gift", "Others"]
+  expense: EXPENSE_CATEGORY_NAMES,
+  income: INCOME_CATEGORY_NAMES,
 };
 
 export const TransactionFormModal: React.FC<{ 
@@ -174,10 +157,12 @@ export const TransactionFormModal: React.FC<{
     setCategory(newCat);
     setIsCustomSubCat(false);
     setCustomSubCat("");
+    setSubCategory("");
     if (type === 'income' && newCat === 'Salary') {
       setPayee(profile.companyName);
     }
-    setSubCategory("");
+    const cls = CATEGORY_CLASSIFICATION[newCat];
+    if (cls) setNeedWant(cls);
   };
 
   React.useEffect(() => {
@@ -593,6 +578,7 @@ export const TransactionFormModal: React.FC<{
                 {/* Section 2: Details */}
                 <div className="space-y-4">
                   <div className="grid grid-cols-2 gap-4">
+                    {localStorage.getItem('s_subcats') !== 'false' && (
                     <div>
                       <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Sub Category</label>
                       {isCustomSubCat ? (
@@ -610,11 +596,12 @@ export const TransactionFormModal: React.FC<{
                           className="w-full text-sm font-semibold bg-slate-50 px-3 py-2.5 rounded-xl border-0 focus:ring-2 focus:ring-indigo-600 outline-none appearance-none cursor-pointer"
                         >
                           <option value="">Select...</option>
-                          {subCategoryMapping[category]?.map(sc => <option key={sc} value={sc}>{sc}</option>)}
+                          {SUBCATEGORY_MAP[category]?.map(sc => <option key={sc} value={sc}>{sc}</option>)}
                           <option value="NEW" className="text-indigo-600 font-bold">+ Create New...</option>
                         </select>
                       )}
                     </div>
+                    )}
                     <div>
                       <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Tags</label>
                       <input
@@ -960,6 +947,7 @@ export const TransactionFormModal: React.FC<{
             {viewMode === "detailed" && type === "income" && (
               <div className="bg-white rounded-2xl p-4 space-y-6 border border-slate-100 shadow-sm animate-in fade-in zoom-in-95 duration-200">
                 <div className="grid grid-cols-2 gap-4">
+                  {localStorage.getItem('s_subcats') !== 'false' && (
                     <div>
                       <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Sub Category</label>
                       {isCustomSubCat ? (
@@ -977,21 +965,22 @@ export const TransactionFormModal: React.FC<{
                           className="w-full text-sm font-semibold bg-slate-50 px-3 py-2.5 rounded-xl border-0 focus:ring-2 focus:ring-indigo-600 outline-none appearance-none cursor-pointer"
                         >
                           <option value="">Select...</option>
-                          {subCategoryMapping[category]?.map(sc => <option key={sc} value={sc}>{sc}</option>)}
+                          {SUBCATEGORY_MAP[category]?.map(sc => <option key={sc} value={sc}>{sc}</option>)}
                           <option value="NEW" className="text-indigo-600 font-bold">+ Create New...</option>
                         </select>
                       )}
                     </div>
-                    <div>
-                      <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Tags</label>
-                      <input
-                        type="text" value={tagInput} onChange={(e) => setTagInput(e.target.value)}
-                        onKeyDown={addTag}
-                        placeholder="Type & Enter"
-                        className="w-full text-sm bg-slate-50 px-3 py-2.5 rounded-xl border-0 focus:ring-2 focus:ring-indigo-600 outline-none"
-                      />
-                    </div>
+                  )}
+                  <div>
+                    <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Tags</label>
+                    <input
+                      type="text" value={tagInput} onChange={(e) => setTagInput(e.target.value)}
+                      onKeyDown={addTag}
+                      placeholder="Type & Enter"
+                      className="w-full text-sm bg-slate-50 px-3 py-2.5 rounded-xl border-0 focus:ring-2 focus:ring-indigo-600 outline-none"
+                    />
                   </div>
+                </div>
                 
                 {tagsList.length > 0 && (
                     <div className="flex flex-wrap gap-2">

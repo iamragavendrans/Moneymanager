@@ -4,35 +4,14 @@ import {
   IndianRupee, Globe, LayoutTemplate, Store, Users, Repeat,
   CreditCard as CreditCardIcon, Gift, ShieldCheck, Bell, AlertTriangle,
   Briefcase, X, Calendar, Tags, Package, FileText,
-  Clock, PieChart, Layers, LogOut, Building, ChevronRight, ChevronDown
+  Clock, PieChart, Layers, LogOut, Building, ChevronRight, ChevronDown, ToggleLeft, ToggleRight
 } from "lucide-react";
 import { cn } from "../utils";
 import { EntityManagementModal } from "../components/EntityManagementModal";
 import { ProfileManagementModal } from "../components/ProfileManagementModal";
 import { useFinance } from "../context/FinanceContext";
 import { toast } from "sonner";
-
-const CATEGORIES = {
-  expense: ["Food", "Transport", "Shopping", "Bills", "Entertainment", "Health", "Housing", "Investment", "Education", "Travel", "Others"],
-  income: ["Salary", "Freelance", "Investment", "Gift", "Others"],
-};
-
-const SUB_CATEGORY_MAP: Record<string, string[]> = {
-  Food: ["Groceries", "Dining Out", "Street Food", "Zomato/Swiggy", "Coffee", "Alcohol"],
-  Transport: ["Fuel", "Uber/Ola", "Public Transport", "Service/Repairs", "Parking"],
-  Shopping: ["Electronics", "Clothing", "Home Decor", "Gifts", "Personal Care"],
-  Bills: ["Electricity", "Water", "Gas", "Internet", "Mobile", "DTH"],
-  Entertainment: ["Movies", "Gaming", "Streaming", "Events"],
-  Health: ["Medicine", "Doctor", "Gym", "Insurance"],
-  Housing: ["Rent", "Maintenance", "Furniture", "Domestic Help"],
-  Investment: ["Stocks", "Mutual Funds", "Gold", "Crypto", "Dividends", "Interest", "Capital Gains"],
-  Education: ["Course Fee", "Books", "Stationery"],
-  Travel: ["Flights", "Hotels", "Sightseeing"],
-  Salary: ["Base Pay", "Bonus", "RSU/Stocks", "Arrears"],
-  Freelance: ["Design", "Development", "Consulting", "Writing", "Teaching"],
-  Gift: ["Birthday Gift", "Wedding Gift", "Festival Gift", "Cashback"],
-  Others: ["Refund", "Reimbursement", "Inheritance"],
-};
+import { EXPENSE_CATEGORIES, INCOME_CATEGORIES, SUBCATEGORY_MAP, CATEGORY_CLASSIFICATION } from "../utils/categories";
 
 const SettingCell = ({ icon: Icon, title, sub, color, bg, onClick, active = null, onToggle = null }: any) => (
   <button
@@ -76,6 +55,7 @@ export const Settings = () => {
   const [locks, setLocks] = useState({ biometric: getStoredBool('s_biometric', false), hideBalances: getStoredBool('s_hideBalances', false) });
   const [sync, setSync] = useState({ drive: getStoredBool('s_drive', false) });
   const [reminders, setReminders] = useState({ bills: getStoredBool('s_bills', false), dailyLog: getStoredBool('s_dailyLog', false), overdue: getStoredBool('s_overdue', false) });
+  const [subCatsEnabled, setSubCatsEnabled] = useState(() => getStoredBool('s_subcats', true));
 
   const [confirmReset, setConfirmReset] = useState(false);
   const [confirmWipe, setConfirmWipe] = useState(false);
@@ -98,6 +78,7 @@ export const Settings = () => {
   useEffect(() => { localStorage.setItem('s_dailyLog', String(reminders.dailyLog)); }, [reminders.dailyLog]);
   useEffect(() => { localStorage.setItem('s_overdue', String(reminders.overdue)); }, [reminders.overdue]);
   useEffect(() => { localStorage.setItem('s_2fa', String(twoFactor)); }, [twoFactor]);
+  useEffect(() => { localStorage.setItem('s_subcats', String(subCatsEnabled)); }, [subCatsEnabled]);
 
   const handleExport = () => {
     const data = { transactions, accounts, investments, entities, exportedAt: new Date().toISOString() };
@@ -253,8 +234,13 @@ export const Settings = () => {
         <SectionHeader icon={Tags} title="Categories" desc="Structure & Tagging Insights" />
         <div className="grid grid-cols-3 gap-3">
           <SettingCell icon={Tags} title="Categories" sub="Master List" color="text-emerald-600" bg="bg-emerald-50" onClick={() => setShowCategoriesModal(true)} />
-          <SettingCell icon={Layers} title="Sub Categories" sub="Granular Tracking" color="text-emerald-600" bg="bg-emerald-50" onClick={() => setShowCategoriesModal(true)} />
-          <SettingCell icon={PieChart} title="Classification" sub="Needs / Wants" color="text-emerald-600" bg="bg-emerald-50" onClick={() => toast.info('Need / Want / Invest / Discretionary — set per transaction in the form')} />
+          <SettingCell
+            icon={Layers} title="Sub Categories" sub={subCatsEnabled ? "Enabled" : "Disabled"}
+            color="text-emerald-600" bg="bg-emerald-50"
+            active={subCatsEnabled}
+            onToggle={() => { setSubCatsEnabled(v => !v); toast.success(subCatsEnabled ? 'Sub categories hidden in forms' : 'Sub categories enabled in forms'); }}
+          />
+          <SettingCell icon={PieChart} title="Classification" sub="Needs / Wants" color="text-emerald-600" bg="bg-emerald-50" onClick={() => toast.info('Need / Want / Invest / Discretionary — auto-set when you pick a category in the transaction form')} />
         </div>
       </div>
 
@@ -354,32 +340,52 @@ export const Settings = () => {
       {/* Categories Modal */}
       {showCategoriesModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4">
-          <div className="bg-white rounded-3xl p-6 w-full max-w-md shadow-2xl max-h-[80vh] flex flex-col">
-            <div className="flex justify-between items-center mb-4">
-              <h3 className="font-bold text-xl text-slate-800">Categories</h3>
+          <div className="bg-white rounded-3xl p-6 w-full max-w-md shadow-2xl max-h-[85vh] flex flex-col">
+            <div className="flex justify-between items-center mb-2">
+              <div>
+                <h3 className="font-bold text-xl text-slate-800">Categories</h3>
+                <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-0.5">Tap to expand subcategories</p>
+              </div>
               <button onClick={() => { setShowCategoriesModal(false); setExpandedCategory(null); }} className="p-2 bg-slate-100 rounded-full text-slate-500 hover:bg-slate-200"><X className="w-5 h-5" /></button>
+            </div>
+            <div className="flex gap-2 mb-4 flex-wrap">
+              {(['need', 'want', 'investment', 'discretionary'] as const).map(cls => (
+                <span key={cls} className={cn("text-[9px] font-black uppercase px-2 py-0.5 rounded-full tracking-wider",
+                  cls === 'need' ? 'bg-blue-100 text-blue-700' :
+                  cls === 'want' ? 'bg-amber-100 text-amber-700' :
+                  cls === 'investment' ? 'bg-emerald-100 text-emerald-700' :
+                  'bg-purple-100 text-purple-700'
+                )}>{cls}</span>
+              ))}
             </div>
             <div className="overflow-y-auto flex-1 space-y-4">
               <div>
-                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Expense</p>
-                <div className="space-y-1">
-                  {CATEGORIES.expense.map(cat => (
-                    <div key={cat}>
+                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Expense ({EXPENSE_CATEGORIES.length})</p>
+                <div className="space-y-0.5">
+                  {EXPENSE_CATEGORIES.map(cat => (
+                    <div key={cat.name}>
                       <button
-                        onClick={() => setExpandedCategory(expandedCategory === cat ? null : cat)}
-                        className="w-full flex items-center justify-between px-4 py-2.5 rounded-xl hover:bg-slate-50 transition-colors text-left"
+                        onClick={() => setExpandedCategory(expandedCategory === cat.name ? null : cat.name)}
+                        className="w-full flex items-center justify-between px-3 py-2 rounded-xl hover:bg-slate-50 transition-colors text-left"
                       >
-                        <span className="font-semibold text-sm text-slate-700">{cat}</span>
-                        {SUB_CATEGORY_MAP[cat] && (
-                          expandedCategory === cat
-                            ? <ChevronDown className="w-4 h-4 text-slate-400" />
-                            : <ChevronRight className="w-4 h-4 text-slate-400" />
-                        )}
+                        <div className="flex items-center gap-2">
+                          <span className="font-semibold text-sm text-slate-700">{cat.name}</span>
+                          <span className={cn("text-[8px] font-black uppercase px-1.5 py-0.5 rounded-full",
+                            cat.classification === 'need' ? 'bg-blue-100 text-blue-600' :
+                            cat.classification === 'want' ? 'bg-amber-100 text-amber-600' :
+                            cat.classification === 'investment' ? 'bg-emerald-100 text-emerald-600' :
+                            'bg-purple-100 text-purple-600'
+                          )}>{cat.classification}</span>
+                        </div>
+                        {expandedCategory === cat.name
+                          ? <ChevronDown className="w-4 h-4 text-slate-400 shrink-0" />
+                          : <ChevronRight className="w-4 h-4 text-slate-400 shrink-0" />
+                        }
                       </button>
-                      {expandedCategory === cat && SUB_CATEGORY_MAP[cat] && (
-                        <div className="ml-4 pl-4 border-l-2 border-slate-100 space-y-1 mb-1">
-                          {SUB_CATEGORY_MAP[cat].map(sc => (
-                            <p key={sc} className="text-xs text-slate-500 py-1 font-medium">{sc}</p>
+                      {expandedCategory === cat.name && (
+                        <div className="ml-3 pl-3 border-l-2 border-slate-100 pb-1 flex flex-wrap gap-1.5 pt-1">
+                          {cat.subcategories.map(sc => (
+                            <span key={sc} className="text-[10px] text-slate-500 font-medium bg-slate-50 px-2 py-0.5 rounded-lg">{sc}</span>
                           ))}
                         </div>
                       )}
@@ -388,25 +394,32 @@ export const Settings = () => {
                 </div>
               </div>
               <div>
-                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Income</p>
-                <div className="space-y-1">
-                  {CATEGORIES.income.map(cat => (
-                    <div key={cat}>
+                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Income ({INCOME_CATEGORIES.length})</p>
+                <div className="space-y-0.5">
+                  {INCOME_CATEGORIES.map(cat => (
+                    <div key={cat.name}>
                       <button
-                        onClick={() => setExpandedCategory(expandedCategory === cat ? null : cat)}
-                        className="w-full flex items-center justify-between px-4 py-2.5 rounded-xl hover:bg-slate-50 transition-colors text-left"
+                        onClick={() => setExpandedCategory(expandedCategory === cat.name ? null : cat.name)}
+                        className="w-full flex items-center justify-between px-3 py-2 rounded-xl hover:bg-slate-50 transition-colors text-left"
                       >
-                        <span className="font-semibold text-sm text-slate-700">{cat}</span>
-                        {SUB_CATEGORY_MAP[cat] && (
-                          expandedCategory === cat
-                            ? <ChevronDown className="w-4 h-4 text-slate-400" />
-                            : <ChevronRight className="w-4 h-4 text-slate-400" />
-                        )}
+                        <div className="flex items-center gap-2">
+                          <span className="font-semibold text-sm text-slate-700">{cat.name}</span>
+                          <span className={cn("text-[8px] font-black uppercase px-1.5 py-0.5 rounded-full",
+                            cat.classification === 'need' ? 'bg-blue-100 text-blue-600' :
+                            cat.classification === 'want' ? 'bg-amber-100 text-amber-600' :
+                            cat.classification === 'investment' ? 'bg-emerald-100 text-emerald-600' :
+                            'bg-purple-100 text-purple-600'
+                          )}>{cat.classification}</span>
+                        </div>
+                        {expandedCategory === cat.name
+                          ? <ChevronDown className="w-4 h-4 text-slate-400 shrink-0" />
+                          : <ChevronRight className="w-4 h-4 text-slate-400 shrink-0" />
+                        }
                       </button>
-                      {expandedCategory === cat && SUB_CATEGORY_MAP[cat] && (
-                        <div className="ml-4 pl-4 border-l-2 border-slate-100 space-y-1 mb-1">
-                          {SUB_CATEGORY_MAP[cat].map(sc => (
-                            <p key={sc} className="text-xs text-slate-500 py-1 font-medium">{sc}</p>
+                      {expandedCategory === cat.name && (
+                        <div className="ml-3 pl-3 border-l-2 border-slate-100 pb-1 flex flex-wrap gap-1.5 pt-1">
+                          {cat.subcategories.map(sc => (
+                            <span key={sc} className="text-[10px] text-slate-500 font-medium bg-slate-50 px-2 py-0.5 rounded-lg">{sc}</span>
                           ))}
                         </div>
                       )}
