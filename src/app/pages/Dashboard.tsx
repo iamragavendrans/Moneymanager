@@ -1,11 +1,12 @@
 import React, { useState, useMemo } from "react";
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from "recharts";
-import { ArrowUpRight, ArrowDownRight, Eye, EyeOff, MoreVertical, LayoutGrid, ChevronDown, TrendingUp, X, Check, Clock, ChevronLeft, ChevronRight, Store, ShieldCheck } from "lucide-react";
-import { format, subDays, getDaysInMonth, getWeekOfMonth, getDay, startOfMonth, endOfMonth, startOfWeek, endOfWeek, subWeeks, eachDayOfInterval, addWeeks, subMonths, addMonths, subYears, addYears, isSameDay, isSameMonth, endOfDay, startOfYear, endOfYear } from "date-fns";
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
+import { ArrowUpRight, ArrowDownRight, Eye, EyeOff, LayoutGrid, ChevronDown, TrendingUp, X, Check, Clock, ChevronLeft, ChevronRight } from "lucide-react";
+import { format, subDays, getDaysInMonth, getDay, startOfMonth, endOfMonth, startOfWeek, endOfWeek, subWeeks, eachDayOfInterval, addWeeks, subMonths, addMonths, subYears, addYears, addDays, differenceInCalendarDays, isSameDay, isSameMonth, endOfDay, startOfYear, endOfYear } from "date-fns";
 import { useFinance, Transaction, Account } from "../context/FinanceContext";
 import { formatINR } from "../utils";
 import { Link, useNavigate } from "react-router";
 import { TransactionFormModal } from "../components/TransactionFormModal";
+import { toast } from "sonner";
 
 const Card = ({ children, className = "", onClick }: { children: React.ReactNode, className?: string, onClick?: () => void }) => (
   <div onClick={onClick} className={`bg-white rounded-2xl p-4 md:p-5 shadow-sm border border-slate-100 ${className}`}>
@@ -76,7 +77,7 @@ const SwipeableCard = ({ children, onSwipeLeft, onSwipeRight, rightActionLabel, 
 };
 
 export const Dashboard = () => {
-  const { getNetWorth, transactions, accounts, profile, updateProfile, investments } = useFinance();
+  const { getNetWorth, transactions, accounts, profile, updateProfile, investments, entities, addTransaction, updateEntity } = useFinance();
   const navigate = useNavigate();
   const [showHeroBreakdown, setShowHeroBreakdown] = useState(false);
   const [globalFilter, setGlobalFilter] = useState("1M");
@@ -270,15 +271,99 @@ export const Dashboard = () => {
 
   const getAccountName = (id: string) => accounts.find(a => a.id === id)?.name || 'Account';
 
-  // Fake lists to demonstrate the swipe logic
-  const [upcoming, setUpcoming] = useState([
-    { id: 1, title: "Netflix", due: "Due Tomorrow", amt: "₹649", badge: "Due Tomorrow", type: "danger", icon: "N", status: "pending" },
-    { id: 2, title: "Amazon Prime", due: "Due in 3 days", amt: "₹1,499", badge: "Due in 3 days", type: "warning", icon: "A", status: "pending" },
-  ]);
-  const [scheduled, setScheduled] = useState([
-    { id: 1, title: "SIP - HDFC Flexi Cap", due: "May 5, 2025", amt: "₹5,000", badge: "Active", type: "success", icon: "🏛️", status: "pending" },
-    { id: 2, title: "Rent Payment", due: "May 3, 2025", amt: "₹20,000", badge: "Monthly", type: "default", icon: "🏠", status: "pending" },
-  ]);
+  const [paidEntityIds, setPaidEntityIds] = useState<Set<string>>(new Set());
+
+  const calculateNextDue = (entityId: string, frequency: string): string | null => {
+    const entity = entities.find(e => e.id === entityId);
+    const base = entity?.nextDue ? new Date(entity.nextDue) : new Date();
+    const freq = (frequency || '').toLowerCase();
+    if (freq === 'weekly') return format(addWeeks(base, 1), 'yyyy-MM-dd');
+    if (freq === 'monthly') return format(addMonths(base, 1), 'yyyy-MM-dd');
+    if (freq === 'quarterly') return format(addMonths(base, 3), 'yyyy-MM-dd');
+    if (freq === 'yearly') return format(addYears(base, 1), 'yyyy-MM-dd');
+    return format(addMonths(base, 1), 'yyyy-MM-dd');
+  };
+
+  const handleMarkPaid = (item: { entityId: string; title: string; amount: number; category: string; frequency?: string }) => {
+    if (paidEntityIds.has(item.entityId)) {
+      setPaidEntityIds(prev => { const s = new Set(prev); s.delete(item.entityId); return s; });
+      return;
+    }
+    addTransaction({
+      amount: item.amount,
+      type: 'expense',
+      category: item.category || 'Bills',
+      account_id: accounts[0]?.id || '',
+      payee: item.title,
+      date: format(new Date(), 'yyyy-MM-dd'),
+      notes: `Auto-logged from upcoming: ${item.title}`,
+      tags: ['recurring'],
+      mode: 'UPI',
+      status: 'cleared',
+    });
+    const nextDue = calculateNextDue(item.entityId, item.frequency || 'monthly');
+    if (nextDue) updateEntity(item.entityId, { nextDue, status: 'active' });
+    setPaidEntityIds(prev => new Set([...prev, item.entityId]));
+    toast.success(`${formatINR(item.amount)} logged for ${item.title}`);
+  };
+
+  const handleMarkHold = (entityId: string, currentStatus: string) => {
+    const newStatus = currentStatus === 'hold' ? 'active' : 'paused';
+    updateEntity(entityId, { status: newStatus as 'active' | 'paused' });
+    toast.success(newStatus === 'paused' ? 'Payment put on hold' : 'Payment resumed');
+  };
+
+  const upcomingItems = useMemo(() => {
+    const today = new Date();
+    const cutoff = addDays(today, 14);
+    return entities
+      .filter(e => (e.type === 'subscription' || e.type === 'recurring') && e.nextDue && e.amount)
+      .filter(e => new Date(e.nextDue!) <= cutoff)
+      .sort((a, b) => new Date(a.nextDue!).getTime() - new Date(b.nextDue!).getTime())
+      .slice(0, 5)
+      .map(e => {
+        const due = new Date(e.nextDue!);
+        const diff = differenceInCalendarDays(due, today);
+        const isOverdue = diff < 0;
+        const badge = isOverdue
+          ? `Overdue ${Math.abs(diff)}d`
+          : diff === 0 ? 'Due Today' : `Due in ${diff}d`;
+        return {
+          id: e.id,
+          entityId: e.id,
+          title: e.name,
+          due: isOverdue ? `Overdue by ${Math.abs(diff)} days` : diff === 0 ? 'Due Today' : `Due in ${diff} days`,
+          amt: formatINR(e.amount || 0),
+          badge,
+          type: (isOverdue || diff <= 3 ? 'danger' : 'warning') as string,
+          icon: e.name.charAt(0).toUpperCase(),
+          status: e.status === 'paused' ? 'hold' : 'pending',
+          amount: e.amount || 0,
+          category: e.category || 'Bills',
+          frequency: e.frequency,
+        };
+      });
+  }, [entities]);
+
+  const scheduledItems = useMemo(() => {
+    return entities
+      .filter(e => e.type === 'recurring' && e.amount && e.frequency)
+      .slice(0, 5)
+      .map(e => ({
+        id: e.id,
+        entityId: e.id,
+        title: e.name,
+        due: e.nextDue ? format(new Date(e.nextDue), 'MMM dd, yyyy') : (e.frequency || 'Recurring'),
+        amt: formatINR(e.amount || 0),
+        badge: e.status === 'paused' ? 'Paused' : 'Active',
+        type: 'success' as string,
+        icon: '🔁',
+        status: e.status === 'paused' ? 'hold' : 'pending',
+        amount: e.amount || 0,
+        category: e.category || 'Bills',
+        frequency: e.frequency,
+      }));
+  }, [entities]);
 
   const renderHeatmap = () => {
     const getDayStats = (d: Date) => {
@@ -572,44 +657,78 @@ export const Dashboard = () => {
             <Card className="p-5">
               <div className="flex items-center justify-between mb-4">
                 <h3 className="font-bold text-[15px] text-slate-800">Upcoming Payments <span className="text-[10px] text-slate-400 font-normal ml-2 hidden sm:inline">(Swipe LR)</span></h3>
-                <button className="text-indigo-600 text-sm font-semibold hover:underline">View All</button>
+                <Link to="/settings" className="text-indigo-600 text-sm font-semibold hover:underline">Manage</Link>
               </div>
               <div className="space-y-1">
-                {upcoming.map(item => {
+                {upcomingItems.map(item => {
+                  const isPaid = paidEntityIds.has(item.entityId);
+                  const displayStatus = isPaid ? 'paid' : item.status;
                   let bg = "bg-white";
-                  if (item.status === 'paid') bg = "bg-emerald-50 opacity-60";
-                  if (item.status === 'hold') bg = "bg-amber-50";
+                  if (displayStatus === 'paid') bg = "bg-emerald-50 opacity-60";
+                  if (displayStatus === 'hold') bg = "bg-amber-50";
                   return (
-                    <SwipeableCard key={item.id} rightActionLabel={item.status === 'paid' ? 'Undo' : 'Paid'} rightActionIcon={<Check className="w-4 h-4" />} leftActionLabel={item.status === 'hold' ? 'Undo' : 'Hold'} leftActionIcon={<Clock className="w-4 h-4" />} onSwipeRight={() => setUpcoming(p => p.map(x => x.id === item.id ? { ...x, status: x.status === 'paid' ? 'pending' : 'paid' } : x))} onSwipeLeft={() => setUpcoming(p => p.map(x => x.id === item.id ? { ...x, status: x.status === 'hold' ? 'pending' : 'hold' } : x))}>
+                    <SwipeableCard
+                      key={item.id}
+                      rightActionLabel={isPaid ? 'Undo' : 'Paid'}
+                      rightActionIcon={<Check className="w-4 h-4" />}
+                      leftActionLabel={displayStatus === 'hold' ? 'Unhold' : 'Hold'}
+                      leftActionIcon={<Clock className="w-4 h-4" />}
+                      onSwipeRight={() => handleMarkPaid(item)}
+                      onSwipeLeft={() => handleMarkHold(item.entityId, displayStatus)}
+                    >
                       <div className={`transition-colors rounded-xl ${bg}`}>
-                        <ListCard icon={<div className={`w-10 h-10 rounded-xl flex items-center justify-center font-bold text-lg ${item.status === 'paid' ? 'bg-emerald-100 text-emerald-600' : item.status === 'hold' ? 'bg-amber-100 text-amber-600' : 'bg-red-100 text-red-600'}`}>{item.icon}</div>} title={item.title} subtitle={item.due} amount={item.amt} badgeText={item.status === 'paid' ? 'Paid' : item.status === 'hold' ? 'On Hold' : item.badge} badgeType={item.status === 'paid' ? 'success' : item.status === 'hold' ? 'warning' : item.type} />
+                        <ListCard
+                          icon={<div className={`w-10 h-10 rounded-xl flex items-center justify-center font-bold text-lg ${displayStatus === 'paid' ? 'bg-emerald-100 text-emerald-600' : displayStatus === 'hold' ? 'bg-amber-100 text-amber-600' : 'bg-red-100 text-red-600'}`}>{item.icon}</div>}
+                          title={item.title}
+                          subtitle={item.due}
+                          amount={item.amt}
+                          badgeText={displayStatus === 'paid' ? 'Paid ✓' : displayStatus === 'hold' ? 'On Hold' : item.badge}
+                          badgeType={displayStatus === 'paid' ? 'success' : displayStatus === 'hold' ? 'warning' : item.type}
+                        />
                       </div>
                     </SwipeableCard>
-                  )
+                  );
                 })}
-                {upcoming.length === 0 && <p className="text-sm text-slate-400 text-center py-4">All caught up!</p>}
+                {upcomingItems.length === 0 && <p className="text-sm text-slate-400 text-center py-4">All caught up! Add subscriptions in Settings.</p>}
               </div>
             </Card>
 
             <Card className="p-5">
               <div className="flex items-center justify-between mb-4">
                 <h3 className="font-bold text-[15px] text-slate-800">Scheduled Transactions</h3>
-                <button className="text-indigo-600 text-sm font-semibold hover:underline">View All</button>
+                <Link to="/settings" className="text-indigo-600 text-sm font-semibold hover:underline">Manage</Link>
               </div>
               <div className="space-y-1">
-                {scheduled.map(item => {
+                {scheduledItems.map(item => {
+                  const isPaid = paidEntityIds.has(item.entityId);
+                  const displayStatus = isPaid ? 'paid' : item.status;
                   let bg = "bg-white";
-                  if (item.status === 'paid') bg = "bg-emerald-50 opacity-60";
-                  if (item.status === 'hold') bg = "bg-amber-50";
+                  if (displayStatus === 'paid') bg = "bg-emerald-50 opacity-60";
+                  if (displayStatus === 'hold') bg = "bg-amber-50";
                   return (
-                    <SwipeableCard key={item.id} onClick={() => { }} rightActionLabel={item.status === 'paid' ? 'Undo' : 'Paid'} rightActionIcon={<Check className="w-4 h-4" />} leftActionLabel={item.status === 'hold' ? 'Undo' : 'Hold'} leftActionIcon={<Clock className="w-4 h-4" />} onSwipeRight={() => setScheduled(p => p.map(x => x.id === item.id ? { ...x, status: x.status === 'paid' ? 'pending' : 'paid' } : x))} onSwipeLeft={() => setScheduled(p => p.map(x => x.id === item.id ? { ...x, status: x.status === 'hold' ? 'pending' : 'hold' } : x))}>
+                    <SwipeableCard
+                      key={item.id}
+                      rightActionLabel={isPaid ? 'Undo' : 'Paid'}
+                      rightActionIcon={<Check className="w-4 h-4" />}
+                      leftActionLabel={displayStatus === 'hold' ? 'Unhold' : 'Hold'}
+                      leftActionIcon={<Clock className="w-4 h-4" />}
+                      onSwipeRight={() => handleMarkPaid(item)}
+                      onSwipeLeft={() => handleMarkHold(item.entityId, displayStatus)}
+                    >
                       <div className={`transition-colors rounded-xl ${bg}`}>
-                        <ListCard icon={<div className={`w-10 h-10 rounded-xl flex items-center justify-center text-xl ${item.status === 'paid' ? 'bg-emerald-100 text-emerald-600' : item.status === 'hold' ? 'bg-amber-100 text-amber-600' : 'bg-blue-50 text-blue-600'}`}>{item.icon}</div>} title={item.title} subtitle={item.due} amount={item.amt} badgeText={item.status === 'paid' ? 'Paid' : item.status === 'hold' ? 'On Hold' : item.badge} badgeType={item.status === 'paid' ? 'success' : item.status === 'hold' ? 'warning' : item.type} />
+                        <ListCard
+                          icon={<div className={`w-10 h-10 rounded-xl flex items-center justify-center text-xl ${displayStatus === 'paid' ? 'bg-emerald-100 text-emerald-600' : displayStatus === 'hold' ? 'bg-amber-100 text-amber-600' : 'bg-blue-50 text-blue-600'}`}>{item.icon}</div>}
+                          title={item.title}
+                          subtitle={item.due}
+                          amount={item.amt}
+                          badgeText={displayStatus === 'paid' ? 'Paid ✓' : displayStatus === 'hold' ? 'On Hold' : item.badge}
+                          badgeType={displayStatus === 'paid' ? 'success' : displayStatus === 'hold' ? 'warning' : item.type}
+                        />
                       </div>
                     </SwipeableCard>
-                  )
+                  );
                 })}
-                {scheduled.length === 0 && <p className="text-sm text-slate-400 text-center py-4">No schedules.</p>}
+                {scheduledItems.length === 0 && <p className="text-sm text-slate-400 text-center py-4">No recurring items. Add them in Settings.</p>}
               </div>
             </Card>
           </div>

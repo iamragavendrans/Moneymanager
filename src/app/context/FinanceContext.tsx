@@ -145,6 +145,7 @@ interface FinanceContextType {
   getTotalIncome: (month?: Date) => number;
   resetData: () => void;
   wipeData: () => void;
+  restoreData: (data: { transactions?: Transaction[]; accounts?: Account[]; investments?: Investment[]; entities?: Entity[]; profile?: Partial<Profile> }) => void;
 }
 
 const FinanceContext = createContext<FinanceContextType | undefined>(undefined);
@@ -286,6 +287,14 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
     setProfile({ companyName: "Acme Corp" });
   };
 
+  const restoreData = (data: { transactions?: Transaction[]; accounts?: Account[]; investments?: Investment[]; entities?: Entity[]; profile?: Partial<Profile> }) => {
+    if (data.transactions) setTransactions(data.transactions);
+    if (data.accounts) setAccounts(data.accounts);
+    if (data.investments) setInvestments(data.investments);
+    if (data.entities) setEntities(data.entities);
+    if (data.profile) setProfile(prev => ({ ...prev, ...data.profile }));
+  };
+
   return (
     <FinanceContext.Provider value={{
       transactions, accounts, investments, entities,
@@ -295,7 +304,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
       addEntity, updateEntity, deleteEntity,
       profile, updateProfile,
       getNetWorth, getTotalExpenses, getTotalIncome,
-      resetData, wipeData
+      resetData, wipeData, restoreData
     }}>
       {children}
     </FinanceContext.Provider>

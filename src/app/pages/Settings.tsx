@@ -1,18 +1,41 @@
 import React, { useState, useEffect } from "react";
-import { 
-  Lock, Fingerprint, Palette, Cloud, Database, Download, Upload, Shield, 
-  IndianRupee, Globe, LayoutTemplate, Store, Users, Repeat, 
-  CreditCard as CreditCardIcon, Gift, ShieldCheck, Bell, AlertTriangle, 
-  Briefcase, ChevronRight, X, Calendar, Tags, Package, FileText,
-  Clock, PieChart, Layers, Settings as SettingsIcon, LogOut, Building
+import {
+  Lock, Fingerprint, Palette, Cloud, Database, Download, Upload, Shield,
+  IndianRupee, Globe, LayoutTemplate, Store, Users, Repeat,
+  CreditCard as CreditCardIcon, Gift, ShieldCheck, Bell, AlertTriangle,
+  Briefcase, X, Calendar, Tags, Package, FileText,
+  Clock, PieChart, Layers, LogOut, Building, ChevronRight, ChevronDown
 } from "lucide-react";
 import { cn } from "../utils";
 import { EntityManagementModal } from "../components/EntityManagementModal";
 import { ProfileManagementModal } from "../components/ProfileManagementModal";
 import { useFinance } from "../context/FinanceContext";
+import { toast } from "sonner";
+
+const CATEGORIES = {
+  expense: ["Food", "Transport", "Shopping", "Bills", "Entertainment", "Health", "Housing", "Investment", "Education", "Travel", "Others"],
+  income: ["Salary", "Freelance", "Investment", "Gift", "Others"],
+};
+
+const SUB_CATEGORY_MAP: Record<string, string[]> = {
+  Food: ["Groceries", "Dining Out", "Street Food", "Zomato/Swiggy", "Coffee", "Alcohol"],
+  Transport: ["Fuel", "Uber/Ola", "Public Transport", "Service/Repairs", "Parking"],
+  Shopping: ["Electronics", "Clothing", "Home Decor", "Gifts", "Personal Care"],
+  Bills: ["Electricity", "Water", "Gas", "Internet", "Mobile", "DTH"],
+  Entertainment: ["Movies", "Gaming", "Streaming", "Events"],
+  Health: ["Medicine", "Doctor", "Gym", "Insurance"],
+  Housing: ["Rent", "Maintenance", "Furniture", "Domestic Help"],
+  Investment: ["Stocks", "Mutual Funds", "Gold", "Crypto", "Dividends", "Interest", "Capital Gains"],
+  Education: ["Course Fee", "Books", "Stationery"],
+  Travel: ["Flights", "Hotels", "Sightseeing"],
+  Salary: ["Base Pay", "Bonus", "RSU/Stocks", "Arrears"],
+  Freelance: ["Design", "Development", "Consulting", "Writing", "Teaching"],
+  Gift: ["Birthday Gift", "Wedding Gift", "Festival Gift", "Cashback"],
+  Others: ["Refund", "Reimbursement", "Inheritance"],
+};
 
 const SettingCell = ({ icon: Icon, title, sub, color, bg, onClick, active = null, onToggle = null }: any) => (
-  <button 
+  <button
     onClick={onClick || onToggle}
     className="group p-4 rounded-2xl border border-slate-100 hover:border-indigo-100 hover:bg-slate-50 transition-all flex flex-col items-center text-center gap-3 active:scale-95 bg-white shadow-sm relative overflow-hidden"
   >
@@ -45,26 +68,35 @@ const WipeConfirmInput = ({ onConfirm, onCancel }: { onConfirm: () => void; onCa
 };
 
 export const Settings = () => {
-  const { resetData, wipeData, transactions, accounts, investments, entities, profile, updateProfile } = useFinance();
+  const { resetData, wipeData, restoreData, transactions, accounts, investments, entities, profile, updateProfile } = useFinance();
 
   const getStoredBool = (key: string, def: boolean) => {
     const v = localStorage.getItem(key); return v === null ? def : v === 'true';
   };
-  const [locks, setLocks] = useState({ biometric: getStoredBool('s_biometric', true), hideBalances: getStoredBool('s_hideBalances', false) });
-  const [sync, setSync] = useState({ drive: getStoredBool('s_drive', true) });
-  const [reminders, setReminders] = useState({ bills: getStoredBool('s_bills', true), dailyLog: getStoredBool('s_dailyLog', true) });
-  
+  const [locks, setLocks] = useState({ biometric: getStoredBool('s_biometric', false), hideBalances: getStoredBool('s_hideBalances', false) });
+  const [sync, setSync] = useState({ drive: getStoredBool('s_drive', false) });
+  const [reminders, setReminders] = useState({ bills: getStoredBool('s_bills', false), dailyLog: getStoredBool('s_dailyLog', false) });
+
   const [confirmReset, setConfirmReset] = useState(false);
   const [confirmWipe, setConfirmWipe] = useState(false);
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [showLogoModal, setShowLogoModal] = useState(false);
   const [wipePhase, setWipePhase] = useState(1);
+  const [showCategoriesModal, setShowCategoriesModal] = useState(false);
+  const [expandedCategory, setExpandedCategory] = useState<string | null>(null);
+  const [showPinModal, setShowPinModal] = useState(false);
+  const [pinStep, setPinStep] = useState<'view' | 'set' | 'confirm'>('view');
+  const [pinInput, setPinInput] = useState('');
+  const [pinConfirm, setPinConfirm] = useState('');
+  const [hasPin] = useState(() => !!localStorage.getItem('s_pin'));
+  const [twoFactor, setTwoFactor] = useState(() => getStoredBool('s_2fa', false));
 
   useEffect(() => { localStorage.setItem('s_biometric', String(locks.biometric)); }, [locks.biometric]);
   useEffect(() => { localStorage.setItem('s_hideBalances', String(locks.hideBalances)); }, [locks.hideBalances]);
   useEffect(() => { localStorage.setItem('s_drive', String(sync.drive)); }, [sync.drive]);
   useEffect(() => { localStorage.setItem('s_bills', String(reminders.bills)); }, [reminders.bills]);
   useEffect(() => { localStorage.setItem('s_dailyLog', String(reminders.dailyLog)); }, [reminders.dailyLog]);
+  useEffect(() => { localStorage.setItem('s_2fa', String(twoFactor)); }, [twoFactor]);
 
   const handleExport = () => {
     const data = { transactions, accounts, investments, entities, exportedAt: new Date().toISOString() };
@@ -73,6 +105,83 @@ export const Settings = () => {
     const a = document.createElement('a');
     a.href = url; a.download = `moneymanager-backup-${new Date().toISOString().split('T')[0]}.json`;
     a.click(); URL.revokeObjectURL(url);
+    toast.success('Backup exported!');
+  };
+
+  const handleRestore = () => {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.json';
+    input.onchange = async (e) => {
+      const file = (e.target as HTMLInputElement).files?.[0];
+      if (!file) return;
+      try {
+        const text = await file.text();
+        const data = JSON.parse(text);
+        if (!data.transactions && !data.accounts) {
+          toast.error('Invalid backup file format');
+          return;
+        }
+        restoreData(data);
+        toast.success('Data restored successfully!');
+      } catch {
+        toast.error('Failed to read backup file');
+      }
+    };
+    input.click();
+  };
+
+  const handleReminderToggle = async (key: 'bills' | 'dailyLog') => {
+    const turningOn = !reminders[key];
+    if (turningOn && 'Notification' in window) {
+      const permission = await Notification.requestPermission();
+      if (permission === 'denied') {
+        toast.error('Notifications blocked. Enable them in browser settings.');
+        return;
+      }
+      if (permission === 'granted') {
+        const label = key === 'bills' ? 'bill due date' : 'daily log';
+        toast.success(`You'll be reminded about ${label} alerts`);
+        if (key === 'dailyLog') {
+          new Notification('MoneyManager', { body: 'Reminders are now active! You\'ll be notified at 9 PM daily.' });
+        }
+      }
+    } else if (!turningOn) {
+      toast.success('Reminder disabled');
+    }
+    setReminders(r => ({ ...r, [key]: !r[key] }));
+  };
+
+  const handleTheme = () => {
+    const themes = ['indigo', 'emerald', 'rose', 'amber'];
+    const current = localStorage.getItem('s_theme') || 'indigo';
+    const next = themes[(themes.indexOf(current) + 1) % themes.length];
+    localStorage.setItem('s_theme', next);
+    document.documentElement.setAttribute('data-theme', next);
+    toast.success(`Theme switched to ${next.charAt(0).toUpperCase() + next.slice(1)}`);
+  };
+
+  const handleDriveSync = () => {
+    toast.info('Google Drive sync requires account integration — coming soon');
+    setSync(s => ({ ...s, drive: !s.drive }));
+  };
+
+  const handlePinSave = () => {
+    if (pinInput.length !== 4) { toast.error('PIN must be 4 digits'); return; }
+    if (pinStep === 'set') { setPinStep('confirm'); return; }
+    if (pinInput !== pinConfirm) { toast.error('PINs do not match'); setPinInput(''); setPinConfirm(''); setPinStep('set'); return; }
+    localStorage.setItem('s_pin', pinInput);
+    setTwoFactor(true);
+    toast.success('PIN set! App will lock on next visit.');
+    setShowPinModal(false);
+    setPinInput(''); setPinConfirm(''); setPinStep('view');
+  };
+
+  const handlePinClear = () => {
+    localStorage.removeItem('s_pin');
+    setTwoFactor(false);
+    toast.success('PIN removed');
+    setShowPinModal(false);
   };
 
   const [activeEntity, setActiveEntity] = useState<string | null>(null);
@@ -104,7 +213,7 @@ export const Settings = () => {
         </div>
       </div>
 
-      {/* 1. Advanced Entities Management */}
+      {/* 1. Entities Management */}
       <div>
         <SectionHeader icon={Database} title="Entities Management" desc="Core financial ledgers & relations" />
         <div className="grid grid-cols-3 gap-3">
@@ -119,9 +228,9 @@ export const Settings = () => {
             { id: 'inventory', icon: Package, title: "Inventory", sub: "Consumables", color: "text-orange-600", bg: "bg-orange-50" },
             { id: 'employment', icon: Briefcase, title: "Employment", sub: "Tax & Salary", color: "text-slate-600", bg: "bg-slate-50", isSpecial: true },
           ].map((item) => (
-            <SettingCell 
-              key={item.id} 
-              icon={item.icon} title={item.title} sub={item.sub} color={item.color} bg={item.bg} 
+            <SettingCell
+              key={item.id}
+              icon={item.icon} title={item.title} sub={item.sub} color={item.color} bg={item.bg}
               onClick={() => item.isSpecial ? setShowProfileModal(true) : openEntity(item.id)}
             />
           ))}
@@ -132,9 +241,9 @@ export const Settings = () => {
       <div>
         <SectionHeader icon={Globe} title="Localization" desc="Currency & Regional Standards" />
         <div className="grid grid-cols-3 gap-3">
-          <SettingCell icon={IndianRupee} title="Currency" sub="INR (₹) Lakhs" color="text-indigo-600" bg="bg-indigo-50" />
-          <SettingCell icon={Clock} title="Timezone" sub="GMT +5:30 (IST)" color="text-indigo-600" bg="bg-indigo-50" />
-          <SettingCell icon={Calendar} title="Fiscal Year" sub="April Start" color="text-indigo-600" bg="bg-indigo-50" />
+          <SettingCell icon={IndianRupee} title="Currency" sub="INR (₹) Lakhs" color="text-indigo-600" bg="bg-indigo-50" onClick={() => toast.info('Multi-currency support coming soon')} />
+          <SettingCell icon={Clock} title="Timezone" sub="GMT +5:30 (IST)" color="text-indigo-600" bg="bg-indigo-50" onClick={() => toast.info('Timezone selection coming soon')} />
+          <SettingCell icon={Calendar} title="Fiscal Year" sub="April Start" color="text-indigo-600" bg="bg-indigo-50" onClick={() => toast.info('Fiscal year config coming soon')} />
         </div>
       </div>
 
@@ -142,9 +251,9 @@ export const Settings = () => {
       <div>
         <SectionHeader icon={Tags} title="Categories" desc="Structure & Tagging Insights" />
         <div className="grid grid-cols-3 gap-3">
-          <SettingCell icon={Tags} title="Categories" sub="Master List" color="text-emerald-600" bg="bg-emerald-50" />
-          <SettingCell icon={Layers} title="Sub Categories" sub="Granular Tracking" color="text-emerald-600" bg="bg-emerald-50" />
-          <SettingCell icon={PieChart} title="Classification" sub="Needs / Wants" color="text-emerald-600" bg="bg-emerald-50" />
+          <SettingCell icon={Tags} title="Categories" sub="Master List" color="text-emerald-600" bg="bg-emerald-50" onClick={() => setShowCategoriesModal(true)} />
+          <SettingCell icon={Layers} title="Sub Categories" sub="Granular Tracking" color="text-emerald-600" bg="bg-emerald-50" onClick={() => setShowCategoriesModal(true)} />
+          <SettingCell icon={PieChart} title="Classification" sub="Needs / Wants" color="text-emerald-600" bg="bg-emerald-50" onClick={() => toast.info('Need / Want / Invest / Discretionary — set per transaction in the form')} />
         </div>
       </div>
 
@@ -152,27 +261,27 @@ export const Settings = () => {
       <div>
         <SectionHeader icon={Bell} title="Reminders" desc="Automated Financial Alerts" />
         <div className="grid grid-cols-3 gap-3">
-          <SettingCell 
-            icon={Bell} title="Bills" sub="Due Notifications" color="text-amber-600" bg="bg-amber-50" 
-            active={reminders.bills} onToggle={() => setReminders(r => ({ ...r, bills: !r.bills }))}
+          <SettingCell
+            icon={Bell} title="Bills" sub="Due Notifications" color="text-amber-600" bg="bg-amber-50"
+            active={reminders.bills} onToggle={() => handleReminderToggle('bills')}
           />
-          <SettingCell 
-            icon={Clock} title="Daily Log" sub="9:00 PM Prompt" color="text-amber-600" bg="bg-amber-50" 
-            active={reminders.dailyLog} onToggle={() => setReminders(r => ({ ...r, dailyLog: !r.dailyLog }))}
+          <SettingCell
+            icon={Clock} title="Daily Log" sub="9:00 PM Prompt" color="text-amber-600" bg="bg-amber-50"
+            active={reminders.dailyLog} onToggle={() => handleReminderToggle('dailyLog')}
           />
-          <SettingCell icon={AlertTriangle} title="Overdue" sub="Critical Alerts" color="text-amber-600" bg="bg-amber-50" active={true} />
+          <SettingCell icon={AlertTriangle} title="Overdue" sub="Critical Alerts" color="text-amber-600" bg="bg-amber-50" active={reminders.bills} onToggle={() => handleReminderToggle('bills')} />
         </div>
       </div>
 
-      {/* 5. My Profile */}
+      {/* 5. Profile */}
       <div>
         <SectionHeader icon={Users} title="Profile" desc="Data Sync & Portability" />
         <div className="grid grid-cols-3 gap-3">
-          <SettingCell 
-            icon={Cloud} title="Drive Sync" sub="Auto Backup" color="text-blue-600" bg="bg-blue-50" 
-            active={sync.drive} onToggle={() => setSync(s => ({ ...s, drive: !s.drive }))}
+          <SettingCell
+            icon={Cloud} title="Drive Sync" sub="Auto Backup" color="text-blue-600" bg="bg-blue-50"
+            active={sync.drive} onToggle={handleDriveSync}
           />
-          <SettingCell icon={Download} title="Restore" sub="From Cloud" color="text-blue-600" bg="bg-blue-50" />
+          <SettingCell icon={Download} title="Restore" sub="From Backup" color="text-blue-600" bg="bg-blue-50" onClick={handleRestore} />
           <SettingCell icon={Upload} title="Export" sub="JSON Backup" color="text-blue-600" bg="bg-blue-50" onClick={handleExport} />
         </div>
       </div>
@@ -181,15 +290,18 @@ export const Settings = () => {
       <div>
         <SectionHeader icon={Shield} title="Privacy" desc="Access Control & Masking" />
         <div className="grid grid-cols-3 gap-3">
-          <SettingCell 
-            icon={Fingerprint} title="App Lock" sub="Biometrics" color="text-indigo-600" bg="bg-indigo-50" 
-            active={locks.biometric} onToggle={() => setLocks(s => ({ ...s, biometric: !s.biometric }))}
+          <SettingCell
+            icon={Fingerprint} title="App Lock" sub="PIN Guard" color="text-indigo-600" bg="bg-indigo-50"
+            active={locks.biometric} onToggle={() => { setLocks(s => ({ ...s, biometric: !s.biometric })); setShowPinModal(true); }}
           />
-          <SettingCell 
-            icon={Lock} title="Hide Balances" sub="Mask Values" color="text-indigo-600" bg="bg-indigo-50" 
+          <SettingCell
+            icon={Lock} title="Hide Balances" sub="Mask Values" color="text-indigo-600" bg="bg-indigo-50"
             active={profile.maskBalances} onToggle={() => updateProfile({ maskBalances: !profile.maskBalances })}
           />
-          <SettingCell icon={ShieldCheck} title="Two Factor" sub="Email Auth" color="text-indigo-600" bg="bg-indigo-50" active={false} />
+          <SettingCell
+            icon={ShieldCheck} title="Two Factor" sub="PIN Auth" color="text-indigo-600" bg="bg-indigo-50"
+            active={twoFactor} onClick={() => setShowPinModal(true)}
+          />
         </div>
       </div>
 
@@ -197,11 +309,11 @@ export const Settings = () => {
       <div>
         <SectionHeader icon={Palette} title="Brand" desc="Personalize Visual Identity" />
         <div className="grid grid-cols-3 gap-3">
-          <SettingCell 
-            icon={Palette} title="API Token" sub="Logo.dev Config" color="text-indigo-600" bg="bg-indigo-50" 
+          <SettingCell
+            icon={Palette} title="API Token" sub="Logo.dev Config" color="text-indigo-600" bg="bg-indigo-50"
             onClick={() => setShowLogoModal(true)}
           />
-          <SettingCell icon={LayoutTemplate} title="Theme" sub="Elite Dark Mode" color="text-indigo-600" bg="bg-indigo-50" />
+          <SettingCell icon={LayoutTemplate} title="Theme" sub="Accent Color" color="text-indigo-600" bg="bg-indigo-50" onClick={handleTheme} />
           <SettingCell icon={Store} title="Merchant Logos" sub="Auto Fetching" color="text-indigo-600" bg="bg-indigo-50" active={true} />
         </div>
       </div>
@@ -226,7 +338,7 @@ export const Settings = () => {
           <div className="bg-white rounded-3xl p-6 w-full max-w-sm shadow-2xl">
             <h3 className="font-bold text-xl text-slate-800 mb-2">Logo.dev API Token</h3>
             <p className="text-xs text-slate-500 mb-4">Required for high-definition merchant logos.</p>
-            <input 
+            <input
               type="password"
               value={profile.logoDevToken || ''}
               onChange={(e) => updateProfile({ logoDevToken: e.target.value })}
@@ -234,6 +346,123 @@ export const Settings = () => {
               className="w-full text-sm font-mono bg-slate-50 border px-4 py-3 rounded-xl focus:ring-2 focus:ring-indigo-600 outline-none mb-4"
             />
             <button onClick={() => setShowLogoModal(false)} className="w-full py-3 bg-indigo-600 text-white rounded-xl font-bold">Save & Close</button>
+          </div>
+        </div>
+      )}
+
+      {/* Categories Modal */}
+      {showCategoriesModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4">
+          <div className="bg-white rounded-3xl p-6 w-full max-w-md shadow-2xl max-h-[80vh] flex flex-col">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="font-bold text-xl text-slate-800">Categories</h3>
+              <button onClick={() => { setShowCategoriesModal(false); setExpandedCategory(null); }} className="p-2 bg-slate-100 rounded-full text-slate-500 hover:bg-slate-200"><X className="w-5 h-5" /></button>
+            </div>
+            <div className="overflow-y-auto flex-1 space-y-4">
+              <div>
+                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Expense</p>
+                <div className="space-y-1">
+                  {CATEGORIES.expense.map(cat => (
+                    <div key={cat}>
+                      <button
+                        onClick={() => setExpandedCategory(expandedCategory === cat ? null : cat)}
+                        className="w-full flex items-center justify-between px-4 py-2.5 rounded-xl hover:bg-slate-50 transition-colors text-left"
+                      >
+                        <span className="font-semibold text-sm text-slate-700">{cat}</span>
+                        {SUB_CATEGORY_MAP[cat] && (
+                          expandedCategory === cat
+                            ? <ChevronDown className="w-4 h-4 text-slate-400" />
+                            : <ChevronRight className="w-4 h-4 text-slate-400" />
+                        )}
+                      </button>
+                      {expandedCategory === cat && SUB_CATEGORY_MAP[cat] && (
+                        <div className="ml-4 pl-4 border-l-2 border-slate-100 space-y-1 mb-1">
+                          {SUB_CATEGORY_MAP[cat].map(sc => (
+                            <p key={sc} className="text-xs text-slate-500 py-1 font-medium">{sc}</p>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+              <div>
+                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Income</p>
+                <div className="space-y-1">
+                  {CATEGORIES.income.map(cat => (
+                    <div key={cat}>
+                      <button
+                        onClick={() => setExpandedCategory(expandedCategory === cat ? null : cat)}
+                        className="w-full flex items-center justify-between px-4 py-2.5 rounded-xl hover:bg-slate-50 transition-colors text-left"
+                      >
+                        <span className="font-semibold text-sm text-slate-700">{cat}</span>
+                        {SUB_CATEGORY_MAP[cat] && (
+                          expandedCategory === cat
+                            ? <ChevronDown className="w-4 h-4 text-slate-400" />
+                            : <ChevronRight className="w-4 h-4 text-slate-400" />
+                        )}
+                      </button>
+                      {expandedCategory === cat && SUB_CATEGORY_MAP[cat] && (
+                        <div className="ml-4 pl-4 border-l-2 border-slate-100 space-y-1 mb-1">
+                          {SUB_CATEGORY_MAP[cat].map(sc => (
+                            <p key={sc} className="text-xs text-slate-500 py-1 font-medium">{sc}</p>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* PIN / Two Factor Modal */}
+      {showPinModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4">
+          <div className="bg-white rounded-3xl p-6 w-full max-w-sm shadow-2xl">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="font-bold text-xl text-slate-800">
+                {pinStep === 'view' ? 'App PIN' : pinStep === 'set' ? 'Set New PIN' : 'Confirm PIN'}
+              </h3>
+              <button onClick={() => { setShowPinModal(false); setPinInput(''); setPinConfirm(''); setPinStep('view'); }} className="p-2 bg-slate-100 rounded-full text-slate-500 hover:bg-slate-200"><X className="w-5 h-5" /></button>
+            </div>
+
+            {pinStep === 'view' ? (
+              <div className="space-y-3">
+                <p className="text-sm text-slate-500 mb-4">
+                  {hasPin || twoFactor ? 'A PIN is currently set. The app will prompt for it on startup.' : 'Set a 4-digit PIN to lock the app on startup.'}
+                </p>
+                <button onClick={() => { setPinInput(''); setPinStep('set'); }} className="w-full py-3 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700">
+                  {hasPin || twoFactor ? 'Change PIN' : 'Set PIN'}
+                </button>
+                {(hasPin || twoFactor) && (
+                  <button onClick={handlePinClear} className="w-full py-3 border border-red-200 text-red-600 rounded-xl font-bold hover:bg-red-50">Remove PIN</button>
+                )}
+              </div>
+            ) : (
+              <div className="space-y-4">
+                <p className="text-sm text-slate-500">{pinStep === 'set' ? 'Enter a 4-digit PIN' : 'Enter PIN again to confirm'}</p>
+                <input
+                  type="password"
+                  inputMode="numeric"
+                  maxLength={4}
+                  value={pinStep === 'set' ? pinInput : pinConfirm}
+                  onChange={e => pinStep === 'set' ? setPinInput(e.target.value.replace(/\D/g, '').slice(0, 4)) : setPinConfirm(e.target.value.replace(/\D/g, '').slice(0, 4))}
+                  placeholder="••••"
+                  className="w-full text-center text-3xl font-black tracking-[1rem] bg-slate-50 border border-slate-200 rounded-xl px-4 py-4 focus:ring-2 focus:ring-indigo-600 outline-none"
+                  autoFocus
+                />
+                <button
+                  onClick={handlePinSave}
+                  disabled={(pinStep === 'set' ? pinInput : pinConfirm).length !== 4}
+                  className="w-full py-3 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 disabled:opacity-40"
+                >
+                  {pinStep === 'set' ? 'Next' : 'Confirm & Save'}
+                </button>
+              </div>
+            )}
           </div>
         </div>
       )}
@@ -246,7 +475,7 @@ export const Settings = () => {
             <p className="text-sm text-slate-500 mb-6">This will restore the default seed transactions. Your accounts and settings will be kept.</p>
             <div className="flex gap-3">
               <button onClick={() => setConfirmReset(false)} className="flex-1 py-2.5 border border-slate-200 rounded-xl font-semibold text-slate-600 hover:bg-slate-50">Cancel</button>
-              <button onClick={() => { resetData(); setConfirmReset(false); }} className="flex-1 py-2.5 bg-red-600 text-white rounded-xl font-bold hover:bg-red-700">Reset</button>
+              <button onClick={() => { resetData(); setConfirmReset(false); toast.success('Data reset to seed!'); }} className="flex-1 py-2.5 bg-red-600 text-white rounded-xl font-bold hover:bg-red-700">Reset</button>
             </div>
           </div>
         </div>
