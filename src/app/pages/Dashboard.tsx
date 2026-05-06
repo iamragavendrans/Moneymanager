@@ -506,8 +506,9 @@ export const Dashboard = () => {
       })()}
 
       {/* Hero Card */}
-      <div className="bg-[#0B1220] text-white rounded-[24px] p-6 md:p-8 shadow-xl relative overflow-hidden transition-all duration-300 w-full min-h-[220px] flex flex-col justify-between group">
-        <div className="absolute inset-x-0 bottom-0 h-44 opacity-60 transition-opacity z-0 pointer-events-none">
+      <div className="bg-[#0B1220] text-white rounded-[24px] p-6 md:p-8 shadow-xl relative overflow-hidden transition-all duration-300 w-full flex flex-col group">
+        {/* Sparkline — lives below the text content, always visible */}
+        <div className="absolute inset-x-0 bottom-0 h-40 opacity-70 z-0 pointer-events-none">
           <ResponsiveContainer width="100%" height="100%">
             <LineChart data={sparklineData}>
               <Line type="monotone" dataKey="cumulativeNW" stroke="#10B981" strokeWidth={4} dot={false} isAnimationActive={true} />
@@ -515,14 +516,16 @@ export const Dashboard = () => {
             </LineChart>
           </ResponsiveContainer>
         </div>
-        <div className="relative z-10 flex flex-col h-full justify-between">
-          <div className="flex justify-between items-center mb-4">
+
+        {/* Content sits above chart with its own natural height */}
+        <div className="relative z-10">
+          <div className="flex justify-between items-center mb-6">
             <div className="flex items-center gap-2">
               <span className="text-slate-400 font-medium text-sm whitespace-nowrap">Total Net Worth</span>
-              <button onClick={() => setIsMasked(!isMasked)} className="text-slate-400 hover:text-white transition-colors">{isMasked ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}</button>
+              <button onClick={() => setIsMasked(!isMasked)} className="text-slate-400 hover:text-white transition-colors outline-none">{isMasked ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}</button>
             </div>
           </div>
-          <div className="mt-6 flex flex-col sm:flex-row sm:items-end justify-between gap-4">
+          <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-3">
             <div>
               <h1 className="text-[40px] md:text-[48px] font-bold tracking-tight mb-1">{isMasked ? '₹ •••••••' : formatINR(historicalNetWorth)}</h1>
               <div className="flex items-center gap-2">
@@ -535,7 +538,9 @@ export const Dashboard = () => {
             </button>
           </div>
         </div>
-        <div className={`relative z-10 w-full overflow-hidden transition-all duration-300 ease-in-out ${showHeroBreakdown ? 'max-h-40 mt-6 opacity-100' : 'max-h-0 opacity-0'}`}>
+
+        {/* Breakdown panel */}
+        <div className={`relative z-10 w-full overflow-hidden transition-all duration-300 ease-in-out ${showHeroBreakdown ? 'max-h-40 mt-4 opacity-100' : 'max-h-0 opacity-0'}`}>
           <div className="p-4 bg-white/5 rounded-2xl border border-white/10 backdrop-blur-md grid grid-cols-2 gap-4">
             <div>
               <p className="text-slate-400 text-[10px] md:text-xs mb-1 uppercase tracking-wider font-semibold">Total Assets</p>
@@ -547,6 +552,9 @@ export const Dashboard = () => {
             </div>
           </div>
         </div>
+
+        {/* Dedicated chart area — always rendered below the text, never covered */}
+        <div className="relative z-0 h-20 mt-2 pointer-events-none" />
       </div>
 
       <div className="grid grid-cols-2 gap-4 w-full">

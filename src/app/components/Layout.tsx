@@ -117,7 +117,7 @@ export const Layout = () => {
         </header>
 
         {/* Scrollable Content */}
-        <div className="flex-1 overflow-y-auto pb-20 md:pb-0">
+        <div className="flex-1 overflow-y-auto pb-40 md:pb-6">
           <Outlet />
         </div>
         
