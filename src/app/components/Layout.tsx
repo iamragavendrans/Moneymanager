@@ -4,7 +4,6 @@ import { LayoutDashboard, ReceiptText, WalletCards, Repeat, Settings, Plus, X } 
 import { cn } from "../utils";
 import { TransactionFormModal } from "./TransactionFormModal";
 import { AccountManagementModal } from "./AccountManagementModal";
-import { EntityManagementModal } from "./EntityManagementModal";
 import { InvestmentManagementModal } from "./InvestmentManagementModal";
 
 const navItems = [
@@ -18,7 +17,6 @@ const navItems = [
 export const Layout = () => {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [showAccountModal, setShowAccountModal] = useState(false);
-  const [showEntityModal, setShowEntityModal] = useState(false);
   const [showInvModal, setShowInvModal] = useState(false);
   const location = useLocation();
 
@@ -159,9 +157,6 @@ export const Layout = () => {
         <AccountManagementModal onClose={() => setShowAccountModal(false)} />
       )}
 
-      {showEntityModal && (
-        <EntityManagementModal type="item" onClose={() => setShowEntityModal(false)} />
-      )}
       {showInvModal && <InvestmentManagementModal onClose={() => setShowInvModal(false)} />}
     </div>
   );

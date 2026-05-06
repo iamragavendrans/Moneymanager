@@ -75,7 +75,7 @@ export const Settings = () => {
   };
   const [locks, setLocks] = useState({ biometric: getStoredBool('s_biometric', false), hideBalances: getStoredBool('s_hideBalances', false) });
   const [sync, setSync] = useState({ drive: getStoredBool('s_drive', false) });
-  const [reminders, setReminders] = useState({ bills: getStoredBool('s_bills', false), dailyLog: getStoredBool('s_dailyLog', false) });
+  const [reminders, setReminders] = useState({ bills: getStoredBool('s_bills', false), dailyLog: getStoredBool('s_dailyLog', false), overdue: getStoredBool('s_overdue', false) });
 
   const [confirmReset, setConfirmReset] = useState(false);
   const [confirmWipe, setConfirmWipe] = useState(false);
@@ -96,6 +96,7 @@ export const Settings = () => {
   useEffect(() => { localStorage.setItem('s_drive', String(sync.drive)); }, [sync.drive]);
   useEffect(() => { localStorage.setItem('s_bills', String(reminders.bills)); }, [reminders.bills]);
   useEffect(() => { localStorage.setItem('s_dailyLog', String(reminders.dailyLog)); }, [reminders.dailyLog]);
+  useEffect(() => { localStorage.setItem('s_overdue', String(reminders.overdue)); }, [reminders.overdue]);
   useEffect(() => { localStorage.setItem('s_2fa', String(twoFactor)); }, [twoFactor]);
 
   const handleExport = () => {
@@ -131,7 +132,7 @@ export const Settings = () => {
     input.click();
   };
 
-  const handleReminderToggle = async (key: 'bills' | 'dailyLog') => {
+  const handleReminderToggle = async (key: 'bills' | 'dailyLog' | 'overdue') => {
     const turningOn = !reminders[key];
     if (turningOn && 'Notification' in window) {
       const permission = await Notification.requestPermission();
@@ -140,8 +141,8 @@ export const Settings = () => {
         return;
       }
       if (permission === 'granted') {
-        const label = key === 'bills' ? 'bill due date' : 'daily log';
-        toast.success(`You'll be reminded about ${label} alerts`);
+        const label = key === 'bills' ? 'bill due date' : key === 'overdue' ? 'overdue alerts' : 'daily log';
+        toast.success(`You'll be reminded about ${label}`);
         if (key === 'dailyLog') {
           new Notification('MoneyManager', { body: 'Reminders are now active! You\'ll be notified at 9 PM daily.' });
         }
@@ -269,7 +270,7 @@ export const Settings = () => {
             icon={Clock} title="Daily Log" sub="9:00 PM Prompt" color="text-amber-600" bg="bg-amber-50"
             active={reminders.dailyLog} onToggle={() => handleReminderToggle('dailyLog')}
           />
-          <SettingCell icon={AlertTriangle} title="Overdue" sub="Critical Alerts" color="text-amber-600" bg="bg-amber-50" active={reminders.bills} onToggle={() => handleReminderToggle('bills')} />
+          <SettingCell icon={AlertTriangle} title="Overdue" sub="Critical Alerts" color="text-amber-600" bg="bg-amber-50" active={reminders.overdue} onToggle={() => handleReminderToggle('overdue')} />
         </div>
       </div>
 
@@ -323,7 +324,7 @@ export const Settings = () => {
         <SectionHeader icon={AlertTriangle} title="Danger Zone" desc="Destructive System Actions" />
         <div className="grid grid-cols-3 gap-3">
           <SettingCell icon={Database} title="Reset" sub="Keep Accounts" color="text-red-600" bg="bg-red-50" onClick={() => setConfirmReset(true)} />
-          <SettingCell icon={Database} title="Seed" sub="2 Year History" color="text-red-600" bg="bg-red-50" onClick={() => setConfirmReset(true)} />
+          <SettingCell icon={Database} title="Seed" sub="2 Year History" color="text-red-600" bg="bg-red-50" onClick={() => { resetData(); toast.success('Seed data loaded!'); }} />
           <SettingCell icon={LogOut} title="Wipe" sub="Nuclear Reset" color="text-red-600" bg="bg-red-50" onClick={() => { setWipePhase(1); setConfirmWipe(true); }} />
         </div>
       </div>

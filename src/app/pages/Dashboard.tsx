@@ -256,17 +256,6 @@ export const Dashboard = () => {
 
   const CATEGORY_COLORS = ['#6366F1', '#EC4899', '#F59E0B', '#10B981', '#3B82F6', '#8B5CF6'];
 
-  // Use a zoomed-in domain for sparkline if variance is low
-  const sparklineDomain = useMemo(() => {
-    if (chartData.length === 0) return [0, 0];
-    const values = chartData.map(d => d.cumulativeNW);
-    const min = Math.min(...values);
-    const max = Math.max(...values);
-    const padding = (max - min) * 0.1 || max * 0.001; // Ensure some padding even if flat
-    return [min - padding, max + padding];
-  }, [chartData]);
-
-  const sparklineData = chartData;
   const recentTransactions = transactions.slice(0, 5);
 
   const getAccountName = (id: string) => accounts.find(a => a.id === id)?.name || 'Account';
@@ -507,18 +496,7 @@ export const Dashboard = () => {
 
       {/* Hero Card */}
       <div className="bg-[#0B1220] text-white rounded-[24px] p-6 md:p-8 shadow-xl relative overflow-hidden transition-all duration-300 w-full flex flex-col group">
-        {/* Sparkline — lives below the text content, always visible */}
-        <div className="absolute inset-x-0 bottom-0 h-40 opacity-70 z-0 pointer-events-none">
-          <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={sparklineData}>
-              <Line type="monotone" dataKey="cumulativeNW" stroke="#10B981" strokeWidth={4} dot={false} isAnimationActive={true} />
-              <YAxis domain={sparklineDomain} hide />
-            </LineChart>
-          </ResponsiveContainer>
-        </div>
-
-        {/* Content sits above chart with its own natural height */}
-        <div className="relative z-10">
+        <div>
           <div className="flex justify-between items-center mb-6">
             <div className="flex items-center gap-2">
               <span className="text-slate-400 font-medium text-sm whitespace-nowrap">Total Net Worth</span>
@@ -553,8 +531,6 @@ export const Dashboard = () => {
           </div>
         </div>
 
-        {/* Dedicated chart area — always rendered below the text, never covered */}
-        <div className="relative z-0 h-20 mt-2 pointer-events-none" />
       </div>
 
       <div className="grid grid-cols-2 gap-4 w-full">

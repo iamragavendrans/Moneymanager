@@ -1,6 +1,5 @@
 import React, { useMemo } from "react";
 import { TrendingUp, ArrowUpRight, ArrowDownRight, Landmark, Coins, Home, Plus, Info, Clock, ShieldCheck } from "lucide-react";
-import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from "recharts";
 import { formatINR, cn } from "../utils";
 import { differenceInDays, parseISO, format } from "date-fns";
 import { useFinance } from "../context/FinanceContext";
@@ -25,8 +24,6 @@ const defaultInvestments = {
     { id: '1', name: "2BHK Apartment, Bangalore", propertyValue: 8500000, loanOutstanding: 6200000 },
   ]
 };
-
-const CHART_COLORS = ['#3B82F6', '#10B981', '#F59E0B', '#6366F1'];
 
 export const Investments = () => {
   const { investments: contextInvestments } = useFinance();
@@ -85,13 +82,6 @@ export const Investments = () => {
   const totalProfit = totalCurrent - totalInvested;
   // Guard against divide-by-zero
   const profitPercentage = totalInvested > 0 ? (totalProfit / totalInvested) * 100 : 0;
-
-  const allocationData = [
-    { name: "Equity & MFs", value: marketStats.current },
-    { name: "Debt & PF", value: fixedStats.current },
-    { name: "Gold", value: goldStats.current },
-    { name: "Real Estate (Net)", value: realEstateStats.current },
-  ].filter(d => d.value > 0);
 
   return (
     <div className="p-4 md:p-8 max-w-5xl mx-auto space-y-8 pb-24">

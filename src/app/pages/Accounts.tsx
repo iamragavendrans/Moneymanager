@@ -62,7 +62,7 @@ export const Accounts = () => {
   const creditCards = accounts.filter(a => a.type === "credit_card");
   const loans = accounts.filter(a => a.type === "loan");
   const cashWallets = accounts.filter(a => ["cash", "wallet", "UPI", "meal_card"].includes(a.type));
-  const retirementAccounts = accounts.filter(a => ["pf", "ppf", "nps"].includes(a.type));
+  const retirementAccounts = accounts.filter(a => a.type === "pf");
 
   const totalPositive = accounts.filter(a => a.balance > 0).reduce((sum, a) => sum + a.balance, 0);
   const totalCreditDebt = accounts.filter(a => a.type === "credit_card" && a.balance < 0).reduce((sum, a) => sum + Math.abs(a.balance), 0);
@@ -365,7 +365,7 @@ export const Accounts = () => {
                   {/* Brand Logo & Network */}
                   <div className="absolute top-8 right-8 flex items-center gap-3">
                     <div className="text-white/40 text-[10px] font-black italic uppercase tracking-tighter mr-1">
-                      {getCardNetwork(acc.lastFour)}
+                      {getCardNetwork(acc.fullAccountNumber || acc.lastFour)}
                     </div>
                     <div className="w-14 h-10 bg-white/10 rounded-xl backdrop-blur-md flex items-center justify-center p-1.5 border border-white/5">
                       {acc.logoUrl ? (
