@@ -49,7 +49,7 @@ export const Transactions = () => {
     setSearchParams(searchParams);
   };
   const [filterType, setFilterType] = useState<"all" | "expense" | "income" | "transfer">((searchParams.get("type") as any) || "all");
-  const [filterMode, setFilterMode] = useState<"all" | "UPI" | "card" | "cash" | "netbanking">("all");
+  const [filterMode, setFilterMode] = useState<"all" | "UPI" | "card" | "cash" | "banking">("all");
   const [filterStatus, setFilterStatus] = useState<"all" | "cleared" | "pending">("all");
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
   const [isAllExpanded, setIsAllExpanded] = useState(false);
@@ -356,7 +356,7 @@ export const Transactions = () => {
               <div className="flex flex-col gap-1.5 flex-1 min-w-[240px]">
                 <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Payment Mode</span>
                 <div className="flex bg-slate-100 p-1 rounded-lg shrink-0 overflow-x-auto scrollbar-hide">
-                  {(["all", "UPI", "card", "cash", "netbanking"] as const).map((t) => (
+                  {(["all", "UPI", "card", "cash", "banking"] as const).map((t) => (
                     <button
                       key={t}
                       onClick={() => setFilterMode(t as any)}
@@ -365,7 +365,7 @@ export const Transactions = () => {
                         filterMode === (t as any) ? "bg-white text-slate-900 shadow-sm" : "text-slate-500 hover:text-slate-700"
                       )}
                     >
-                      {t === "netbanking" ? "Bank Transfer" : t}
+                      {t === "banking" ? "Bank Transfer" : t}
                     </button>
                   ))}
                 </div>
@@ -571,30 +571,30 @@ export const Transactions = () => {
                           <div className="bg-slate-50/50 border-t border-slate-100 divide-y divide-slate-100 pl-16">
                             {pg.transactions.map((tx) => (
                               <div key={tx.id} className={cn("p-3 pr-5 flex items-center justify-between text-sm transition-colors group/row cursor-pointer",
-                              bulkMode && bulkSelected.has(tx.id) ? "bg-indigo-50" : "hover:bg-slate-50"
-                            )}
-                            onClick={() => bulkMode ? toggleBulk(tx.id) : setEditTxId(tx.id)}
-                          >
-                            <div className="flex items-center gap-3 flex-1 min-w-0 pr-2">
-                              {bulkMode && (
-                                <div className={cn("w-4 h-4 rounded border-2 flex items-center justify-center shrink-0",
-                                  bulkSelected.has(tx.id) ? "bg-indigo-600 border-indigo-600" : "border-slate-300"
-                                )}>
-                                  {bulkSelected.has(tx.id) && <CheckCheck className="w-2.5 h-2.5 text-white" />}
-                                </div>
+                                bulkMode && bulkSelected.has(tx.id) ? "bg-indigo-50" : "hover:bg-slate-50"
                               )}
-                              <div className="flex-1 min-w-0">
-                                <p className="font-semibold text-slate-700 truncate">{tx.category}</p>
-                                {tx.notes && <p className="text-slate-500 text-xs mt-0.5 truncate">{tx.notes}</p>}
-                              </div>
-                            </div>
-                            <div className="flex items-center gap-3 shrink-0">
-                              {!bulkMode && (
-                                <div className="flex items-center gap-1 opacity-0 group-hover/row:opacity-100 transition-opacity">
-                                  <button onClick={(e) => { e.stopPropagation(); setEditTxId(tx.id); }} className="p-1 text-slate-400 hover:text-indigo-600 rounded-md hover:bg-indigo-50"><Edit className="w-4 h-4" /></button>
-                                  <button onClick={(e) => { e.stopPropagation(); deleteTransaction(tx.id); }} className="p-1 text-slate-400 hover:text-red-600 rounded-md hover:bg-red-50"><Trash2 className="w-4 h-4" /></button>
+                                onClick={() => bulkMode ? toggleBulk(tx.id) : setEditTxId(tx.id)}
+                              >
+                                <div className="flex items-center gap-3 flex-1 min-w-0 pr-2">
+                                  {bulkMode && (
+                                    <div className={cn("w-4 h-4 rounded border-2 flex items-center justify-center shrink-0",
+                                      bulkSelected.has(tx.id) ? "bg-indigo-600 border-indigo-600" : "border-slate-300"
+                                    )}>
+                                      {bulkSelected.has(tx.id) && <CheckCheck className="w-2.5 h-2.5 text-white" />}
+                                    </div>
+                                  )}
+                                  <div className="flex-1 min-w-0">
+                                    <p className="font-semibold text-slate-700 truncate">{tx.category}</p>
+                                    {tx.notes && <p className="text-slate-500 text-xs mt-0.5 truncate">{tx.notes}</p>}
+                                  </div>
                                 </div>
-                              )}
+                                <div className="flex items-center gap-3 shrink-0">
+                                  {!bulkMode && (
+                                    <div className="flex items-center gap-1 opacity-0 group-hover/row:opacity-100 transition-opacity">
+                                      <button onClick={(e) => { e.stopPropagation(); setEditTxId(tx.id); }} className="p-1 text-slate-400 hover:text-indigo-600 rounded-md hover:bg-indigo-50"><Edit className="w-4 h-4" /></button>
+                                      <button onClick={(e) => { e.stopPropagation(); deleteTransaction(tx.id); }} className="p-1 text-slate-400 hover:text-red-600 rounded-md hover:bg-red-50"><Trash2 className="w-4 h-4" /></button>
+                                    </div>
+                                  )}
                                   <div className={cn(
                                     "font-semibold min-w-[70px] text-right whitespace-nowrap",
                                     tx.type === 'expense' ? 'text-slate-700' :

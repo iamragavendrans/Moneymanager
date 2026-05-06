@@ -43,28 +43,28 @@ export const seedAllData = () => {
     { id: "ent_shop_3", type: "shop", name: "BigBasket", mode: "online", url: "bigbasket.com" },
     { id: "ent_shop_4", type: "shop", name: "Star Bazaar", mode: "offline", location: "Nexus Mall" },
     { id: "ent_shop_5", type: "shop", name: "Croma", mode: "offline", location: "Indiranagar" },
-    
+
     // People
     { id: "ent_person_1", type: "person", name: "Rahul", relationship: "Friend" },
     { id: "ent_person_2", type: "person", name: "Priya", relationship: "Family" },
     { id: "ent_person_3", type: "person", name: "Amit", relationship: "Colleague" },
     { id: "ent_person_4", type: "person", name: "Landlord", relationship: "Other" },
-    
+
     // Recurring / Subs
     { id: "ent_sub_1", type: "subscription", name: "Netflix", amount: 649, recurringDuration: "monthly", provider: "Netflix" },
     { id: "ent_sub_2", type: "subscription", name: "Amazon Prime", amount: 1499, recurringDuration: "yearly", provider: "Amazon" },
     { id: "ent_sub_3", type: "subscription", name: "Spotify Family", amount: 199, recurringDuration: "monthly", provider: "Spotify" },
     { id: "ent_rec_1", type: "recurring", name: "Airtel Postpaid", amount: 999, recurringDuration: "monthly", provider: "Airtel" },
     { id: "ent_rec_2", type: "recurring", name: "BESCOM (Elec)", amount: 1500, recurringDuration: "monthly", provider: "BESCOM" },
-    
+
     // Gift Cards
     { id: "ent_gift_1", type: "giftcard", name: "Amazon Gift Card", totalBalance: 5000, expiryDate: "2026-12-31" },
     { id: "ent_gift_2", type: "giftcard", name: "Myntra Voucher", totalBalance: 2000, expiryDate: "2025-06-30" },
-    
+
     // Warranties
     { id: "ent_war_1", type: "warranty", name: "MacBook Warranty", warrantyDetails: "3 Year AppleCare+", expiryDate: "2027-05-15" },
     { id: "ent_war_2", type: "warranty", name: "LG Fridge Warranty", warrantyDetails: "10 Year Compressor Warranty", expiryDate: "2032-10-20" },
-    
+
     // Items
     { id: "ent_item_1", type: "item", name: "iPhone 15 Pro", price: 129900, quantity: "1 unit" },
     { id: "ent_item_2", type: "item", name: "Sony WH-1000XM5", price: 29900, quantity: "1 unit" },
@@ -82,7 +82,7 @@ export const seedAllData = () => {
 
   // Track balances manually during seeding
   const balances: Record<string, number> = {
-    acc_bank_1: 250000, 
+    acc_bank_1: 250000,
     acc_bank_2: 100000,
     acc_bank_3: 50000,
     acc_bank_4: 30000,
@@ -114,7 +114,7 @@ export const seedAllData = () => {
         date: dateStr,
         notes: "Monthly Salary Credit",
         tags: ["income", "fixed"],
-        mode: "netbanking"
+        mode: "banking"
       });
       balances.acc_bank_2 += amount;
 
@@ -131,7 +131,7 @@ export const seedAllData = () => {
         date: dateStr,
         notes: "PF Contribution",
         tags: ["retirement"],
-        mode: "netbanking"
+        mode: "banking"
       });
     }
 
@@ -149,7 +149,7 @@ export const seedAllData = () => {
         date: dateStr,
         notes: "Home Loan EMI",
         tags: ["essential"],
-        mode: "netbanking"
+        mode: "banking"
       });
       balances.acc_bank_2 -= amount;
       balances.acc_loan_1 += (amount * 0.4); // Principal component approx
@@ -167,7 +167,7 @@ export const seedAllData = () => {
         date: dateStr,
         notes: "Car Loan EMI",
         tags: ["essential"],
-        mode: "netbanking"
+        mode: "banking"
       });
       balances.acc_bank_2 -= amount;
       balances.acc_loan_2 += (amount * 0.7); // Principal component approx
@@ -184,7 +184,7 @@ export const seedAllData = () => {
         date: dateStr,
         notes: "Monthly Rent",
         tags: ["essential"],
-        mode: "netbanking"
+        mode: "banking"
       });
       balances.acc_bank_2 -= amount;
     }
@@ -226,7 +226,7 @@ export const seedAllData = () => {
         date: dateStr,
         notes: "Monthly SIP Portfolio",
         tags: ["investment"],
-        mode: "netbanking"
+        mode: "banking"
       });
       balances.acc_bank_1 -= sipAmt;
     }
@@ -242,7 +242,7 @@ export const seedAllData = () => {
         const payee = payeeList[Math.floor(Math.random() * payeeList.length)];
 
         let amount = 0;
-        switch(category) {
+        switch (category) {
           case "Food": amount = 150 + Math.random() * 1500; break;
           case "Transport": amount = 50 + Math.random() * 600; break;
           case "Shopping": amount = 500 + Math.random() * 10000; break;
@@ -255,7 +255,7 @@ export const seedAllData = () => {
         // Logic for picking payment mode/account
         let accId = "acc_bank_3";
         let mode: Transaction["mode"] = "UPI";
-        
+
         if (amount > 5000) { accId = "acc_card_1"; mode = "card"; }
         else if (amount < 200) { accId = "acc_cash"; mode = "cash"; }
         else if (payee === "Swiggy" || payee === "Zomato") { accId = "acc_wallet_1"; mode = "UPI"; }
@@ -313,7 +313,7 @@ export const seedAllData = () => {
         date: dateStr,
         notes: "Monthly wallet budget",
         tags: [],
-        mode: "netbanking"
+        mode: "banking"
       });
       balances.acc_bank_2 -= topup;
       balances.acc_wallet_1 += topup;

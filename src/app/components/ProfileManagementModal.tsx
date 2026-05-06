@@ -9,7 +9,7 @@ export const ProfileManagementModal = ({ onClose }: { onClose: () => void }) => 
   const [formData, setFormData] = useState({
     userName: profile.userName || "",
     userEmail: profile.userEmail || "",
-    employer: profile.employer || "",
+    companyName: profile.companyName || "",
     salaryBand: profile.salaryBand || "",
     taxRegime: profile.taxRegime || "new",
     baseCurrency: profile.baseCurrency || "INR",
@@ -66,7 +66,7 @@ export const ProfileManagementModal = ({ onClose }: { onClose: () => void }) => 
               <div className="space-y-1.5">
                 <label className="text-xs font-bold text-slate-500 flex items-center gap-1.5"><Briefcase className="w-3.5 h-3.5" /> Current Employer</label>
                 <input 
-                  type="text" value={formData.employer} onChange={e => setFormData({...formData, employer: e.target.value})}
+                  type="text" value={formData.companyName} onChange={e => setFormData({...formData, companyName: e.target.value})}
                   className="w-full bg-slate-50 border-0 px-4 py-3 rounded-xl text-sm font-semibold focus:ring-2 focus:ring-indigo-600 outline-none"
                   placeholder="Acme Inc."
                 />

@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useEffect, useState } from "react";
 import { format, subDays, subMonths, startOfMonth, endOfMonth } from "date-fns";
 import { seedAllData } from "../utils/seedData";
+import { CategoryDef, DEFAULT_EXPENSE_CATEGORIES, DEFAULT_INCOME_CATEGORIES } from "../utils/categories";
 
 export type TransactionType = "expense" | "income" | "transfer";
 
@@ -15,9 +16,10 @@ export interface Transaction {
   date: string;
   notes: string;
   tags: string[];
-  mode?: "UPI" | "card" | "cash" | "netbanking" | "cheque";
+  mode?: "UPI" | "card" | "cash" | "banking" | "cheque";
   status?: "cleared" | "pending";
   subCategory?: string;
+  subSubCategory?: string;
   fromLocation?: string;
   toLocation?: string;
   items?: { name: string; qty: string; unit: string; price?: number }[];
@@ -48,11 +50,11 @@ export interface Account {
   type: "bank" | "UPI" | "wallet" | "cash" | "credit_card" | "loan" | "investment" | "meal_card" | "pf";
   balance: number;
   currency: string;
-  lastFour?: string;       
-  fullAccountNumber?: string; 
+  lastFour?: string;
+  fullAccountNumber?: string;
   ifsc?: string;
-  creditLimit?: number;    
-  dueDate?: string;        
+  creditLimit?: number;
+  dueDate?: string;
   interestRate?: number;   // for loans
   tenureMonths?: number;   // for loans
   emiAmount?: number;      // for loans
@@ -129,6 +131,7 @@ interface FinanceContextType {
   investments: Investment[];
   entities: Entity[];
   profile: Profile;
+  categories: CategoryDef[];
   addTransaction: (tx: Omit<Transaction, "id">) => void;
   updateTransaction: (id: string, partialTx: Partial<Transaction>) => void;
   deleteTransaction: (id: string) => void;
@@ -148,6 +151,11 @@ interface FinanceContextType {
   resetData: () => void;
   wipeData: () => void;
   restoreData: (data: { transactions?: Transaction[]; accounts?: Account[]; investments?: Investment[]; entities?: Entity[]; profile?: Partial<Profile> }) => void;
+  updateCategory: (id: string, patch: Partial<CategoryDef>) => void;
+  addCategory: (cat: Omit<CategoryDef, "id">) => void;
+  deleteCategory: (id: string) => void;
+  reorderCategories: (ordered: CategoryDef[]) => void;
+  resetCategories: () => void;
 }
 
 const FinanceContext = createContext<FinanceContextType | undefined>(undefined);
@@ -179,11 +187,17 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
     return saved ? JSON.parse(saved) : { companyName: "Acme Corp" };
   });
 
+  const [categories, setCategories] = useState<CategoryDef[]>(() => {
+    const saved = localStorage.getItem("finance_categories");
+    return saved ? JSON.parse(saved) : [...DEFAULT_EXPENSE_CATEGORIES, ...DEFAULT_INCOME_CATEGORIES];
+  });
+
   useEffect(() => { localStorage.setItem("finance_txns", JSON.stringify(transactions)); }, [transactions]);
   useEffect(() => { localStorage.setItem("finance_accounts", JSON.stringify(accounts)); }, [accounts]);
   useEffect(() => { localStorage.setItem("finance_investments", JSON.stringify(investments)); }, [investments]);
   useEffect(() => { localStorage.setItem("finance_entities", JSON.stringify(entities)); }, [entities]);
   useEffect(() => { localStorage.setItem("finance_profile", JSON.stringify(profile)); }, [profile]);
+  useEffect(() => { localStorage.setItem("finance_categories", JSON.stringify(categories)); }, [categories]);
 
   // --- Transactions ---
   const applyImpact = (accs: Account[], tx: Omit<Transaction, "id"> | Transaction, reverse = false): Account[] => {
@@ -247,6 +261,23 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const updateEntity = (id: string, ent: Partial<Entity>) => setEntities((prev: Entity[]) => prev.map((e: Entity) => e.id === id ? { ...e, ...ent } : e));
   const deleteEntity = (id: string) => setEntities((prev: Entity[]) => prev.filter((e: Entity) => e.id !== id));
 
+  // --- Categories ---
+  const updateCategory = (id: string, patch: Partial<CategoryDef>) =>
+    setCategories(prev => prev.map(c => c.id === id ? { ...c, ...patch } : c));
+
+  const addCategory = (cat: Omit<CategoryDef, "id">) => {
+    const id = `custom_${Date.now()}`;
+    setCategories(prev => [...prev, { ...cat, id } as CategoryDef]);
+  };
+
+  const deleteCategory = (id: string) =>
+    setCategories(prev => prev.filter(c => c.id !== id));
+
+  const reorderCategories = (ordered: CategoryDef[]) => setCategories(ordered);
+
+  const resetCategories = () =>
+    setCategories([...DEFAULT_EXPENSE_CATEGORIES, ...DEFAULT_INCOME_CATEGORIES]);
+
   // --- Profile ---
   const updateProfile = (p: Partial<Profile>) => setProfile((prev: Profile) => ({ ...prev, ...p }));
 
@@ -256,9 +287,9 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const getTotalExpenses = (month?: Date): number => {
     const txs = month
       ? transactions.filter((t: Transaction) => {
-          const d = new Date(t.date);
-          return d >= startOfMonth(month) && d <= endOfMonth(month);
-        })
+        const d = new Date(t.date);
+        return d >= startOfMonth(month) && d <= endOfMonth(month);
+      })
       : transactions;
     return txs.filter((t: Transaction) => t.type === "expense").reduce((sum: number, t: Transaction) => sum + t.amount, 0);
   };
@@ -266,9 +297,9 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const getTotalIncome = (month?: Date): number => {
     const txs = month
       ? transactions.filter((t: Transaction) => {
-          const d = new Date(t.date);
-          return d >= startOfMonth(month) && d <= endOfMonth(month);
-        })
+        const d = new Date(t.date);
+        return d >= startOfMonth(month) && d <= endOfMonth(month);
+      })
       : transactions;
     return txs.filter((t: Transaction) => t.type === "income").reduce((sum: number, t: Transaction) => sum + t.amount, 0);
   };
@@ -287,6 +318,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
     setEntities([]);
     setInvestments([]);
     setProfile({ companyName: "Acme Corp" });
+    setCategories([...DEFAULT_EXPENSE_CATEGORIES, ...DEFAULT_INCOME_CATEGORIES]);
   };
 
   const restoreData = (data: { transactions?: Transaction[]; accounts?: Account[]; investments?: Investment[]; entities?: Entity[]; profile?: Partial<Profile> }) => {
@@ -306,7 +338,8 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
       addEntity, updateEntity, deleteEntity,
       profile, updateProfile,
       getNetWorth, getTotalExpenses, getTotalIncome,
-      resetData, wipeData, restoreData
+      resetData, wipeData, restoreData,
+      categories, updateCategory, addCategory, deleteCategory, reorderCategories, resetCategories,
     }}>
       {children}
     </FinanceContext.Provider>

@@ -117,65 +117,60 @@ export const Accounts = () => {
         />
       )}
 
-      {/* 3.1. Account Summary Header */}
-      <div className="bg-white rounded-[24px] shadow-sm border border-slate-100 p-6 md:p-8 flex flex-col md:flex-row items-center gap-8 relative overflow-hidden">
-        <div className="absolute -right-12 -top-12 w-64 h-64 bg-indigo-50 rounded-full blur-3xl opacity-50 pointer-events-none"></div>
+      {/* 3.1. Account Summary Header - Balanced 2-Column Rectangle */}
+      <div className="bg-white rounded-[32px] shadow-sm border border-slate-100 p-8 md:p-10 relative overflow-hidden">
+        <div className="absolute -right-24 -top-24 w-96 h-96 bg-indigo-50/50 rounded-full blur-[100px] pointer-events-none" />
+        <div className="absolute -left-24 -bottom-24 w-96 h-96 bg-emerald-50/30 rounded-full blur-[100px] pointer-events-none" />
 
-        <div className="flex-1 space-y-2 relative z-10 w-full text-center md:text-left">
-          <div className="flex items-center justify-center md:justify-start gap-2 text-slate-500 mb-1">
-            <Wallet className="w-4 h-4" />
-            <span className="font-semibold text-sm uppercase tracking-wider">Total Liquidity</span>
-            <button onClick={() => setIsMasked(!isMasked)} className="ml-2 text-slate-400 hover:text-indigo-600 transition-colors">
-              {isMasked ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-            </button>
+        <div className="relative z-10 grid grid-cols-1 lg:grid-cols-2 gap-10 items-center">
+          {/* Column 1: Main Focus */}
+          <div className="space-y-5">
+            <div className="flex items-center gap-2 text-slate-400">
+              <div className="p-2.5 bg-indigo-50 rounded-xl">
+                <Wallet className="w-5 h-5 text-indigo-600" />
+              </div>
+              <div className="flex flex-col">
+                <span className="font-black text-[10px] uppercase tracking-[0.25em] text-slate-500">Net Liquidity</span>
+                <p className="text-[10px] font-bold text-slate-400">Combined Financial Standing</p>
+              </div>
+              <button onClick={() => setIsMasked(!isMasked)} className="ml-auto lg:ml-4 p-1.5 hover:bg-slate-100 rounded-lg transition-colors">
+                {isMasked ? <EyeOff className="w-4 h-4 text-slate-400" /> : <Eye className="w-4 h-4 text-slate-400" />}
+              </button>
+            </div>
+            
+            <div className="space-y-1">
+              <h1 className="text-5xl md:text-6xl font-black text-slate-900 tracking-tighter">
+                {isMasked ? '₹ •••••••' : formatINR(totalLiquidity)}
+              </h1>
+              <p className="text-sm font-medium text-slate-500 leading-relaxed max-w-sm">
+                Real-time calculation of all cash assets against your total credit liabilities.
+              </p>
+            </div>
           </div>
-          <h1 className="text-4xl md:text-5xl font-black text-slate-900 tracking-tight">{isMasked ? '₹ •••••••' : formatINR(totalLiquidity)}</h1>
-          <p className="text-sm font-medium text-slate-500 mt-2">
-            Sum of liquid positive balances minus credit card outstanding.
-          </p>
 
-          <div className="flex items-center justify-center md:justify-start gap-2 mt-6">
-            <button
-              onClick={() => setShowAccountModal(true)}
-              className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2.5 rounded-xl text-sm font-bold transition-all shadow-sm active:scale-95"
-            >
-              <Plus className="w-4 h-4" /> Add Account
-            </button>
-            <button
-              onClick={() => setShowTransferModal(true)}
-              className="flex items-center gap-2 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 px-5 py-2.5 rounded-xl text-sm font-bold transition-all shadow-sm active:scale-95"
-            >
-              <ArrowRightLeft className="w-4 h-4" /> Transfer
-            </button>
-          </div>
-        </div>
-
-        {/* Visual Ring Chart */}
-        <div className="w-full md:w-64 h-48 md:h-64 relative z-10">
-          <ResponsiveContainer width="100%" height="100%">
-            <PieChart>
-              <Pie
-                data={chartData}
-                cx="50%" cy="50%"
-                innerRadius="75%" outerRadius="90%"
-                paddingAngle={4}
-                dataKey="value"
-                stroke="none"
-                cornerRadius={8}
-              >
-                {chartData.map((entry, index) => (
-                  <Cell key={`cell-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />
-                ))}
-              </Pie>
-              <Tooltip
-                formatter={(value: number) => formatINR(value)}
-                contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
-              />
-            </PieChart>
-          </ResponsiveContainer>
-          <div className="absolute inset-0 flex items-center justify-center flex-col pointer-events-none">
-            <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">Liquid</span>
-            <span className="text-lg font-black text-slate-800">{formatINR(totalPositive)}</span>
+          {/* Column 2: Sub-Metrics Grid */}
+          <div className="grid grid-cols-2 gap-4">
+            <div className="bg-emerald-50/40 rounded-[28px] p-6 border border-emerald-100/50 group transition-all hover:bg-emerald-50 hover:shadow-xl hover:border-emerald-300/50">
+              <div className="flex items-center gap-2 text-emerald-600 mb-3">
+                <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse shadow-[0_0_10px_rgba(16,185,129,0.4)]" />
+                <span className="text-[10px] font-black uppercase tracking-[0.15em]">Liquid Assets</span>
+              </div>
+              <p className="text-2xl font-black text-slate-800 tracking-tight mb-1">
+                {isMasked ? '₹ •••••' : formatINR(totalPositive)}
+              </p>
+              <p className="text-[10px] font-bold text-slate-400">Banks & UPI</p>
+            </div>
+            
+            <div className="bg-rose-50/40 rounded-[28px] p-6 border border-rose-100/50 group transition-all hover:bg-rose-50 hover:shadow-xl hover:border-rose-300/50">
+              <div className="flex items-center gap-2 text-rose-500 mb-3">
+                <div className="w-2 h-2 rounded-full bg-rose-500 shadow-[0_0_10px_rgba(244,63,94,0.3)]" />
+                <span className="text-[10px] font-black uppercase tracking-[0.15em]">Liabilities</span>
+              </div>
+              <p className="text-2xl font-black text-slate-800 tracking-tight mb-1">
+                {isMasked ? '₹ •••••' : formatINR(totalCreditDebt)}
+              </p>
+              <p className="text-[10px] font-bold text-slate-400">Card Dues</p>
+            </div>
           </div>
         </div>
       </div>
@@ -187,9 +182,29 @@ export const Accounts = () => {
       </div>
 
       <div className="space-y-10">
+        {accounts.length === 0 && (
+          <div className="bg-white rounded-[32px] border-2 border-dashed border-slate-100 p-12 flex flex-col items-center justify-center text-center space-y-6">
+            <div className="w-20 h-20 bg-slate-50 rounded-full flex items-center justify-center">
+              <Wallet className="w-10 h-10 text-slate-300" />
+            </div>
+            <div className="space-y-2">
+              <h3 className="text-xl font-bold text-slate-800">No accounts added yet</h3>
+              <p className="text-sm text-slate-500 max-w-xs mx-auto">
+                Track your net worth by adding your bank accounts, credit cards, or cash wallets.
+              </p>
+            </div>
+            <button
+              onClick={() => setShowAccountModal(true)}
+              className="bg-slate-900 text-white px-8 py-3 rounded-2xl font-bold hover:bg-slate-800 transition-all active:scale-95 shadow-lg shadow-slate-200"
+            >
+              Add First Account
+            </button>
+          </div>
+        )}
 
         {/* A. Bank Accounts */}
-        <section>
+        {bankAccounts.length > 0 && (
+          <section>
           <h3 className="text-lg font-bold text-slate-800 mb-4 px-1 flex items-center gap-2">
             <Building2 className="w-5 h-5 text-indigo-600" /> Bank Accounts
           </h3>
@@ -267,9 +282,11 @@ export const Accounts = () => {
             </button>
           )}
         </section>
+        )}
 
         {/* B. Credit Cards */}
-        <section className="relative">
+        {creditCards.length > 0 && (
+          <section className="relative">
           <div className="flex items-center justify-between mb-4 px-1">
             <h3 className="text-lg font-bold text-slate-800 flex items-center gap-2">
               <CreditCard className="w-5 h-5 text-indigo-600" /> My Wallet / Cards
@@ -430,6 +447,7 @@ export const Accounts = () => {
             )}
           </div>
         </section>
+        )}
 
         {/* C. Loans & EMI */}
         {loans.length > 0 && (
@@ -548,38 +566,40 @@ export const Accounts = () => {
         )}
 
         {/* E. Cash & Wallets */}
-        <section>
-          <h3 className="text-lg font-bold text-slate-800 mb-4 px-1 flex items-center gap-2">
-            <Wallet className="w-5 h-5 text-indigo-600" /> Cash & Wallets
-          </h3>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            {(expanded.cash ? cashWallets : cashWallets.slice(0, 2)).map(acc => (
-              <div
-                key={acc.id}
-                onClick={() => { setEditingAccountId(acc.id); setShowAccountModal(true); }}
-                className="bg-white rounded-2xl border border-slate-200 p-4 shadow-sm hover:shadow-md hover:border-indigo-200 transition-all cursor-pointer text-center group"
-              >
-                <div className="w-12 h-12 mx-auto rounded-xl bg-slate-50 text-slate-600 flex items-center justify-center mb-3 overflow-hidden border border-slate-100">
-                  {acc.logoUrl ? (
-                    <img src={acc.logoUrl} alt={acc.name} className="w-full h-full object-contain p-1" />
-                  ) : (
-                    <AccountIcon type={acc.type} />
-                  )}
+        {cashWallets.length > 0 && (
+          <section>
+            <h3 className="text-lg font-bold text-slate-800 mb-4 px-1 flex items-center gap-2">
+              <Wallet className="w-5 h-5 text-indigo-600" /> Cash & Wallets
+            </h3>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              {(expanded.cash ? cashWallets : cashWallets.slice(0, 2)).map(acc => (
+                <div
+                  key={acc.id}
+                  onClick={() => { setEditingAccountId(acc.id); setShowAccountModal(true); }}
+                  className="bg-white rounded-2xl border border-slate-200 p-4 shadow-sm hover:shadow-md hover:border-indigo-200 transition-all cursor-pointer text-center group"
+                >
+                  <div className="w-12 h-12 mx-auto rounded-xl bg-slate-50 text-slate-600 flex items-center justify-center mb-3 overflow-hidden border border-slate-100">
+                    {acc.logoUrl ? (
+                      <img src={acc.logoUrl} alt={acc.name} className="w-full h-full object-contain p-1" />
+                    ) : (
+                      <AccountIcon type={acc.type} />
+                    )}
+                  </div>
+                  <h4 className="font-bold text-slate-700 text-sm mb-1 line-clamp-1 group-hover:text-indigo-600 transition-colors">{acc.name}</h4>
+                  <p className="text-lg font-black text-slate-900">{formatINR(acc.balance)}</p>
                 </div>
-                <h4 className="font-bold text-slate-700 text-sm mb-1 line-clamp-1 group-hover:text-indigo-600 transition-colors">{acc.name}</h4>
-                <p className="text-lg font-black text-slate-900">{formatINR(acc.balance)}</p>
-              </div>
-            ))}
-          </div>
-          {cashWallets.length > 2 && (
-            <button
-              onClick={() => toggleExpand('cash')}
-              className="mt-4 w-full py-3 border-2 border-dashed border-slate-200 rounded-2xl text-sm font-bold text-slate-500 hover:border-indigo-300 hover:text-indigo-600 transition-all bg-white shadow-sm flex items-center justify-center gap-2"
-            >
-              {expanded.cash ? 'Show Less' : `+${cashWallets.length - 2} more items`}
-            </button>
-          )}
-        </section>
+              ))}
+            </div>
+            {cashWallets.length > 2 && (
+              <button
+                onClick={() => toggleExpand('cash')}
+                className="mt-4 w-full py-3 border-2 border-dashed border-slate-200 rounded-2xl text-sm font-bold text-slate-500 hover:border-indigo-300 hover:text-indigo-600 transition-all bg-white shadow-sm flex items-center justify-center gap-2"
+              >
+                {expanded.cash ? 'Show Less' : `+${cashWallets.length - 2} more items`}
+              </button>
+            )}
+          </section>
+        )}
 
       </div>
     </div>
