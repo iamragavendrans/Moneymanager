@@ -65,15 +65,10 @@ export const seedAllData = () => {
     { id: "ent_war_1", type: "warranty", name: "MacBook Warranty", warrantyDetails: "3 Year AppleCare+", expiryDate: "2027-05-15" },
     { id: "ent_war_2", type: "warranty", name: "LG Fridge Warranty", warrantyDetails: "10 Year Compressor Warranty", expiryDate: "2032-10-20" },
 
-    // Items
-    { id: "ent_item_1", type: "item", name: "iPhone 15 Pro", price: 129900, quantity: "1 unit" },
-    { id: "ent_item_2", type: "item", name: "Sony WH-1000XM5", price: 29900, quantity: "1 unit" },
-    { id: "ent_item_3", type: "item", name: "Dell Monitor 27\"", price: 18500, quantity: "2 units" },
-
-    // Bank Details
-    { id: "ent_bank_1", type: "bank", name: "HDFC Primary", accountNo: "50100445566778", ifsc: "HDFC0001234", branch: "Indiranagar, Bangalore" },
-    { id: "ent_bank_2", type: "bank", name: "ICICI Salary", accountNo: "000401556677", ifsc: "ICIC0000004", branch: "M.G. Road, Bangalore" },
-    { id: "ent_bank_3", type: "bank", name: "SBI Savings", accountNo: "30556677889", ifsc: "SBIN0001234", branch: "Whitefield, Bangalore" },
+    // Inventory
+    { id: "ent_inv_1", type: "inventory", name: "iPhone 15 Pro", price: 129900, quantity: 1 },
+    { id: "ent_inv_2", type: "inventory", name: "Sony WH-1000XM5", price: 29900, quantity: 1 },
+    { id: "ent_inv_3", type: "inventory", name: "Dell Monitor 27\"", price: 18500, quantity: 2 },
   ];
 
   const transactions: Transaction[] = [];

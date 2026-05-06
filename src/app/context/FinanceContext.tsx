@@ -62,6 +62,9 @@ export interface Account {
   monthlyContribution?: number; // for PF
   employeeId?: string;     // for PF
   logoUrl?: string;
+  upiId?: string;
+  walletMobile?: string;
+  expiryDate?: string;
 }
 
 export interface Investment {
@@ -94,7 +97,7 @@ export interface Investment {
 
 export interface Entity {
   id: string;
-  type: "shop" | "person" | "recurring" | "subscription" | "giftcard" | "protection" | "asset" | "inventory" | "document";
+  type: "shop" | "person" | "recurring" | "subscription" | "giftcard" | "protection" | "asset" | "inventory" | "warranty";
   name: string;
   category?: string;
   logoUrl?: string;
@@ -105,10 +108,14 @@ export interface Entity {
   mode?: "online" | "offline";
   relationship?: string;
   phone?: string;
+  accountNo?: string;
+  ifsc?: string;
+  branch?: string;
   frequency?: string;
   amount?: number;
   nextDue?: string;
   expiry?: string;
+  expiryDate?: string;
   balance?: number;
   status?: "active" | "paused";
   provider?: string;
