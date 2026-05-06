@@ -51,6 +51,16 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
+/* Remove orange tap highlight on mobile and suppress default focus outlines on buttons/links */
+* {
+  -webkit-tap-highlight-color: transparent;
+}
+
+button:focus:not(:focus-visible),
+a:focus:not(:focus-visible) {
+  outline: none;
+}
+
 /* iOS Safe Area padding for bottom nav */
 .pb-safe {
   padding-bottom: env(safe-area-inset-bottom);

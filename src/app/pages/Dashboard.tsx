@@ -530,7 +530,7 @@ export const Dashboard = () => {
                 <span className={`${netWorthChange >= 0 ? 'text-emerald-400' : 'text-red-400'} font-medium text-sm`}>{Math.abs(netWorthChange).toFixed(1)}% vs last {periodTitle.toLowerCase().replace('ly', '')}</span>
               </div>
             </div>
-            <button onClick={() => setShowHeroBreakdown(!showHeroBreakdown)} className="flex items-center gap-1.5 bg-white/10 hover:bg-white/20 px-4 py-2 rounded-xl text-sm font-semibold transition-colors backdrop-blur-md border border-white/10 w-fit active:scale-95">
+            <button onClick={() => setShowHeroBreakdown(!showHeroBreakdown)} className="flex items-center gap-1.5 bg-white/10 hover:bg-white/20 px-4 py-2 rounded-xl text-sm font-semibold transition-colors backdrop-blur-md border border-white/10 w-fit active:scale-95 outline-none focus:outline-none">
               Breakdown <ChevronDown className={`w-4 h-4 transition-transform ${showHeroBreakdown ? 'rotate-180' : ''}`} />
             </button>
           </div>
