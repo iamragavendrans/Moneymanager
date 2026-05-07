@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
-import { X, Building2, CreditCard, Wallet, Smartphone, Banknote, TrendingUp, Utensils, PiggyBank, HandCoins, Check, Trash2 } from "lucide-react";
+import { X, Building2, CreditCard, Wallet, Smartphone, Banknote, TrendingUp, Utensils, PiggyBank, HandCoins, Check, Trash2, ArrowLeft } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
 import { useFinance, Account } from "../context/FinanceContext";
 import { cn } from "../utils";
 import { toast } from "sonner";
@@ -92,6 +93,7 @@ export const AccountManagementModal = ({ accId, onClose }: { accId?: string | nu
   const [upiId, setUpiId] = useState("");
   const [walletMobile, setWalletMobile] = useState("");
   const [expiryDate, setExpiryDate] = useState("");
+  const [step, setStep] = useState<"type" | "fields">(isEdit ? "fields" : "type");
 
   useEffect(() => {
     if (existingAcc) {
@@ -192,251 +194,303 @@ export const AccountManagementModal = ({ accId, onClose }: { accId?: string | nu
           <button onClick={onClose} className="p-2 hover:bg-white rounded-xl transition-colors shadow-sm"><X className="w-5 h-5 text-slate-400" /></button>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-6 space-y-6">
-          {/* 3x3 Grid for Type Selection */}
-          <div className="grid grid-cols-3 gap-3">
-            {ACCOUNT_TYPES.map(at => {
-              const Icon = at.icon;
-              const isActive = type === at.id;
-              return (
-                <button
-                  key={at.id} type="button"
-                  onClick={() => setType(at.id as any)}
-                  className={cn(
-                    "flex flex-col items-center justify-center p-4 rounded-2xl border-2 transition-all gap-2",
-                    isActive ? "bg-indigo-600 border-indigo-600 text-white shadow-lg scale-[1.02]" : "bg-white border-slate-50 text-slate-400 hover:border-indigo-100"
-                  )}
-                >
-                  <Icon className="w-6 h-6" />
-                  <span className="text-[10px] font-bold uppercase tracking-widest">{at.label}</span>
-                </button>
-              );
-            })}
-          </div>
-
-          <div className="space-y-5">
-            <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">Account / Display Name <span className="text-red-400">*</span></label>
-            <div className="flex gap-3">
-              <input
-                type="text" value={name} onChange={e => setName(e.target.value)}
-                placeholder="e.g. HDFC Salary, ICICI Card"
-                className="flex-1 text-sm font-semibold bg-slate-50 px-4 py-3 rounded-xl border-0 focus:ring-2 focus:ring-indigo-600 outline-none shadow-inner"
-              />
-              <button 
-                type="button"
-                onClick={() => setShowUrlInput(!showUrlInput)}
-                className="w-11 h-11 rounded-xl bg-slate-50 border-2 border-slate-100 flex items-center justify-center overflow-hidden shrink-0 hover:border-indigo-400 transition-colors shadow-sm"
-                title="Click to edit logo URL"
+        <div className="p-6">
+          <AnimatePresence mode="wait">
+            {step === "type" ? (
+              <motion.div
+                key="type-selection"
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -20 }}
+                className="space-y-6"
               >
-                {logoUrl && !logoError ? (
-                  <img
-                    src={logoUrl}
-                    alt="Logo"
-                    className="w-full h-full object-contain"
-                    onError={() => setLogoError(true)}
-                  />
-                ) : (
-                  <Building2 className="w-5 h-5 text-slate-300" />
-                )}
-              </button>
-            </div>
-
-            {showUrlInput && (
-              <div className="animate-in slide-in-from-top-2 duration-200">
-                <label className="block text-[10px] font-bold text-indigo-500 uppercase tracking-wider mb-1.5">Branding / Logo URL</label>
-                <input
-                  type="text" value={logoUrl}
-                  onChange={e => {
-                    setLogoUrl(e.target.value);
-                    setIsManualLogo(true);
-                    setLogoError(false);
-                  }}
-                  placeholder="e.g. img.logo.dev/brand.com"
-                  className="w-full text-sm font-semibold bg-indigo-50/50 px-4 py-3 rounded-xl border border-indigo-100 focus:ring-2 focus:ring-indigo-600 outline-none"
-                />
-                <p className="text-[9px] text-indigo-400 mt-1 font-medium italic">* Click the bank icon again to hide this field.</p>
-              </div>
-            )}
-
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">
-                  {type === 'credit_card' ? 'Outstanding' : type === 'loan' ? 'Debt Amount' : 'Current Balance'}
-                </label>
-                <div className="relative flex items-center">
-                  <span className="absolute left-4 text-slate-400 font-bold text-sm">₹</span>
-                  <input
-                    type="number" value={balance} onChange={e => setBalance(e.target.value)}
-                    placeholder="0.00"
-                    className="w-full text-sm font-bold bg-slate-50 pl-8 pr-4 py-3 rounded-xl border-0 focus:ring-2 focus:ring-indigo-600 outline-none shadow-inner"
-                  />
+                <div className="grid grid-cols-3 gap-3">
+                  {ACCOUNT_TYPES.map(at => {
+                    const Icon = at.icon;
+                    const isActive = type === at.id;
+                    return (
+                      <button
+                        key={at.id} type="button"
+                        onClick={() => {
+                          setType(at.id as any);
+                          setStep("fields");
+                        }}
+                        className={cn(
+                          "flex flex-col items-center justify-center p-5 rounded-3xl border-2 transition-all gap-3 h-32 group",
+                          isActive 
+                            ? "bg-indigo-600 border-indigo-600 text-white shadow-xl shadow-indigo-100" 
+                            : "bg-white border-slate-100 text-slate-400 hover:border-indigo-200 hover:bg-slate-50/50"
+                        )}
+                      >
+                        <div className={cn(
+                          "p-3 rounded-2xl transition-colors",
+                          isActive ? "bg-white/20" : "bg-slate-50 group-hover:bg-indigo-50"
+                        )}>
+                          <Icon className={cn("w-6 h-6", isActive ? "text-white" : "text-slate-500 group-hover:text-indigo-600")} />
+                        </div>
+                        <span className="text-[10px] font-bold uppercase tracking-widest">{at.label}</span>
+                      </button>
+                    );
+                  })}
                 </div>
-              </div>
-              
-              {/* Type-Specific Identifier Field */}
-              <div>
-                <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">
-                  {type === 'credit_card' ? 'Card Number' : 
-                   type === 'bank' ? 'Last 4 Digits' :
-                   type === 'wallet' ? 'Mobile Number' :
-                   type === 'UPI' ? 'UPI ID' : 'Identifier'}
-                </label>
-                <input
-                  type="text" 
-                  value={type === 'credit_card' ? cardNumber : 
-                         type === 'wallet' ? walletMobile :
-                         type === 'UPI' ? upiId : lastFour} 
-                  onChange={e => {
-                    const val = e.target.value;
-                    if (type === 'credit_card') setCardNumber(val);
-                    else if (type === 'wallet') setWalletMobile(val);
-                    else if (type === 'UPI') setUpiId(val);
-                    else setLastFour(val);
-                  }}
-                  placeholder={type === 'credit_card' ? '4xxx xxxx xxxx xxxx' : 'Optional'}
-                  maxLength={type === 'credit_card' ? 19 : 20}
-                  className="w-full text-sm font-semibold bg-slate-50 px-4 py-3 rounded-xl border-0 focus:ring-2 focus:ring-indigo-600 outline-none shadow-inner"
-                />
-              </div>
-            </div>
-
-            {/* Section: Shareable Bank Details */}
-            {type === 'bank' && (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2 border-t border-slate-50 animate-in slide-in-from-top-2">
-                <div className="sm:col-span-2">
-                  <label className="block text-[10px] font-bold text-indigo-500 uppercase tracking-wider mb-1.5">Full Account Number</label>
-                  <input
-                    type="text" value={fullAccountNumber} onChange={e => setFullAccountNumber(e.target.value)}
-                    placeholder="For easy copying/sharing"
-                    className="w-full text-sm font-semibold bg-indigo-50/30 px-4 py-3 rounded-xl border border-indigo-100/50 focus:ring-2 focus:ring-indigo-600 outline-none"
-                  />
-                </div>
-                <div className="sm:col-span-2">
-                  <label className="block text-[10px] font-bold text-indigo-500 uppercase tracking-wider mb-1.5">IFSC Code</label>
-                  <input
-                    type="text" value={ifsc} onChange={e => setIfsc(e.target.value)}
-                    placeholder="HDFC0001234"
-                    className="w-full text-sm font-semibold bg-indigo-50/30 px-4 py-3 rounded-xl border border-indigo-100/50 focus:ring-2 focus:ring-indigo-600 outline-none"
-                  />
-                </div>
-              </div>
-            )}
-
-            {/* Section: Credit Card Details */}
-            {type === 'credit_card' && (
-              <div className="grid grid-cols-2 gap-4 pt-2 border-t border-slate-50 animate-in slide-in-from-top-2">
-                <div>
-                  <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">Credit Limit</label>
-                  <div className="relative flex items-center">
-                    <span className="absolute left-4 text-slate-400 font-bold text-sm">₹</span>
-                    <input
-                      type="number" value={creditLimit} onChange={e => setCreditLimit(e.target.value)}
-                      placeholder="e.g. 100000"
-                      className="w-full text-sm font-semibold bg-slate-50 pl-8 pr-4 py-3 rounded-xl border-0 focus:ring-2 focus:ring-indigo-600 outline-none shadow-inner"
-                    />
-                  </div>
-                </div>
-                <div>
-                  <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">Expiry Date</label>
-                  <input
-                    type="text" value={expiryDate} onChange={e => setExpiryDate(e.target.value)}
-                    placeholder="MM/YY"
-                    className="w-full text-sm font-semibold bg-slate-50 px-4 py-3 rounded-xl border-0 focus:ring-2 focus:ring-indigo-600 outline-none shadow-inner"
-                  />
-                </div>
-                <div className="col-span-2">
-                  <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">Bill Due Date</label>
-                  <input
-                    type="date" value={dueDate} onChange={e => setDueDate(e.target.value)}
-                    className="w-full text-sm font-semibold bg-slate-50 px-4 py-3 rounded-xl border-0 focus:ring-2 focus:ring-indigo-600 outline-none shadow-inner"
-                  />
-                </div>
-              </div>
-            )}
-
-            {/* Section: Loan Details */}
-            {type === 'loan' && (
-              <div className="space-y-4 pt-2 border-t border-slate-50 animate-in slide-in-from-top-2">
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">Interest Rate (%)</label>
-                    <input
-                      type="number" step="0.1" value={interestRate} onChange={e => setInterestRate(e.target.value)}
-                      placeholder="e.g. 8.5"
-                      className="w-full text-sm font-bold bg-slate-50 px-4 py-3 rounded-xl border-0 focus:ring-2 focus:ring-indigo-600 outline-none shadow-inner"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">Tenure (Months)</label>
-                    <input
-                      type="number" value={tenureMonths} onChange={e => setTenureMonths(e.target.value)}
-                      placeholder="e.g. 60"
-                      className="w-full text-sm font-bold bg-slate-50 px-4 py-3 rounded-xl border-0 focus:ring-2 focus:ring-indigo-600 outline-none shadow-inner"
-                    />
-                  </div>
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">EMI Amount</label>
-                    <input
-                      type="number" value={emiAmount} onChange={e => setEmiAmount(e.target.value)}
-                      placeholder="e.g. 15000"
-                      className="w-full text-sm font-bold bg-slate-50 px-4 py-3 rounded-xl border-0 focus:ring-2 focus:ring-indigo-600 outline-none shadow-inner"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">EMI Day (1-31)</label>
-                    <input
-                      type="number" min="1" max="31" value={emiDate} onChange={e => setEmiDate(e.target.value)}
-                      placeholder="e.g. 5"
-                      className="w-full text-sm font-bold bg-slate-50 px-4 py-3 rounded-xl border-0 focus:ring-2 focus:ring-indigo-600 outline-none shadow-inner"
-                    />
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Section: PF Details */}
-            {type === 'pf' && (
-              <div className="grid grid-cols-2 gap-4 pt-2 border-t border-slate-50 animate-in slide-in-from-top-2">
-                <div>
-                  <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">Monthly Contribution</label>
-                  <input
-                    type="number" value={monthlyContribution} onChange={e => setMonthlyContribution(e.target.value)}
-                    placeholder="e.g. 1800"
-                    className="w-full text-sm font-bold bg-slate-50 px-4 py-3 rounded-xl border-0 focus:ring-2 focus:ring-indigo-600 outline-none shadow-inner"
-                  />
-                </div>
-                <div>
-                  <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">UAN / Emp ID</label>
-                  <input
-                    type="text" value={employeeId} onChange={e => setEmployeeId(e.target.value)}
-                    placeholder="Optional"
-                    className="w-full text-sm font-semibold bg-slate-50 px-4 py-3 rounded-xl border-0 focus:ring-2 focus:ring-indigo-600 outline-none shadow-inner"
-                  />
-                </div>
-              </div>
-            )}
-          </div>
-
-          <div className="flex gap-3 pt-4 border-t border-slate-50 sticky bottom-0 bg-white pb-2">
-            {isEdit && (
-              <button
-                type="button"
-                onClick={() => { if (confirm("Delete account and all its transactions?")) { deleteAccount(accId!); onClose(); } }}
-                className="p-3.5 bg-red-50 text-red-600 rounded-2xl hover:bg-red-100 transition-colors shadow-sm"
+              </motion.div>
+            ) : (
+              <motion.div
+                key="fields-form"
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: 20 }}
+                className="space-y-6"
               >
-                <Trash2 className="w-5 h-5" />
-              </button>
+                {/* Type Breadcrumb */}
+                <div className="flex items-center gap-3 p-3 bg-indigo-50/50 rounded-2xl border border-indigo-100/50">
+                  <div className="w-10 h-10 rounded-xl bg-white flex items-center justify-center shadow-sm">
+                    {(() => {
+                      const Icon = ACCOUNT_TYPES.find(a => a.id === type)?.icon || Building2;
+                      return <Icon className="w-5 h-5 text-indigo-600" />;
+                    })()}
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-[10px] font-bold text-indigo-400 uppercase tracking-wider">Account Type</p>
+                    <p className="text-sm font-bold text-slate-800 capitalize">{type.replace('_', ' ')}</p>
+                  </div>
+                  <button 
+                    type="button" 
+                    onClick={() => setStep("type")}
+                    className="px-3 py-1.5 text-[10px] font-bold text-indigo-600 bg-white rounded-lg shadow-sm hover:bg-indigo-50 transition-colors uppercase tracking-wider"
+                  >
+                    Change
+                  </button>
+                </div>
+
+                <form onSubmit={handleSubmit} className="space-y-6">
+                  <div className="space-y-5">
+                    <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5 px-1">Account / Display Name <span className="text-red-400">*</span></label>
+                    <div className="flex gap-3">
+                      <input
+                        type="text" value={name} onChange={e => setName(e.target.value)}
+                        placeholder="e.g. HDFC Salary, ICICI Card"
+                        className="flex-1 text-sm font-semibold bg-slate-50 px-4 py-3.5 rounded-2xl border-2 border-transparent focus:border-indigo-600 focus:bg-white outline-none transition-all shadow-inner"
+                      />
+                      <button 
+                        type="button"
+                        onClick={() => setShowUrlInput(!showUrlInput)}
+                        className="w-12 h-12 rounded-2xl bg-slate-50 border-2 border-slate-100 flex items-center justify-center overflow-hidden shrink-0 hover:border-indigo-400 transition-colors shadow-sm"
+                        title="Click to edit logo URL"
+                      >
+                        {logoUrl && !logoError ? (
+                          <img
+                            src={logoUrl}
+                            alt="Logo"
+                            className="w-full h-full object-contain p-1"
+                            onError={() => setLogoError(true)}
+                          />
+                        ) : (
+                          <Building2 className="w-5 h-5 text-slate-300" />
+                        )}
+                      </button>
+                    </div>
+
+                    {showUrlInput && (
+                      <div className="animate-in slide-in-from-top-2 duration-200">
+                        <label className="block text-[10px] font-bold text-indigo-500 uppercase tracking-wider mb-1.5 px-1">Branding / Logo URL</label>
+                        <input
+                          type="text" value={logoUrl}
+                          onChange={e => {
+                            setLogoUrl(e.target.value);
+                            setIsManualLogo(true);
+                            setLogoError(false);
+                          }}
+                          placeholder="e.g. img.logo.dev/brand.com"
+                          className="w-full text-sm font-semibold bg-indigo-50/50 px-4 py-3 rounded-2xl border border-indigo-100 focus:ring-2 focus:ring-indigo-600 outline-none"
+                        />
+                        <p className="text-[9px] text-indigo-400 mt-1 px-1 font-medium italic">* Click the bank icon again to hide this field.</p>
+                      </div>
+                    )}
+
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5 px-1">
+                          {type === 'credit_card' ? 'Outstanding' : type === 'loan' ? 'Debt Amount' : 'Current Balance'}
+                        </label>
+                        <div className="relative flex items-center">
+                          <span className="absolute left-4 text-slate-400 font-bold text-sm">₹</span>
+                          <input
+                            type="number" value={balance} onChange={e => setBalance(e.target.value)}
+                            placeholder="0.00"
+                            className="w-full text-sm font-bold bg-slate-50 pl-8 pr-4 py-3.5 rounded-2xl border-2 border-transparent focus:border-indigo-600 focus:bg-white outline-none transition-all shadow-inner"
+                          />
+                        </div>
+                      </div>
+                      
+                      {/* Type-Specific Identifier Field */}
+                      <div>
+                        <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5 px-1">
+                          {type === 'credit_card' ? 'Card Number' : 
+                           type === 'bank' ? 'Last 4 Digits' :
+                           type === 'wallet' ? 'Mobile Number' :
+                           type === 'UPI' ? 'UPI ID' : 'Identifier'}
+                        </label>
+                        <input
+                          type="text" 
+                          value={type === 'credit_card' ? cardNumber : 
+                                 type === 'wallet' ? walletMobile :
+                                 type === 'UPI' ? upiId : lastFour} 
+                          onChange={e => {
+                            const val = e.target.value;
+                            if (type === 'credit_card') setCardNumber(val);
+                            else if (type === 'wallet') setWalletMobile(val);
+                            else if (type === 'UPI') setUpiId(val);
+                            else setLastFour(val);
+                          }}
+                          placeholder={type === 'credit_card' ? '4xxx xxxx xxxx xxxx' : 'Optional'}
+                          maxLength={type === 'credit_card' ? 19 : 20}
+                          className="w-full text-sm font-semibold bg-slate-50 px-4 py-3.5 rounded-2xl border-2 border-transparent focus:border-indigo-600 focus:bg-white outline-none transition-all shadow-inner"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Section: Shareable Bank Details */}
+                    {type === 'bank' && (
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2 border-t border-slate-50 animate-in slide-in-from-top-2">
+                        <div className="sm:col-span-2">
+                          <label className="block text-[10px] font-bold text-indigo-500 uppercase tracking-wider mb-1.5 px-1">Full Account Number</label>
+                          <input
+                            type="text" value={fullAccountNumber} onChange={e => setFullAccountNumber(e.target.value)}
+                            placeholder="For easy copying/sharing"
+                            className="w-full text-sm font-semibold bg-indigo-50/30 px-4 py-3.5 rounded-2xl border border-indigo-100/50 focus:ring-2 focus:ring-indigo-600 outline-none"
+                          />
+                        </div>
+                        <div className="sm:col-span-2">
+                          <label className="block text-[10px] font-bold text-indigo-500 uppercase tracking-wider mb-1.5 px-1">IFSC Code</label>
+                          <input
+                            type="text" value={ifsc} onChange={e => setIfsc(e.target.value)}
+                            placeholder="HDFC0001234"
+                            className="w-full text-sm font-semibold bg-indigo-50/30 px-4 py-3.5 rounded-2xl border border-indigo-100/50 focus:ring-2 focus:ring-indigo-600 outline-none"
+                          />
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Section: Credit Card Details */}
+                    {type === 'credit_card' && (
+                      <div className="grid grid-cols-2 gap-4 pt-2 border-t border-slate-50 animate-in slide-in-from-top-2">
+                        <div>
+                          <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5 px-1">Credit Limit</label>
+                          <div className="relative flex items-center">
+                            <span className="absolute left-4 text-slate-400 font-bold text-sm">₹</span>
+                            <input
+                              type="number" value={creditLimit} onChange={e => setCreditLimit(e.target.value)}
+                              placeholder="e.g. 100000"
+                              className="w-full text-sm font-semibold bg-slate-50 pl-8 pr-4 py-3.5 rounded-2xl border-2 border-transparent focus:border-indigo-600 focus:bg-white outline-none transition-all shadow-inner"
+                            />
+                          </div>
+                        </div>
+                        <div>
+                          <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5 px-1">Expiry Date</label>
+                          <input
+                            type="text" value={expiryDate} onChange={e => setExpiryDate(e.target.value)}
+                            placeholder="MM/YY"
+                            className="w-full text-sm font-semibold bg-slate-50 px-4 py-3.5 rounded-2xl border-2 border-transparent focus:border-indigo-600 focus:bg-white outline-none transition-all shadow-inner"
+                          />
+                        </div>
+                        <div className="col-span-2">
+                          <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5 px-1">Bill Due Date</label>
+                          <input
+                            type="date" value={dueDate} onChange={e => setDueDate(e.target.value)}
+                            className="w-full text-sm font-semibold bg-slate-50 px-4 py-3.5 rounded-2xl border-2 border-transparent focus:border-indigo-600 focus:bg-white outline-none transition-all shadow-inner"
+                          />
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Section: Loan Details */}
+                    {type === 'loan' && (
+                      <div className="space-y-4 pt-2 border-t border-slate-50 animate-in slide-in-from-top-2">
+                        <div className="grid grid-cols-2 gap-4">
+                          <div>
+                            <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5 px-1">Interest Rate (%)</label>
+                            <input
+                              type="number" step="0.1" value={interestRate} onChange={e => setInterestRate(e.target.value)}
+                              placeholder="e.g. 8.5"
+                              className="w-full text-sm font-bold bg-slate-50 px-4 py-3.5 rounded-2xl border-2 border-transparent focus:border-indigo-600 focus:bg-white outline-none transition-all shadow-inner"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5 px-1">Tenure (Months)</label>
+                            <input
+                              type="number" value={tenureMonths} onChange={e => setTenureMonths(e.target.value)}
+                              placeholder="e.g. 60"
+                              className="w-full text-sm font-bold bg-slate-50 px-4 py-3.5 rounded-2xl border-2 border-transparent focus:border-indigo-600 focus:bg-white outline-none transition-all shadow-inner"
+                            />
+                          </div>
+                        </div>
+                        <div className="grid grid-cols-2 gap-4">
+                          <div>
+                            <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5 px-1">EMI Amount</label>
+                            <input
+                              type="number" value={emiAmount} onChange={e => setEmiAmount(e.target.value)}
+                              placeholder="e.g. 15000"
+                              className="w-full text-sm font-bold bg-slate-50 px-4 py-3.5 rounded-2xl border-2 border-transparent focus:border-indigo-600 focus:bg-white outline-none transition-all shadow-inner"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5 px-1">EMI Day (1-31)</label>
+                            <input
+                              type="number" min="1" max="31" value={emiDate} onChange={e => setEmiDate(e.target.value)}
+                              placeholder="e.g. 5"
+                              className="w-full text-sm font-bold bg-slate-50 px-4 py-3.5 rounded-2xl border-2 border-transparent focus:border-indigo-600 focus:bg-white outline-none transition-all shadow-inner"
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Section: PF Details */}
+                    {type === 'pf' && (
+                      <div className="grid grid-cols-2 gap-4 pt-2 border-t border-slate-50 animate-in slide-in-from-top-2">
+                        <div>
+                          <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5 px-1">Monthly Contribution</label>
+                          <input
+                            type="number" value={monthlyContribution} onChange={e => setMonthlyContribution(e.target.value)}
+                            placeholder="e.g. 1800"
+                            className="w-full text-sm font-bold bg-slate-50 px-4 py-3.5 rounded-2xl border-2 border-transparent focus:border-indigo-600 focus:bg-white outline-none transition-all shadow-inner"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5 px-1">UAN / Emp ID</label>
+                          <input
+                            type="text" value={employeeId} onChange={e => setEmployeeId(e.target.value)}
+                            placeholder="Optional"
+                            className="w-full text-sm font-semibold bg-slate-50 px-4 py-3.5 rounded-2xl border-2 border-transparent focus:border-indigo-600 focus:bg-white outline-none transition-all shadow-inner"
+                          />
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="flex gap-3 pt-6 border-t border-slate-100 sticky bottom-0 bg-white pb-2">
+                    {isEdit && (
+                      <button
+                        type="button"
+                        onClick={() => { if (confirm("Delete account and all its transactions?")) { deleteAccount(accId!); onClose(); } }}
+                        className="p-4 bg-red-50 text-red-600 rounded-2xl hover:bg-red-100 transition-colors shadow-sm"
+                      >
+                        <Trash2 className="w-5 h-5" />
+                      </button>
+                    )}
+                    <button
+                      type="submit"
+                      className="flex-1 bg-slate-900 text-white font-bold py-4.5 rounded-3xl hover:bg-slate-800 transition-all flex items-center justify-center gap-2 shadow-xl hover:shadow-2xl active:scale-95"
+                    >
+                      <Check className="w-5 h-5" /> {isEdit ? "Update Account" : "Create Account"}
+                    </button>
+                  </div>
+                </form>
+              </motion.div>
             )}
-            <button
-              type="submit"
-              className="flex-1 bg-slate-900 text-white font-bold py-4 rounded-2xl hover:bg-slate-800 transition-all flex items-center justify-center gap-2 shadow-lg hover:shadow-xl active:scale-95"
-            >
-              <Check className="w-5 h-5" /> {isEdit ? "Update Account" : "Create Account"}
-            </button>
-          </div>
-        </form>
+          </AnimatePresence>
+        </div>
       </div>
     </div>
   );
