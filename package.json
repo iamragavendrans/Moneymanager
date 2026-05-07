@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "@capacitor/core": "^6.2.1",
+    "@capgo/capacitor-native-biometric": "^6.0.4",
     "@capgo/capacitor-updater": "^6.45.10",
     "@emotion/react": "11.14.0",
     "@emotion/styled": "11.14.1",

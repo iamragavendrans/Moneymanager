@@ -303,19 +303,28 @@ export const Settings = () => {
 
       {/* 6. Privacy & Security */}
       <div>
-        <SectionHeader icon={Shield} title="Privacy" desc="Access Control & Masking" />
+        <SectionHeader icon={Shield} title="Vault Security" desc="Access Control & Biometrics" />
         <div className="grid grid-cols-3 gap-3">
           <SettingCell
-            icon={Fingerprint} title="App Lock" sub="PIN Guard" color="text-indigo-600" bg="bg-indigo-50"
-            active={locks.biometric} onToggle={() => { setLocks(s => ({ ...s, biometric: !s.biometric })); setShowPinModal(true); }}
+            icon={Fingerprint} title="Biometric Lock" sub={locks.biometric ? "Active" : "Disabled"} color="text-indigo-600" bg="bg-indigo-50"
+            active={locks.biometric} 
+            onToggle={() => { 
+              const newState = !locks.biometric;
+              setLocks(s => ({ ...s, biometric: newState })); 
+              if (newState && !localStorage.getItem('s_pin')) {
+                setShowPinModal(true);
+              }
+              toast.success(newState ? 'Biometric authentication enabled' : 'Biometric lock disabled');
+            }}
           />
           <SettingCell
-            icon={Lock} title="Hide Balances" sub="Mask Values" color="text-indigo-600" bg="bg-indigo-50"
+            icon={ShieldCheck} title="Security PIN" sub={hasPin ? "Set" : "Not Set"} color="text-indigo-600" bg="bg-indigo-50"
+            active={hasPin} 
+            onClick={() => setShowPinModal(true)}
+          />
+          <SettingCell
+            icon={Lock} title="Hide Balances" sub={profile.maskBalances ? "Masked" : "Visible"} color="text-indigo-600" bg="bg-indigo-50"
             active={profile.maskBalances} onToggle={() => updateProfile({ maskBalances: !profile.maskBalances })}
-          />
-          <SettingCell
-            icon={ShieldCheck} title="Two Factor" sub="PIN Auth" color="text-indigo-600" bg="bg-indigo-50"
-            active={twoFactor} onClick={() => setShowPinModal(true)}
           />
         </div>
       </div>
