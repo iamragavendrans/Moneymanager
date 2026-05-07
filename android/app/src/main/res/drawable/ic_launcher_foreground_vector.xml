@@ -1,0 +1,10 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- A clean, premium financial shield icon in white -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M54,20L30,30V50C30,64.8 40.24,78.7 54,82.5C67.76,78.7 78,64.8 78,50V30L54,20ZM54,55H42V45H54V35L66,50L54,65V55Z" />
+</vector>
