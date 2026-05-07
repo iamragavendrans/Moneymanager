@@ -41,7 +41,7 @@ jobs:
           path: |
             ~/.gradle/caches
             ~/.gradle/wrapper
-          key: ${{ runner.os }}-gradle-${{ hashFiles('android/**/*.gradle*') }}
+          key: ${{ runner.os }}-gradle-${{ hashFiles('android/**/*.gradle*', 'android/gradle/wrapper/gradle-wrapper.properties') }}
           restore-keys: ${{ runner.os }}-gradle-
 
       - name: Install npm dependencies
@@ -61,44 +61,15 @@ jobs:
       - name: Sync web assets into Android project
         run: npx cap sync android
 
-      # The keystore is committed at signing/release.keystore (private repo).
-      # Credentials are embedded here — rotate by regenerating the keystore
-      # and running: npx cap sync android + commit both files.
-      - name: Inject signing config into build.gradle
-        run: |
-          python3 << 'PYEOF'
-          with open('android/app/build.gradle', 'r') as f:
-              content = f.read()
-
-          # Path is relative to the android/app/ module directory
-          signing_block = '''
-              signingConfigs {
-                  release {
-                      storeFile file("../../signing/release.keystore")
-                      storePassword "jjNzXD8fnlo9Em1kkV74h05h"
-                      keyAlias "moneymanager"
-                      keyPassword "jjNzXD8fnlo9Em1kkV74h05h"
-                  }
-              }
-          '''
-
-          content = content.replace('    buildTypes {', signing_block + '    buildTypes {', 1)
-          content = content.replace(
-              "proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'",
-              "proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'\n            signingConfig signingConfigs.release"
-          )
-
-          with open('android/app/build.gradle', 'w') as f:
-              f.write(content)
-
-          print("Signing config injected successfully")
-          PYEOF
-
       - name: Build release APK
         run: |
           cd android
           chmod +x gradlew
           ./gradlew assembleRelease
+        env:
+          RELEASE_KEYSTORE_PASSWORD: "jjNzXD8fnlo9Em1kkV74h05h"
+          RELEASE_KEY_ALIAS: "moneymanager"
+          RELEASE_KEY_PASSWORD: "jjNzXD8fnlo9Em1kkV74h05h"
 
       - name: Locate built APK
         id: apk
@@ -136,9 +107,6 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      # ── OTA live updates via Capgo (optional) ─────────────────────────────
-      # After the first APK is installed, JS/asset changes are delivered OTA
-      # without users ever needing to reinstall.
       - name: Upload OTA bundle to Capgo
         env:
           CAPGO_API_KEY: ${{ secrets.CAPGO_API_KEY }}

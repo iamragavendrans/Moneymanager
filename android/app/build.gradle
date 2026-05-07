@@ -16,8 +16,23 @@ android {
             ignoreAssetsPattern '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
         }
     }
+
+    signingConfigs {
+        release {
+            // Check if environment variables are set (preferred for CI)
+            def keystoreFile = file("../../signing/release.keystore")
+            if (keystoreFile.exists()) {
+                storeFile keystoreFile
+                storePassword System.getenv("RELEASE_KEYSTORE_PASSWORD") ?: "jjNzXD8fnlo9Em1kkV74h05h"
+                keyAlias System.getenv("RELEASE_KEY_ALIAS") ?: "moneymanager"
+                keyPassword System.getenv("RELEASE_KEY_PASSWORD") ?: "jjNzXD8fnlo9Em1kkV74h05h"
+            }
+        }
+    }
+
     buildTypes {
         release {
+            signingConfig signingConfigs.release
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
         }
