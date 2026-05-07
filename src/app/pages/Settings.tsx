@@ -290,7 +290,7 @@ export const Settings = () => {
       {/* 5. Profile */}
       <div>
         <SectionHeader icon={Users} title="Profile" desc="Data Sync & Portability" />
-        <div className="grid grid-cols-4 gap-3">
+        <div className="grid grid-cols-2 gap-3">
           <SettingCell
             icon={Cloud} title="Drive Sync" sub="Auto Backup" color="text-blue-600" bg="bg-blue-50"
             active={sync.drive} onToggle={handleDriveSync}
