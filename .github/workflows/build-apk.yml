@@ -55,7 +55,7 @@ jobs:
 
       - name: Initialize Android platform
         run: |
-          npx cap add android
+          if [ ! -d "android" ]; then npx cap add android; fi
           echo "sdk.dir=$ANDROID_SDK_ROOT" > android/local.properties
 
       - name: Sync web assets into Android project
@@ -139,14 +139,6 @@ jobs:
       # ── OTA live updates via Capgo (optional) ─────────────────────────────
       # After the first APK is installed, JS/asset changes are delivered OTA
       # without users ever needing to reinstall.
-      #
-      # One-time setup (run locally, ~2 min):
-      #   npx @capgo/cli login          # opens browser for auth
-      #   npx @capgo/cli app add        # registers the app
-      #
-      # Then add CAPGO_API_KEY to:
-      #   GitHub → Settings → Secrets → Actions → New secret
-      # ──────────────────────────────────────────────────────────────────────
       - name: Upload OTA bundle to Capgo
         env:
           CAPGO_API_KEY: ${{ secrets.CAPGO_API_KEY }}
