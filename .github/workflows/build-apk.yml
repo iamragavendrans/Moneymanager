@@ -65,7 +65,7 @@ jobs:
         run: |
           cd android
           chmod +x gradlew
-          ./gradlew assembleRelease
+          ./gradlew clean assembleRelease
         env:
           RELEASE_KEYSTORE_PASSWORD: "jjNzXD8fnlo9Em1kkV74h05h"
           RELEASE_KEY_ALIAS: "moneymanager"
