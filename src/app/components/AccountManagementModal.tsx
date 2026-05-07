@@ -90,6 +90,9 @@ export const AccountManagementModal = ({ accId, onClose }: { accId?: string | nu
   
   // Type-specific fields
   const [cardNumber, setCardNumber] = useState("");
+  const [cardNetwork, setCardNetwork] = useState("");
+  const [cardVariant, setCardVariant] = useState("");
+  const [issuerBank, setIssuerBank] = useState("");
   const [upiId, setUpiId] = useState("");
   const [walletMobile, setWalletMobile] = useState("");
   const [expiryDate, setExpiryDate] = useState("");
@@ -119,6 +122,9 @@ export const AccountManagementModal = ({ accId, onClose }: { accId?: string | nu
       setEmployeeId(existingAcc.employeeId || "");
       setLogoUrl(existingAcc.logoUrl || "");
       setCardNumber(existingAcc.lastFour || "");
+      setCardNetwork(existingAcc.cardNetwork || "");
+      setCardVariant(existingAcc.cardVariant || "");
+      setIssuerBank(existingAcc.issuerBank || "");
       setUpiId(existingAcc.upiId || "");
       setWalletMobile(existingAcc.walletMobile || "");
       setExpiryDate(existingAcc.expiryDate || "");
@@ -130,7 +136,81 @@ export const AccountManagementModal = ({ accId, onClose }: { accId?: string | nu
     }
   }, [existingAcc]);
 
-  // Auto-fetch logo based on name
+  // Autofill employer from profile if Salary account
+  useEffect(() => {
+    if (subType === 'Salary' && !employerName && !isEdit) {
+      setEmployerName(profile.companyName || profile.employer || "");
+    }
+  }, [subType, employerName, isEdit, profile]);
+
+  // Auto-fetch Card details from BIN
+  useEffect(() => {
+    const fetchBIN = async () => {
+      if (type !== 'credit_card' && type !== 'debit') return;
+      const bin = fullAccountNumber.replace(/\D/g, '');
+      if (bin.length < 6) return;
+      
+      // Prevent hitting the API if the card number hasn't been modified from its existing state
+      if (isEdit && existingAcc?.fullAccountNumber && existingAcc.fullAccountNumber === fullAccountNumber) return;
+
+      const getScheme = (num: string) => {
+        if (num.startsWith('4')) return 'Visa';
+        if (/^5[1-5]/.test(num)) return 'Mastercard';
+        if (/^3[47]/.test(num)) return 'Amex';
+        if (/^6/.test(num)) return 'RuPay/Discover';
+        return '';
+      };
+
+      // Optimistically set scheme
+      const scheme = getScheme(bin);
+      if (scheme && !cardNetwork) setCardNetwork(scheme);
+
+      try {
+        const res = await fetch(`https://data.handyapi.com/bin/${bin.slice(0, 8)}`, {
+          headers: {
+            'Authorization': 'Bearer PUB-0YS3537SymVcQGtk9uUv8LZ2bq'
+          }
+        });
+        if (res.ok) {
+          const data = await res.json();
+          const foundScheme = data.Scheme || data.scheme;
+          const foundType = data.Type || data.type;
+          const foundIssuer = data.Issuer || data.bank?.name;
+          const foundTier = data.CardTier || data.brand || data.tier;
+
+          if (foundScheme) {
+            const s = foundScheme.toUpperCase();
+            setCardNetwork(s);
+          }
+          if (foundType) {
+            const isDebit = foundType.toUpperCase() === 'DEBIT';
+            setType(isDebit ? 'debit' : 'credit_card');
+            setSubType(isDebit ? 'Debit' : 'Credit');
+          }
+          if (foundIssuer) {
+             setIssuerBank(foundIssuer);
+             const token = profile.logoDevToken ? `&token=${profile.logoDevToken.trim()}` : '';
+             const sanitizedIssuer = foundIssuer.replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
+             setLogoUrl(`https://img.logo.dev/${sanitizedIssuer}.com?size=128${token}`);
+             setIsManualLogo(true);
+          }
+          if (foundTier) {
+             setCardVariant(foundTier);
+          } else if (foundScheme) {
+             setCardVariant(foundScheme);
+          }
+          toast.success(`Identified: ${foundIssuer || ''} ${foundScheme || scheme} ${foundTier || ''}`.trim());
+        }
+      } catch (err) {
+        // Fallback already handled
+      }
+    };
+    
+    const timer = setTimeout(fetchBIN, 800);
+    return () => clearTimeout(timer);
+  }, [fullAccountNumber, type, name]);
+
+  // Auto-fetch Bank details from IFSC
   useEffect(() => {
     const timer = setTimeout(() => {
       if (!name || isManualLogo) return;
@@ -160,6 +240,10 @@ export const AccountManagementModal = ({ accId, onClose }: { accId?: string | nu
   useEffect(() => {
     const fetchIFSC = async () => {
       const code = ifsc.trim().toUpperCase();
+      
+      // Prevent hitting the API if the IFSC hasn't been modified from its existing state
+      if (isEdit && existingAcc?.ifsc && existingAcc.ifsc === code) return;
+
       if (code.length === 11) {
         try {
           const res = await fetch(`https://ifsc.razorpay.com/${code}`);
@@ -180,7 +264,7 @@ export const AccountManagementModal = ({ accId, onClose }: { accId?: string | nu
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!name) {
-      toast.error("Account Name is mandatory");
+      toast.error(type === 'credit_card' || type === 'debit' ? "Card Name is mandatory" : "Account Name is mandatory");
       return;
     }
 
@@ -192,13 +276,16 @@ export const AccountManagementModal = ({ accId, onClose }: { accId?: string | nu
       subType,
       balance: finalBalance,
       currency: "INR",
-      lastFour: (type === 'credit_card' || type === 'debit') ? cardNumber.slice(-4) : (type === 'bank' ? lastFour : ''),
+      lastFour: (type === 'credit_card' || type === 'debit' || type === 'bank') ? lastFour : '',
       fullAccountNumber,
       accountHolderName,
       ifsc,
       branch,
       employerName: subType === 'Salary' ? employerName : undefined,
       employerLocation: subType === 'Salary' ? employerLocation : undefined,
+      cardNetwork,
+      cardVariant,
+      issuerBank,
       creditLimit: creditLimit ? parseFloat(creditLimit) : undefined,
       dueDate,
       expiryDate,
@@ -224,9 +311,9 @@ export const AccountManagementModal = ({ accId, onClose }: { accId?: string | nu
   };
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm animate-in fade-in duration-200 overflow-y-auto">
-      <div className="bg-white rounded-3xl w-full max-w-lg shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200 my-8">
-        <div className="p-6 border-b border-slate-100 flex items-center justify-between bg-slate-50/50 sticky top-0 z-10 backdrop-blur-md">
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 md:p-6 bg-slate-900/40 backdrop-blur-sm animate-in fade-in duration-200">
+      <div className="bg-white rounded-3xl w-full max-w-lg shadow-2xl flex flex-col max-h-[95vh] overflow-hidden animate-in zoom-in-95 duration-200">
+        <div className="p-6 border-b border-slate-100 flex items-center justify-between bg-slate-50/50 shrink-0">
           <div className="flex items-center gap-4">
             {step === "fields" && !isEdit && (
               <button 
@@ -237,16 +324,20 @@ export const AccountManagementModal = ({ accId, onClose }: { accId?: string | nu
               </button>
             )}
             <div>
-              <h2 className="text-xl font-bold text-slate-800">{isEdit ? "Edit Account" : "Add New Account"}</h2>
+              <h2 className="text-xl font-bold text-slate-800">
+                {isEdit 
+                  ? (type === 'credit_card' || type === 'debit' ? "Edit Card Settings" : "Edit Account")
+                  : (step === "type" ? "Add New Account" : (type === 'credit_card' || type === 'debit' ? "Add New Card" : "Add New Account"))}
+              </h2>
               <p className="text-xs text-slate-500 font-medium mt-0.5">
-                {step === "type" ? "Select account category" : "Configure your financial instrument"}
+                {step === "type" ? "Select account category" : (type === 'credit_card' || type === 'debit' ? "Configure your card details" : "Configure your financial instrument")}
               </p>
             </div>
           </div>
           <button onClick={onClose} className="p-2 hover:bg-white rounded-xl transition-colors shadow-sm"><X className="w-5 h-5 text-slate-400" /></button>
         </div>
 
-        <div className="p-6">
+        <div className="p-6 overflow-y-auto overflow-x-hidden flex-1 relative">
           <AnimatePresence mode="wait">
             {step === "type" ? (
               <motion.div
@@ -265,6 +356,9 @@ export const AccountManagementModal = ({ accId, onClose }: { accId?: string | nu
                         key={at.id} type="button"
                         onClick={() => {
                           setType(at.id as any);
+                          if (at.id === 'credit_card') setSubType('Credit');
+                          else if (at.id === 'debit') setSubType('Debit');
+                          else if (at.id === 'bank') setSubType('Savings');
                           setStep("fields");
                         }}
                         className={cn(
@@ -303,7 +397,7 @@ export const AccountManagementModal = ({ accId, onClose }: { accId?: string | nu
                     })()}
                   </div>
                   <div className="flex-1">
-                    <p className="text-[10px] font-bold text-indigo-400 uppercase tracking-wider">Account Type</p>
+                    <p className="text-[10px] font-bold text-indigo-400 uppercase tracking-wider">{type === 'credit_card' || type === 'debit' ? 'Card Type' : 'Account Type'}</p>
                     <p className="text-sm font-bold text-slate-800 capitalize">{type.replace('_', ' ')}</p>
                   </div>
                   <button 
@@ -320,10 +414,12 @@ export const AccountManagementModal = ({ accId, onClose }: { accId?: string | nu
                     {/* ROW 1: Name & Logo */}
                     <div className="flex gap-4 items-end">
                         <div className="flex-1">
-                          <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5 px-1">Account Name <span className="text-red-400">*</span></label>
+                          <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5 px-1">
+                            {type === 'credit_card' || type === 'debit' ? 'Card Name' : 'Account Name'} <span className="text-red-400">*</span>
+                          </label>
                           <input
                             type="text" value={name} onChange={e => setName(e.target.value)}
-                            placeholder="e.g. HDFC Salary"
+                            placeholder={type === 'credit_card' || type === 'debit' ? "e.g. ICICI Amazon Pay CC" : "e.g. HDFC Salary"}
                             className="w-full text-sm font-semibold bg-slate-50 px-4 py-3.5 rounded-2xl border-2 border-transparent focus:border-indigo-600 focus:bg-white outline-none transition-all shadow-inner"
                           />
                         </div>
@@ -378,7 +474,7 @@ export const AccountManagementModal = ({ accId, onClose }: { accId?: string | nu
                           <div className="relative flex items-center">
                             <span className="absolute left-4 text-slate-400 font-bold text-sm">₹</span>
                             <input
-                              type="number" value={balance} onChange={e => setBalance(e.target.value)}
+                              type="number" step="any" value={balance} onChange={e => setBalance(e.target.value)}
                               placeholder="0.00"
                               className="w-full text-sm font-bold bg-slate-50 pl-8 pr-4 py-3.5 rounded-2xl border-2 border-transparent focus:border-indigo-600 focus:bg-white outline-none transition-all shadow-inner"
                             />
@@ -516,37 +612,121 @@ export const AccountManagementModal = ({ accId, onClose }: { accId?: string | nu
 
                     {/* Section: Card Details (Credit & Debit) */}
                     {(type === 'credit_card' || type === 'debit') && (
-                      <div className="grid grid-cols-2 gap-4 pt-2 border-t border-slate-50 animate-in slide-in-from-top-2">
-                        {type === 'credit_card' && (
-                          <div>
-                            <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5 px-1">Credit Limit</label>
-                            <div className="relative flex items-center">
-                              <span className="absolute left-4 text-slate-400 font-bold text-sm">₹</span>
-                              <input
-                                type="number" value={creditLimit} onChange={e => setCreditLimit(e.target.value)}
-                                placeholder="e.g. 100000"
-                                className="w-full text-sm font-semibold bg-slate-50 pl-8 pr-4 py-3.5 rounded-2xl border-2 border-transparent focus:border-indigo-600 focus:bg-white outline-none transition-all shadow-inner"
-                              />
-                            </div>
-                          </div>
-                        )}
-                        <div className={type === 'debit' ? 'col-span-2' : ''}>
-                          <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5 px-1">Expiry Date</label>
-                          <input
-                            type="text" value={expiryDate} onChange={e => setExpiryDate(e.target.value)}
-                            placeholder="MM/YY"
-                            className="w-full text-sm font-semibold bg-slate-50 px-4 py-3.5 rounded-2xl border-2 border-transparent focus:border-indigo-600 focus:bg-white outline-none transition-all shadow-inner"
-                          />
-                        </div>
-                        {type === 'credit_card' && (
+                      <div className="space-y-4 pt-2 border-t border-slate-50 animate-in slide-in-from-top-2">
+                        {/* Always visible core fields */}
+                        <div className="grid grid-cols-2 gap-4">
                           <div className="col-span-2">
-                            <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5 px-1">Bill Due Date</label>
+                            <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5 px-1">Card Number (Full or Last 4)</label>
                             <input
-                              type="date" value={dueDate} onChange={e => setDueDate(e.target.value)}
+                              type="text" value={fullAccountNumber} 
+                              onChange={e => {
+                                const val = e.target.value.replace(/\D/g, '');
+                                setFullAccountNumber(val);
+                                if (val.length >= 4) setLastFour(val.slice(-4));
+                              }}
+                              placeholder="XXXX XXXX XXXX 1234"
+                              maxLength={19}
+                              className="w-full text-sm font-semibold bg-slate-50 px-4 py-3.5 rounded-2xl border-2 border-transparent focus:border-indigo-600 focus:bg-white outline-none transition-all shadow-inner font-mono tracking-widest"
+                            />
+                            {cardNetwork && (
+                              <p className="text-[9px] font-bold mt-1.5 px-1 flex items-center gap-1 text-indigo-500 uppercase tracking-wider">
+                                <Check className="w-3 h-3" /> Detected: {cardNetwork} {cardVariant}
+                              </p>
+                            )}
+                          </div>
+                          {type === 'credit_card' && (
+                            <div className="col-span-2">
+                              <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5 px-1">Credit Limit</label>
+                              <div className="relative flex items-center">
+                                <span className="absolute left-4 text-slate-400 font-bold text-sm">₹</span>
+                                <input
+                                  type="number" step="any" value={creditLimit} onChange={e => setCreditLimit(e.target.value)}
+                                  placeholder="e.g. 100000"
+                                  className="w-full text-sm font-semibold bg-slate-50 pl-8 pr-4 py-3.5 rounded-2xl border-2 border-transparent focus:border-indigo-600 focus:bg-white outline-none transition-all shadow-inner"
+                                />
+                              </div>
+                            </div>
+                          )}
+                          <div>
+                            <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5 px-1">Expiry Date</label>
+                            <input
+                              type="text" value={expiryDate} onChange={e => setExpiryDate(e.target.value)}
+                              placeholder="MM/YY"
                               className="w-full text-sm font-semibold bg-slate-50 px-4 py-3.5 rounded-2xl border-2 border-transparent focus:border-indigo-600 focus:bg-white outline-none transition-all shadow-inner"
                             />
                           </div>
-                        )}
+                          <div>
+                            <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5 px-1">Issuer Bank</label>
+                            <input
+                              type="text" value={issuerBank} onChange={e => setIssuerBank(e.target.value)}
+                              placeholder="e.g. HDFC Bank"
+                              className="w-full text-sm font-semibold bg-slate-50 px-4 py-3.5 rounded-2xl border-2 border-transparent focus:border-indigo-600 focus:bg-white outline-none transition-all shadow-inner"
+                            />
+                          </div>
+                          {type === 'credit_card' && (
+                            <div className="col-span-2">
+                              <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5 px-1">Bill Due Date (1-31)</label>
+                              <input
+                                type="number" min="1" max="31" value={dueDate} onChange={e => setDueDate(e.target.value)}
+                                placeholder="e.g. 15"
+                                className="w-full text-sm font-semibold bg-slate-50 px-4 py-3.5 rounded-2xl border-2 border-transparent focus:border-indigo-600 focus:bg-white outline-none transition-all shadow-inner"
+                              />
+                            </div>
+                          )}
+                        </div>
+
+                        {/* TOGGLE TO EXPAND: Advanced Details */}
+                        <div className="space-y-4">
+                          <button
+                            type="button"
+                            onClick={() => setShowAdvanced(!showAdvanced)}
+                            className="w-full py-2 flex items-center justify-center gap-2 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] border-y border-slate-50 hover:text-indigo-600 transition-colors"
+                          >
+                            <span className="w-8 h-[1px] bg-slate-100" />
+                            {showAdvanced ? "Hide" : "Show"} Advanced Card Details
+                            <span className="w-8 h-[1px] bg-slate-100" />
+                          </button>
+
+                          <AnimatePresence>
+                            {showAdvanced && (
+                              <motion.div
+                                initial={{ height: 0, opacity: 0 }}
+                                animate={{ height: 'auto', opacity: 1 }}
+                                exit={{ height: 0, opacity: 0 }}
+                                className="overflow-hidden space-y-5 pt-2"
+                              >
+                                <div className="space-y-4">
+                                  <div>
+                                    <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5 px-1">Name on Card</label>
+                                    <input
+                                      type="text" value={accountHolderName} onChange={e => setAccountHolderName(e.target.value)}
+                                      placeholder="Full name as printed"
+                                      className="w-full text-sm font-semibold bg-slate-50 px-4 py-3.5 rounded-2xl border-2 border-transparent focus:border-indigo-600 focus:bg-white outline-none transition-all shadow-inner"
+                                    />
+                                  </div>
+                                  <div className="grid grid-cols-2 gap-4">
+                                    <div>
+                                      <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5 px-1">Network</label>
+                                      <input
+                                        type="text" value={cardNetwork} onChange={e => setCardNetwork(e.target.value)}
+                                        placeholder="e.g. Visa"
+                                        className="w-full text-sm font-semibold bg-slate-50 px-4 py-3.5 rounded-2xl border-2 border-transparent focus:border-indigo-600 focus:bg-white outline-none transition-all shadow-inner"
+                                      />
+                                    </div>
+                                    <div>
+                                      <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5 px-1">Variant</label>
+                                      <input
+                                        type="text" value={cardVariant} onChange={e => setCardVariant(e.target.value)}
+                                        placeholder="e.g. Signature"
+                                        className="w-full text-sm font-semibold bg-slate-50 px-4 py-3.5 rounded-2xl border-2 border-transparent focus:border-indigo-600 focus:bg-white outline-none transition-all shadow-inner"
+                                      />
+                                    </div>
+                                  </div>
+                                </div>
+                              </motion.div>
+                            )}
+                          </AnimatePresence>
+                        </div>
                       </div>
                     )}
 
@@ -615,11 +795,14 @@ export const AccountManagementModal = ({ accId, onClose }: { accId?: string | nu
                     )}
                   </div>
 
-                  <div className="flex gap-3 pt-6 border-t border-slate-100 sticky bottom-0 bg-white pb-2">
+                  <div className="flex gap-3 pt-6 mt-6 border-t border-slate-100 sticky bottom-0 bg-white pb-2 z-10">
                     {isEdit && (
                       <button
                         type="button"
-                        onClick={() => { if (confirm("Delete account and all its transactions?")) { deleteAccount(accId!); onClose(); } }}
+                        onClick={() => { 
+                          const msg = (type === 'credit_card' || type === 'debit') ? "Delete card and all its transactions?" : "Delete account and all its transactions?";
+                          if (confirm(msg)) { deleteAccount(accId!); onClose(); } 
+                        }}
                         className="p-4 bg-red-50 text-red-600 rounded-2xl hover:bg-red-100 transition-colors shadow-sm"
                       >
                         <Trash2 className="w-5 h-5" />
@@ -629,7 +812,10 @@ export const AccountManagementModal = ({ accId, onClose }: { accId?: string | nu
                       type="submit"
                       className="flex-1 bg-slate-900 text-white font-bold py-4.5 rounded-3xl hover:bg-slate-800 transition-all flex items-center justify-center gap-2 shadow-xl hover:shadow-2xl active:scale-95"
                     >
-                      <Check className="w-5 h-5" /> {isEdit ? "Update Account" : "Create Account"}
+                      <Check className="w-5 h-5" /> 
+                      {isEdit 
+                        ? ((type === 'credit_card' || type === 'debit') ? "Update Card" : "Update Account") 
+                        : ((type === 'credit_card' || type === 'debit') ? "Create Card" : "Create Account")}
                     </button>
                   </div>
                 </form>

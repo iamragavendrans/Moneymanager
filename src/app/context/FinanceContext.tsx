@@ -32,10 +32,23 @@ export interface Transaction {
   };
 }
 
+export interface EmployerRecord {
+  name: string;
+  periodFrom: string;
+  periodTo: string;
+}
+
 export interface Profile {
+  firstName?: string;
+  lastName?: string;
   userName?: string;
   userEmail?: string;
   companyName: string;
+  currentEmployerFrom?: string;
+  currentEmployerTo?: string;
+  currentLocation?: string;
+  salaryCurrency?: string;
+  pastEmployers?: EmployerRecord[];
   logoDevToken?: string;
   salaryBand?: string;
   employer?: string;
@@ -59,6 +72,10 @@ export interface Account {
   branch?: string;
   employerName?: string;
   employerLocation?: string;
+  cardNetwork?: string;
+  cardVariant?: string;
+  issuerBank?: string;
+  expiryDate?: string;
   creditLimit?: number;
   dueDate?: string;
   interestRate?: number;   // for loans
@@ -70,7 +87,6 @@ export interface Account {
   logoUrl?: string;
   upiId?: string;
   walletMobile?: string;
-  expiryDate?: string;
 }
 
 export interface Investment {

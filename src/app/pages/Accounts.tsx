@@ -1,5 +1,6 @@
 import React, { useState, useMemo } from "react";
-import { Plus, Building2, CreditCard, Wallet, Smartphone, Banknote, TrendingUp, Utensils, PiggyBank, HandCoins, ShieldCheck, ArrowRightLeft, RefreshCw, CalendarDays, MoreVertical, ChevronRight, ChevronLeft, Eye, EyeOff } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+import { Plus, Building2, CreditCard, Wallet, Smartphone, Banknote, TrendingUp, Utensils, PiggyBank, HandCoins, ShieldCheck, ArrowRightLeft, RefreshCw, CalendarDays, MoreVertical, ChevronRight, ChevronLeft, Eye, EyeOff, Settings } from "lucide-react";
 import { useFinance, Account } from "../context/FinanceContext";
 import { formatINR, cn } from "../utils";
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from "recharts";
@@ -47,7 +48,14 @@ export const Accounts = () => {
     retirement: false
   });
 
+  const [expandedCards, setExpandedCards] = useState<Record<string, boolean>>({});
+  const [flippedCardId, setFlippedCardId] = useState<string | null>(null);
+
   const toggleExpand = (key: string) => setExpanded(prev => ({ ...prev, [key]: !prev[key] }));
+  const toggleCardExpand = (id: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setExpandedCards(prev => ({ ...prev, [id]: !prev[id] }));
+  };
 
   // Find which account receives most salary/income transactions
   const salaryAccountId = useMemo(() => {
@@ -59,7 +67,7 @@ export const Accounts = () => {
   }, [transactions]);
 
   const bankAccounts = accounts.filter(a => a.type === "bank");
-  const creditCards = accounts.filter(a => a.type === "credit_card");
+  const creditCards = accounts.filter(a => a.type === "credit_card" || a.type === "debit");
   const loans = accounts.filter(a => a.type === "loan");
   const cashWallets = accounts.filter(a => ["cash", "wallet", "UPI", "meal_card"].includes(a.type));
   const retirementAccounts = accounts.filter(a => a.type === "pf");
@@ -79,7 +87,22 @@ export const Accounts = () => {
 
   const getDueDaysLabel = (dueDate?: string) => {
     if (!dueDate) return null;
-    const days = differenceInDays(parseISO(dueDate), new Date());
+    let targetDate: Date;
+    // Check if it's a simple day of the month (1-31)
+    if (/^\d{1,2}$/.test(dueDate)) {
+      const today = new Date();
+      targetDate = new Date(today.getFullYear(), today.getMonth(), parseInt(dueDate, 10));
+      // If the due date has passed this month, move it to next month
+      if (targetDate < today) {
+        targetDate.setMonth(targetDate.getMonth() + 1);
+      }
+    } else {
+      targetDate = parseISO(dueDate);
+    }
+    
+    if (isNaN(targetDate.getTime())) return null;
+
+    const days = differenceInDays(targetDate, new Date());
     if (days < 0) return { text: `Overdue by ${Math.abs(days)}d`, color: 'text-red-600' };
     if (days === 0) return { text: 'Due Today', color: 'text-orange-600' };
     if (days <= 5) return { text: `Due in ${days}d`, color: 'text-orange-500' };
@@ -213,62 +236,141 @@ export const Accounts = () => {
               <div
                 key={acc.id}
                 onClick={() => { setEditingAccountId(acc.id); setShowAccountModal(true); }}
-                className="group bg-white rounded-2xl border border-slate-200 p-5 shadow-sm hover:shadow-md hover:border-indigo-200 transition-all cursor-pointer relative overflow-hidden"
+                className="group bg-white rounded-3xl border border-slate-100 p-6 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] hover:shadow-[0_8px_30px_-4px_rgba(79,70,229,0.15)] hover:border-indigo-100 transition-all duration-300 cursor-pointer relative overflow-hidden"
               >
-                <div className="absolute right-4 top-4 text-slate-300 group-hover:text-slate-500 transition-colors">
-                  <MoreVertical className="w-5 h-5" />
-                </div>
-
-                <div className="flex items-start gap-4">
-                  <div className="w-14 h-14 rounded-2xl bg-white text-indigo-600 flex items-center justify-center shrink-0 border border-slate-100 shadow-sm overflow-hidden">
-                    {acc.logoUrl ? (
-                      <img src={acc.logoUrl} alt={acc.name} className="w-full h-full object-contain p-1" />
-                    ) : (
-                      <AccountIcon type={acc.type} />
-                    )}
-                  </div>
-                  <div className="flex-1 pt-1">
-                    <div className="flex items-center gap-2 mb-1">
-                      <h4 className="font-bold text-slate-900 text-lg">{acc.name}</h4>
-                      {acc.id === salaryAccountId && (
-                        <span className="bg-emerald-100 text-emerald-700 text-[10px] font-bold px-2 py-0.5 rounded-md uppercase tracking-wider">Salary</span>
-                      )}
-                    </div>
-                    <p className="text-sm font-medium text-slate-500 font-mono tracking-wider mb-4">{maskAccNumber(acc.lastFour)}</p>
-
-                    <div className="flex items-end justify-between mt-4">
-                      <div>
-                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-0.5">Current Balance</p>
-                        <p className={cn("text-2xl font-black tracking-tight", acc.balance < 0 ? "text-red-600" : "text-slate-900")}>
-                          {formatINR(acc.balance)}
-                        </p>
+                <div className="space-y-4">
+                  {/* Top Row: Name & Logo */}
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="flex-1 pt-1">
+                      <div className="flex items-center gap-2 mb-1">
+                        <h4 className="font-bold text-slate-900 text-lg leading-none">{acc.name}</h4>
+                        {acc.id === salaryAccountId && (
+                          <span className="bg-emerald-100 text-emerald-700 text-[9px] font-black px-2 py-0.5 rounded-md uppercase tracking-wider">Salary</span>
+                        )}
                       </div>
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          const val = prompt("Enter current actual balance to reconcile:");
-                          if (val !== null && !isNaN(Number(val))) {
-                            const diff = Number(val) - acc.balance;
-                            if (diff !== 0) {
-                              addTransaction({
-                                amount: Math.abs(diff),
-                                type: diff > 0 ? 'income' : 'expense',
-                                category: 'Adjustment',
-                                account_id: acc.id,
-                                payee: 'Balance Reconciliation',
-                                date: new Date().toISOString().split('T')[0],
-                                notes: `Auto-adjustment to match actual balance: ${val}`,
-                                tags: ['system']
-                              });
-                            }
-                          }
-                        }}
-                        className="flex items-center gap-1.5 text-xs font-bold text-indigo-600 bg-indigo-50 px-3 py-1.5 rounded-lg hover:bg-indigo-100 transition-colors"
-                      >
-                        <RefreshCw className="w-3.5 h-3.5" /> Reconcile
-                      </button>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <div className="w-12 h-12 rounded-2xl bg-white text-indigo-600 flex items-center justify-center shrink-0 border border-slate-100 shadow-sm overflow-hidden p-1.5">
+                        {acc.logoUrl ? (
+                          <img src={acc.logoUrl} alt={acc.name} className="w-full h-full object-contain" />
+                        ) : (
+                          <AccountIcon type={acc.type} />
+                        )}
+                      </div>
+                      <div className="text-slate-300 group-hover:text-indigo-400 transition-colors opacity-0 group-hover:opacity-100">
+                        <MoreVertical className="w-5 h-5" />
+                      </div>
                     </div>
                   </div>
+
+                  {/* Second Row: Balance & Account Type */}
+                  <div className="grid grid-cols-2 gap-4 items-end">
+                    <div>
+                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Current Balance</p>
+                      <p className={cn("text-2xl font-black tracking-tight", acc.balance < 0 ? "text-red-600" : "text-slate-900")}>
+                        {formatINR(acc.balance)}
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Account Type</p>
+                      <p className="text-sm font-bold text-indigo-600 bg-indigo-50 inline-flex px-3 py-1.5 rounded-xl capitalize">
+                        {acc.subType || acc.type}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Toggle Button */}
+                  <button
+                    onClick={(e) => toggleCardExpand(acc.id, e)}
+                    className="w-full mt-2 py-2 flex items-center justify-center gap-2 text-[10px] font-black text-slate-300 hover:text-indigo-600 uppercase tracking-[0.2em] transition-colors"
+                  >
+                    <span className="h-[1px] flex-1 bg-gradient-to-r from-transparent via-slate-100 to-slate-100" />
+                    {expandedCards[acc.id] ? "Hide Details" : "Show Details"}
+                    <span className="h-[1px] flex-1 bg-gradient-to-l from-transparent via-slate-100 to-slate-100" />
+                  </button>
+
+                  {/* Expanded Section */}
+                  <AnimatePresence>
+                    {expandedCards[acc.id] && (
+                      <motion.div
+                        initial={{ height: 0, opacity: 0 }}
+                        animate={{ height: "auto", opacity: 1 }}
+                        exit={{ height: 0, opacity: 0 }}
+                        transition={{ duration: 0.2 }}
+                        className="overflow-hidden"
+                      >
+                        <div className="pt-2 pb-1 space-y-4">
+                          <div className="p-4 bg-slate-50/50 rounded-2xl border border-slate-100 space-y-4">
+                            {acc.accountHolderName && (
+                              <div>
+                                <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-0.5">Account Holder Name</p>
+                                <p className="text-sm font-bold text-slate-800">{acc.accountHolderName}</p>
+                              </div>
+                            )}
+                            
+                            <div>
+                              <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-0.5">Account Number</p>
+                              <div className="flex items-center gap-2">
+                                <p className="text-base font-mono font-bold text-slate-800 tracking-widest">
+                                  {acc.fullAccountNumber ? acc.fullAccountNumber : maskAccNumber(acc.lastFour)}
+                                </p>
+                              </div>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-4">
+                              {acc.ifsc && (
+                                <div>
+                                  <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-0.5">IFSC Code</p>
+                                  <p className="text-sm font-bold text-slate-800">{acc.ifsc}</p>
+                                </div>
+                              )}
+                              {acc.branch && (
+                                <div>
+                                  <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-0.5">Branch</p>
+                                  <p className="text-sm font-bold text-slate-800">{acc.branch}</p>
+                                </div>
+                              )}
+                            </div>
+
+                            {acc.upiId && (
+                              <div>
+                                <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-0.5">UPI ID</p>
+                                <p className="text-sm font-bold text-indigo-600">{acc.upiId}</p>
+                              </div>
+                            )}
+
+                            {/* Reconcile button moved here for less clutter on main view */}
+                            <div className="pt-2 border-t border-slate-200/50 flex justify-end">
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  const val = prompt("Enter current actual balance to reconcile:");
+                                  if (val !== null && !isNaN(Number(val))) {
+                                    const diff = Number(val) - acc.balance;
+                                    if (diff !== 0) {
+                                      addTransaction({
+                                        amount: Math.abs(diff),
+                                        type: diff > 0 ? 'income' : 'expense',
+                                        category: 'Adjustment',
+                                        account_id: acc.id,
+                                        payee: 'Balance Reconciliation',
+                                        date: new Date().toISOString().split('T')[0],
+                                        notes: `Auto-adjustment to match actual balance: ${val}`,
+                                        tags: ['system']
+                                      });
+                                    }
+                                  }
+                                }}
+                                className="flex items-center gap-1.5 text-[10px] font-bold text-indigo-600 uppercase tracking-wider hover:text-indigo-800 transition-colors"
+                              >
+                                <RefreshCw className="w-3.5 h-3.5" /> Reconcile Balance
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
                 </div>
               </div>
             ))}
@@ -300,7 +402,7 @@ export const Accounts = () => {
           
           <div className={cn(
             "relative transition-all duration-500",
-            expanded.cards ? "space-y-6" : "h-[220px] max-w-[360px] mx-auto"
+            expanded.cards ? "space-y-12" : "h-[240px] max-w-[360px] mx-auto"
           )}>
             {/* Carousel Controls */}
             {!expanded.cards && creditCards.length > 1 && (
@@ -344,91 +446,153 @@ export const Accounts = () => {
                                "from-slate-800 to-slate-900";
 
               return (
+              <React.Fragment key={acc.id}>
                 <div 
-                  key={acc.id} 
-                  onClick={() => { setEditingAccountId(acc.id); setShowAccountModal(true); }}
+                  onClick={() => setFlippedCardId(prev => prev === acc.id ? null : acc.id)}
                   style={{ 
                     zIndex: !expanded.cards ? (isActive ? 50 : 10) : 10,
                     transform: !expanded.cards 
                       ? isActive 
-                        ? 'translateX(0) scale(1)' 
+                        ? (flippedCardId === acc.id ? 'rotateY(180deg) scale(1)' : 'translateX(0) scale(1)') 
                         : isNext 
                           ? 'translateX(10%) scale(0.9) rotateY(-5deg)' 
                           : isPrev 
                             ? 'translateX(-10%) scale(0.9) rotateY(5deg)'
                             : 'scale(0.8) translateY(20px) opacity(0)'
-                      : 'none',
+                      : (flippedCardId === acc.id ? 'rotateY(180deg)' : 'none'),
                     opacity: !expanded.cards ? (isActive ? 1 : (isNext || isPrev ? 0.3 : 0)) : 1,
-                    pointerEvents: !expanded.cards ? (isActive ? 'auto' : 'none') : 'auto'
+                    pointerEvents: !expanded.cards ? (isActive ? 'auto' : 'none') : 'auto',
+                    transformStyle: 'preserve-3d'
                   }}
                   className={cn(
-                    "group w-full max-w-[360px] mx-auto rounded-3xl p-5 shadow-2xl relative overflow-hidden cursor-pointer transition-all duration-700 border border-white/10",
-                    !expanded.cards ? "absolute top-0 inset-x-0 h-full" : "relative mb-6 aspect-[1.586]",
-                    `bg-gradient-to-br ${cardColor}`
+                    "group w-full max-w-[380px] mx-auto relative cursor-pointer transition-all duration-700 aspect-[1.586]",
+                    !expanded.cards ? "absolute top-0 inset-x-0 h-full" : "relative mb-8"
                   )}
                 >
-                  {/* Card Chip & Signal */}
-                  <div className="absolute top-5 left-5 flex flex-col gap-1.5 opacity-80">
-                    <div className="w-10 h-7 bg-gradient-to-br from-yellow-200 to-yellow-500 rounded-md shadow-inner flex items-center justify-center">
-                      <div className="w-6 h-4 border border-black/10 rounded-sm"></div>
-                    </div>
-                    <div className="flex gap-0.5">
-                      <div className="w-1 h-3 bg-white/20 rounded-full"></div>
-                      <div className="w-1 h-3 bg-white/40 rounded-full"></div>
-                      <div className="w-1 h-3 bg-white/60 rounded-full"></div>
-                    </div>
-                  </div>
+                  {/* Front Side */}
+                  <div className={cn(
+                    "absolute inset-0 rounded-3xl p-6 shadow-2xl overflow-hidden flex flex-col justify-between border border-white/10 [backface-visibility:hidden]",
+                    `bg-gradient-to-br ${cardColor}`
+                  )}>
+                    {/* Top Row: Bank Logo (Left) and Chip+Network (Right) */}
+                    <div className="flex justify-between items-start gap-3">
+                      {/* Left: Bank Logo & Name */}
+                      <div className="flex items-center gap-3 shrink min-w-0">
+                        {acc.logoUrl ? (
+                          <div className="w-10 h-10 bg-white rounded-full flex items-center justify-center p-1.5 shadow-sm border border-white/20 shrink-0">
+                            <img src={acc.logoUrl} alt={acc.name} className="w-full h-full object-contain" />
+                          </div>
+                        ) : (
+                          <div className="w-10 h-10 bg-white/10 backdrop-blur-md rounded-full flex items-center justify-center shadow-sm border border-white/20 shrink-0">
+                            <Building2 className="w-5 h-5 text-white/80" />
+                          </div>
+                        )}
+                        <div className="text-white font-bold tracking-widest text-sm shadow-black drop-shadow-md truncate uppercase shrink min-w-0">
+                          {acc.issuerBank || acc.name}
+                        </div>
+                      </div>
 
-                  {/* Brand Logo & Network */}
-                  <div className="absolute top-5 right-5 flex items-center gap-3">
-                    <div className="text-white/40 text-[10px] font-black italic uppercase tracking-tighter mr-1">
-                      {getCardNetwork(acc.fullAccountNumber || acc.lastFour)}
+                      {/* Right: Chip & Network Logo */}
+                      <div className="flex items-center gap-3 shrink-0">
+                        <div className="flex items-center gap-1.5">
+                          <div className="w-9 h-6 bg-gradient-to-br from-[#e0c476] to-[#b8953f] rounded shadow-inner flex flex-col justify-between overflow-hidden opacity-90 border border-[#8a6b1c]/50">
+                            <div className="w-full h-[1px] bg-black/20 mt-1.5"></div>
+                            <div className="w-full h-[1px] bg-black/20 mb-1.5"></div>
+                          </div>
+                          <div className="flex gap-0.5 opacity-60">
+                            <div className="w-1 h-3 bg-white/80 rounded-full rotate-12"></div>
+                            <div className="w-1 h-3.5 bg-white/80 rounded-full rotate-12"></div>
+                            <div className="w-1 h-4 bg-white/80 rounded-full rotate-12"></div>
+                          </div>
+                        </div>
+
+                        <div className="flex flex-col items-end">
+                          <div className="text-white font-black italic text-[18px] tracking-tighter drop-shadow-md pr-1">
+                            {acc.cardNetwork || getCardNetwork(acc.fullAccountNumber || acc.lastFour)}
+                          </div>
+                          {acc.cardVariant && (
+                            <div className="text-[6px] font-black text-amber-400 uppercase tracking-widest mt-0.5 shadow-black drop-shadow-sm pr-1">
+                              {acc.cardVariant}
+                            </div>
+                          )}
+                        </div>
+                      </div>
                     </div>
-                    <div className="w-14 h-10 bg-white/10 rounded-xl backdrop-blur-md flex items-center justify-center p-1.5 border border-white/5">
-                      {acc.logoUrl ? (
-                        <img src={acc.logoUrl} alt={acc.name} className="w-full h-full object-contain" />
-                      ) : (
-                        <CreditCard className="w-6 h-6 text-white/50" />
+
+                    {/* Middle Row: Card Number */}
+                    <div className="flex-1 flex flex-col justify-center translate-y-3">
+                      <p className="text-white font-mono text-[22px] tracking-[0.2em] flex items-center gap-3 drop-shadow-md">
+                        <span>****</span>
+                        <span>****</span>
+                        <span>****</span>
+                        <span>{acc.lastFour || acc.fullAccountNumber?.slice(-4) || '0000'}</span>
+                      </p>
+                    </div>
+
+                    {/* Bottom Row: Name and Expiry */}
+                    <div className="flex items-end justify-between mt-auto">
+                      <div>
+                        <h4 className="text-white/50 text-[7px] uppercase font-bold tracking-widest mb-1">Cardholder Name</h4>
+                        <p className="text-white font-bold tracking-widest text-xs uppercase drop-shadow-sm truncate max-w-[180px]">{acc.accountHolderName || profile.userName || 'CARDHOLDER'}</p>
+                      </div>
+                      {acc.expiryDate && (
+                        <div className="text-right">
+                          <h4 className="text-white/50 text-[7px] uppercase font-bold tracking-widest mb-1">Valid Thru</h4>
+                          <p className="text-white font-mono font-bold tracking-widest text-xs drop-shadow-sm">{acc.expiryDate}</p>
+                        </div>
                       )}
                     </div>
                   </div>
 
-                  <div className="mt-10 mb-3">
-                    <h4 className="text-white/60 text-[10px] uppercase font-bold tracking-widest mb-1">Card Holder / Issuer</h4>
-                    <p className="text-white font-bold tracking-wider text-sm">{acc.name}</p>
-                    <p className="text-white/90 font-mono text-base tracking-[0.15em] mt-2 flex gap-3">
-                      <span>****</span>
-                      <span>****</span>
-                      <span>****</span>
-                      <span className="bg-white/10 px-2 py-0.5 rounded-lg">{acc.lastFour || '0000'}</span>
-                    </p>
-                  </div>
-
-                  <div className="flex items-end justify-between">
-                    <div>
-                      <p className="text-[10px] font-bold text-white/40 uppercase tracking-wider mb-0.5">Outstanding Balance</p>
-                      <p className="text-xl font-black text-white tracking-tight">{formatINR(outstanding)}</p>
+                  {/* Back Side */}
+                  <div className={cn(
+                    "absolute inset-0 rounded-3xl p-6 shadow-2xl overflow-hidden flex flex-col justify-between border border-white/10 [backface-visibility:hidden] [transform:rotateY(180deg)]",
+                    `bg-slate-900`
+                  )}>
+                    <div className="pt-2">
+                      <div className="flex items-end justify-between mb-8">
+                        <div>
+                          <p className="text-[9px] font-bold text-white/50 uppercase tracking-wider mb-1">
+                            {acc.type === 'debit' ? 'Current Balance' : 'Outstanding Balance'}
+                          </p>
+                          <p className="text-3xl font-black text-white tracking-tight leading-none">
+                            {formatINR(acc.type === 'debit' ? acc.balance : outstanding)}
+                          </p>
+                        </div>
+                        {acc.type === 'credit_card' && (
+                          <div className="text-right">
+                            <p className="text-[9px] font-bold text-white/50 uppercase tracking-wider mb-1">Available Limit</p>
+                            <p className="text-lg font-bold text-indigo-400 tracking-tight leading-none">{formatINR(available)}</p>
+                          </div>
+                        )}
+                      </div>
+                      
+                      {acc.type === 'credit_card' && (
+                        <div className="flex items-center justify-between gap-4">
+                          {due ? (
+                            <span className={`text-[10px] font-bold px-3 py-1.5 rounded-lg ${due.color.replace('text', 'bg').replace('600', '500/20')} text-white border border-white/10`}>
+                              {due.text}
+                            </span>
+                          ) : <span></span>}
+                          <div className="flex items-center gap-3 flex-1 max-w-[150px]">
+                            <div className="flex-1 h-1.5 bg-white/10 rounded-full overflow-hidden">
+                              <div className="h-full bg-indigo-500 rounded-full" style={{ width: `${Math.min(utilization, 100)}%` }}></div>
+                            </div>
+                            <span className="text-[10px] font-bold text-white/50 shrink-0">{utilization.toFixed(0)}%</span>
+                          </div>
+                        </div>
+                      )}
                     </div>
-                    <div className="text-right">
-                      <p className="text-[10px] font-bold text-white/40 uppercase tracking-wider mb-0.5">Available Limit</p>
-                      <p className="text-lg font-bold text-indigo-300 tracking-tight">{formatINR(available)}</p>
-                    </div>
-                  </div>
-
-                  {/* Utilization Bar */}
-                  <div className="mt-4 h-1 w-full bg-white/10 rounded-full overflow-hidden">
-                    <div className="h-full bg-indigo-400" style={{ width: `${Math.min(utilization, 100)}%` }}></div>
-                  </div>
-                  
-                  <div className="mt-4 flex justify-between items-center">
-                    {due && (
-                      <span className={`text-[10px] font-bold px-3 py-1 rounded-full ${due.color.replace('text', 'bg').replace('600', '100/20')} backdrop-blur-sm border border-white/10`}>
-                        {due.text}
-                      </span>
-                    )}
-                    <span className="text-[10px] font-bold text-white/40">{utilization.toFixed(0)}% Utilized</span>
+                    
+                    <button 
+                      onClick={(e) => { e.stopPropagation(); setEditingAccountId(acc.id); setShowAccountModal(true); }}
+                      className="w-full py-3.5 bg-white/10 hover:bg-white/20 text-white rounded-xl text-sm font-bold transition-colors flex items-center justify-center gap-2 border border-white/5"
+                    >
+                      <Settings className="w-4 h-4" /> Manage Card Settings
+                    </button>
                   </div>
                 </div>
+              </React.Fragment>
               );
             })}
           </div>
