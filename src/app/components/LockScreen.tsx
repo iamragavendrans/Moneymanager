@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Fingerprint, Lock, ShieldCheck, Keypad } from 'lucide-react';
+import { Fingerprint, Lock, ShieldCheck } from 'lucide-react';
 import { checkBiometry } from '../utils/security';
 
 interface LockScreenProps {

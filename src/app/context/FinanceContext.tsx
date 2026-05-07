@@ -49,11 +49,16 @@ export interface Account {
   id: string;
   name: string;
   type: "bank" | "UPI" | "wallet" | "cash" | "credit_card" | "loan" | "investment" | "meal_card" | "pf" | "debit" | "asset";
+  subType?: string; // Salary, Checking, Savings, etc.
   balance: number;
   currency: string;
   lastFour?: string;
   fullAccountNumber?: string;
+  accountHolderName?: string;
   ifsc?: string;
+  branch?: string;
+  employerName?: string;
+  employerLocation?: string;
   creditLimit?: number;
   dueDate?: string;
   interestRate?: number;   // for loans

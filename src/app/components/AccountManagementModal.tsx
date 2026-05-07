@@ -93,7 +93,13 @@ export const AccountManagementModal = ({ accId, onClose }: { accId?: string | nu
   const [upiId, setUpiId] = useState("");
   const [walletMobile, setWalletMobile] = useState("");
   const [expiryDate, setExpiryDate] = useState("");
+  const [subType, setSubType] = useState("Savings");
+  const [accountHolderName, setAccountHolderName] = useState("");
+  const [branch, setBranch] = useState("");
+  const [employerName, setEmployerName] = useState("");
+  const [employerLocation, setEmployerLocation] = useState("");
   const [step, setStep] = useState<"type" | "fields">(isEdit ? "fields" : "type");
+  const [showAdvanced, setShowAdvanced] = useState(isEdit);
 
   useEffect(() => {
     if (existingAcc) {
@@ -116,49 +122,83 @@ export const AccountManagementModal = ({ accId, onClose }: { accId?: string | nu
       setUpiId(existingAcc.upiId || "");
       setWalletMobile(existingAcc.walletMobile || "");
       setExpiryDate(existingAcc.expiryDate || "");
+      setSubType(existingAcc.subType || "Savings");
+      setAccountHolderName(existingAcc.accountHolderName || "");
+      setBranch(existingAcc.branch || "");
+      setEmployerName(existingAcc.employerName || "");
+      setEmployerLocation(existingAcc.employerLocation || "");
     }
   }, [existingAcc]);
 
   // Auto-fetch logo based on name
   useEffect(() => {
-    if (isManualLogo) return; // Don't overwrite if user manually typed a URL
-
     const timer = setTimeout(() => {
-      const searchName = name.toLowerCase();
-      if (!searchName) return;
+      if (!name || isManualLogo) return;
 
+      const searchName = name.toLowerCase().trim();
+      const keywords = type === 'credit_card' ? ' card' : type === 'wallet' ? ' wallet' : '';
+      
+      // Try to find in BRAND_MAP
       const brandKey = Object.keys(BRAND_MAP).find(key => searchName.includes(key));
       if (brandKey) {
         const domain = BRAND_MAP[brandKey];
         const token = profile.logoDevToken ? `&token=${profile.logoDevToken.trim()}` : '';
         setLogoUrl(`https://img.logo.dev/${domain}?size=128${token}`);
         setLogoError(false);
-      } else if (searchName.length > 3 && !searchName.includes(' ')) {
-        // Try guessing the domain if it's a single word
+      } else if (searchName.length > 2) {
+        // Simple heuristic: try bankname.com or bankname.in
         const token = profile.logoDevToken ? `&token=${profile.logoDevToken.trim()}` : '';
-        setLogoUrl(`https://img.logo.dev/${searchName}.com?size=128${token}`);
+        setLogoUrl(`https://img.logo.dev/${searchName.replace(/\s+/g, '')}.com?size=128${token}`);
         setLogoError(false);
       }
-    }, 600);
+    }, 800);
 
     return () => clearTimeout(timer);
   }, [name, isEdit]);
 
+  // Auto-fetch Bank details from IFSC
+  useEffect(() => {
+    const fetchIFSC = async () => {
+      const code = ifsc.trim().toUpperCase();
+      if (code.length === 11) {
+        try {
+          const res = await fetch(`https://ifsc.razorpay.com/${code}`);
+          if (res.ok) {
+            const data = await res.json();
+            if (data.BRANCH) setBranch(data.BRANCH);
+            if (data.BANK) setName(data.BANK);
+            toast.success(`Found: ${data.BANK}, ${data.BRANCH}`);
+          }
+        } catch (err) {
+          console.error("IFSC Fetch error:", err);
+        }
+      }
+    };
+    fetchIFSC();
+  }, [ifsc]);
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name || balance === "") {
-      toast.error("Please fill required fields");
+    if (!name) {
+      toast.error("Account Name is mandatory");
       return;
     }
+
+    const finalBalance = balance === "" ? 0 : Number(balance);
 
     const data: any = {
       name,
       type,
-      balance: Number(balance),
+      subType,
+      balance: finalBalance,
       currency: "INR",
       lastFour: (type === 'credit_card' || type === 'debit') ? cardNumber.slice(-4) : (type === 'bank' ? lastFour : ''),
       fullAccountNumber,
+      accountHolderName,
       ifsc,
+      branch,
+      employerName: subType === 'Salary' ? employerName : undefined,
+      employerLocation: subType === 'Salary' ? employerLocation : undefined,
       creditLimit: creditLimit ? parseFloat(creditLimit) : undefined,
       dueDate,
       expiryDate,
@@ -277,109 +317,199 @@ export const AccountManagementModal = ({ accId, onClose }: { accId?: string | nu
 
                 <form onSubmit={handleSubmit} className="space-y-6">
                   <div className="space-y-5">
-                    <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5 px-1">Account / Display Name <span className="text-red-400">*</span></label>
-                    <div className="flex gap-3">
-                      <input
-                        type="text" value={name} onChange={e => setName(e.target.value)}
-                        placeholder="e.g. HDFC Salary, ICICI Card"
-                        className="flex-1 text-sm font-semibold bg-slate-50 px-4 py-3.5 rounded-2xl border-2 border-transparent focus:border-indigo-600 focus:bg-white outline-none transition-all shadow-inner"
-                      />
-                      <button 
-                        type="button"
-                        onClick={() => setShowUrlInput(!showUrlInput)}
-                        className="w-12 h-12 rounded-2xl bg-slate-50 border-2 border-slate-100 flex items-center justify-center overflow-hidden shrink-0 hover:border-indigo-400 transition-colors shadow-sm"
-                        title="Click to edit logo URL"
-                      >
-                        {logoUrl && !logoError ? (
-                          <img
-                            src={logoUrl}
-                            alt="Logo"
-                            className="w-full h-full object-contain p-1"
-                            onError={() => setLogoError(true)}
-                          />
-                        ) : (
-                          <Building2 className="w-5 h-5 text-slate-300" />
-                        )}
-                      </button>
-                    </div>
-
-                    {showUrlInput && (
-                      <div className="animate-in slide-in-from-top-2 duration-200">
-                        <label className="block text-[10px] font-bold text-indigo-500 uppercase tracking-wider mb-1.5 px-1">Branding / Logo URL</label>
-                        <input
-                          type="text" value={logoUrl}
-                          onChange={e => {
-                            setLogoUrl(e.target.value);
-                            setIsManualLogo(true);
-                            setLogoError(false);
-                          }}
-                          placeholder="e.g. img.logo.dev/brand.com"
-                          className="w-full text-sm font-semibold bg-indigo-50/50 px-4 py-3 rounded-2xl border border-indigo-100 focus:ring-2 focus:ring-indigo-600 outline-none"
-                        />
-                        <p className="text-[9px] text-indigo-400 mt-1 px-1 font-medium italic">* Click the bank icon again to hide this field.</p>
-                      </div>
-                    )}
-
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5 px-1">
-                          {type === 'credit_card' ? 'Outstanding' : type === 'loan' ? 'Debt Amount' : 'Current Balance'}
-                        </label>
-                        <div className="relative flex items-center">
-                          <span className="absolute left-4 text-slate-400 font-bold text-sm">₹</span>
+                    {/* ROW 1: Name & Logo */}
+                    <div className="flex gap-4 items-end">
+                        <div className="flex-1">
+                          <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5 px-1">Account Name <span className="text-red-400">*</span></label>
                           <input
-                            type="number" value={balance} onChange={e => setBalance(e.target.value)}
-                            placeholder="0.00"
-                            className="w-full text-sm font-bold bg-slate-50 pl-8 pr-4 py-3.5 rounded-2xl border-2 border-transparent focus:border-indigo-600 focus:bg-white outline-none transition-all shadow-inner"
+                            type="text" value={name} onChange={e => setName(e.target.value)}
+                            placeholder="e.g. HDFC Salary"
+                            className="w-full text-sm font-semibold bg-slate-50 px-4 py-3.5 rounded-2xl border-2 border-transparent focus:border-indigo-600 focus:bg-white outline-none transition-all shadow-inner"
                           />
                         </div>
+                        <button 
+                          type="button"
+                          onClick={() => setShowUrlInput(!showUrlInput)}
+                          className={cn(
+                            "w-12 h-12 mb-0.5 rounded-2xl border-2 flex items-center justify-center overflow-hidden shrink-0 transition-all shadow-sm",
+                            showUrlInput ? "border-indigo-600 ring-4 ring-indigo-50" : "bg-slate-50 border-slate-100 hover:border-indigo-400"
+                          )}
+                          title="Search / Change Logo"
+                        >
+                          {logoUrl && !logoError ? (
+                            <img src={logoUrl} alt="Logo" className="w-full h-full object-contain p-1" onError={() => setLogoError(true)} />
+                          ) : (
+                            <Building2 className={cn("w-5 h-5", showUrlInput ? "text-indigo-600" : "text-slate-300")} />
+                          )}
+                        </button>
                       </div>
-                      
-                      {/* Type-Specific Identifier Field */}
-                      <div>
-                        <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5 px-1">
-                          {(type === 'credit_card' || type === 'debit') ? 'Card Number' : 
-                           type === 'bank' ? 'Last 4 Digits' :
-                           type === 'wallet' ? 'Mobile Number' :
-                           type === 'UPI' ? 'UPI ID' : 'Identifier'}
-                        </label>
-                        <input
-                          type="text" 
-                          value={(type === 'credit_card' || type === 'debit') ? cardNumber : 
-                                 type === 'wallet' ? walletMobile :
-                                 type === 'UPI' ? upiId : lastFour} 
-                          onChange={e => {
-                            const val = e.target.value;
-                            if (type === 'credit_card' || type === 'debit') setCardNumber(val);
-                            else if (type === 'wallet') setWalletMobile(val);
-                            else if (type === 'UPI') setUpiId(val);
-                            else setLastFour(val);
-                          }}
-                          placeholder={(type === 'credit_card' || type === 'debit') ? '4xxx xxxx xxxx xxxx' : 'Optional'}
-                          maxLength={(type === 'credit_card' || type === 'debit') ? 19 : 20}
-                          className="w-full text-sm font-semibold bg-slate-50 px-4 py-3.5 rounded-2xl border-2 border-transparent focus:border-indigo-600 focus:bg-white outline-none transition-all shadow-inner"
-                        />
-                      </div>
-                    </div>
 
-                    {/* Section: Shareable Bank Details */}
-                    {type === 'bank' && (
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2 border-t border-slate-50 animate-in slide-in-from-top-2">
-                        <div className="sm:col-span-2">
-                          <label className="block text-[10px] font-bold text-indigo-500 uppercase tracking-wider mb-1.5 px-1">Full Account Number</label>
-                          <input
-                            type="text" value={fullAccountNumber} onChange={e => setFullAccountNumber(e.target.value)}
-                            placeholder="For easy copying/sharing"
-                            className="w-full text-sm font-semibold bg-indigo-50/30 px-4 py-3.5 rounded-2xl border border-indigo-100/50 focus:ring-2 focus:ring-indigo-600 outline-none"
-                          />
+                      {showUrlInput && (
+                        <div className="animate-in slide-in-from-top-2 duration-200 space-y-3 p-4 bg-indigo-50/30 rounded-2xl border border-indigo-100/50">
+                          <div>
+                            <label className="block text-[10px] font-bold text-indigo-500 uppercase tracking-wider mb-1.5 px-1">Bank Branding / Logo URL</label>
+                            <input
+                              type="text" value={logoUrl}
+                              onChange={e => { setLogoUrl(e.target.value); setIsManualLogo(true); setLogoError(false); }}
+                              placeholder="e.g. hdfcbank.com"
+                              className="w-full text-sm font-semibold bg-white px-4 py-3 rounded-2xl border border-indigo-100 focus:ring-2 focus:ring-indigo-600 outline-none"
+                            />
+                          </div>
+                          <div className="flex flex-wrap gap-2">
+                            {['hdfcbank.com', 'icicibank.com', 'sbi.co.in', 'axisbank.com', 'kotak.com'].map(domain => (
+                              <button
+                                key={domain} type="button"
+                                onClick={() => { setLogoUrl(`https://img.logo.dev/${domain}?size=128${profile.logoDevToken ? '&token='+profile.logoDevToken : ''}`); setIsManualLogo(true); setLogoError(false); }}
+                                className="text-[9px] font-bold px-2 py-1 bg-white border border-indigo-100 rounded-lg text-indigo-600 hover:bg-indigo-600 hover:text-white transition-all"
+                              >
+                                {domain.split('.')[0]}
+                              </button>
+                            ))}
+                          </div>
                         </div>
-                        <div className="sm:col-span-2">
-                          <label className="block text-[10px] font-bold text-indigo-500 uppercase tracking-wider mb-1.5 px-1">IFSC Code</label>
-                          <input
-                            type="text" value={ifsc} onChange={e => setIfsc(e.target.value)}
-                            placeholder="HDFC0001234"
-                            className="w-full text-sm font-semibold bg-indigo-50/30 px-4 py-3.5 rounded-2xl border border-indigo-100/50 focus:ring-2 focus:ring-indigo-600 outline-none"
-                          />
+                      )}
+
+                      {/* ROW 2: Balance & Type */}
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5 px-1">
+                            {type === 'credit_card' ? 'Outstanding' : type === 'loan' ? 'Debt Amount' : 'Balance'}
+                          </label>
+                          <div className="relative flex items-center">
+                            <span className="absolute left-4 text-slate-400 font-bold text-sm">₹</span>
+                            <input
+                              type="number" value={balance} onChange={e => setBalance(e.target.value)}
+                              placeholder="0.00"
+                              className="w-full text-sm font-bold bg-slate-50 pl-8 pr-4 py-3.5 rounded-2xl border-2 border-transparent focus:border-indigo-600 focus:bg-white outline-none transition-all shadow-inner"
+                            />
+                          </div>
+                        </div>
+                        
+                        <div>
+                          <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5 px-1">Type</label>
+                          {type === 'bank' ? (
+                            <select 
+                              value={subType} onChange={e => setSubType(e.target.value)}
+                              className="w-full text-sm font-semibold bg-slate-50 px-4 py-3.5 rounded-2xl border-2 border-transparent focus:border-indigo-600 focus:bg-white outline-none transition-all shadow-inner appearance-none cursor-pointer"
+                            >
+                              <option>Savings</option><option>Salary</option><option>Checking</option><option>Current</option><option>Overdraft</option>
+                            </select>
+                          ) : (
+                            <div className="w-full text-sm font-bold text-slate-400 bg-slate-100 px-4 py-3.5 rounded-2xl border-2 border-transparent capitalize">
+                              {type.replace('_', ' ')}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* TOGGLE TO EXPAND: Advanced Details */}
+                      {type === 'bank' && (
+                        <div className="space-y-4">
+                          <button
+                            type="button"
+                            onClick={() => setShowAdvanced(!showAdvanced)}
+                            className="w-full py-2 flex items-center justify-center gap-2 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] border-y border-slate-50 hover:text-indigo-600 transition-colors"
+                          >
+                            <span className="w-8 h-[1px] bg-slate-100" />
+                            {showAdvanced ? "Hide" : "Show"} Advanced Details
+                            <span className="w-8 h-[1px] bg-slate-100" />
+                          </button>
+
+                          <AnimatePresence>
+                            {showAdvanced && (
+                              <motion.div
+                                initial={{ height: 0, opacity: 0 }}
+                                animate={{ height: 'auto', opacity: 1 }}
+                                exit={{ height: 0, opacity: 0 }}
+                                className="overflow-hidden space-y-5 pt-2"
+                              >
+                                <div className="space-y-4">
+                                  <div>
+                                    <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5 px-1">Account Holder Name</label>
+                                    <input
+                                      type="text" value={accountHolderName} onChange={e => setAccountHolderName(e.target.value)}
+                                      placeholder="Full name in bank"
+                                      className="w-full text-sm font-semibold bg-slate-50 px-4 py-3.5 rounded-2xl border-2 border-transparent focus:border-indigo-600 focus:bg-white outline-none transition-all shadow-inner"
+                                    />
+                                  </div>
+                                  <div>
+                                    <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5 px-1">Account Number</label>
+                                    <input
+                                      type="text" value={fullAccountNumber} 
+                                      onChange={e => {
+                                        const val = e.target.value;
+                                        setFullAccountNumber(val);
+                                        if (val.length >= 4) setLastFour(val.slice(-4));
+                                      }}
+                                      placeholder="Full account number"
+                                      className="w-full text-sm font-semibold bg-slate-50 px-4 py-3.5 rounded-2xl border-2 border-transparent focus:border-indigo-600 focus:bg-white outline-none transition-all shadow-inner"
+                                    />
+                                    {fullAccountNumber && (
+                                      <p className="text-[9px] text-emerald-500 font-bold mt-1.5 px-1 flex items-center gap-1">
+                                        <Check className="w-3 h-3" /> Auto-extracting last 4 digits: {lastFour}
+                                      </p>
+                                    )}
+                                  </div>
+                                  <div className="grid grid-cols-2 gap-4">
+                                    <div>
+                                      <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5 px-1">IFSC Code</label>
+                                      <input
+                                        type="text" value={ifsc} 
+                                        onChange={e => setIfsc(e.target.value.toUpperCase())}
+                                        placeholder="HDFC0001234"
+                                        maxLength={11}
+                                        className="w-full text-sm font-semibold bg-slate-50 px-4 py-3.5 rounded-2xl border-2 border-transparent focus:border-indigo-600 focus:bg-white outline-none transition-all shadow-inner"
+                                      />
+                                    </div>
+                                    <div>
+                                      <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5 px-1">Branch</label>
+                                      <input
+                                        type="text" value={branch} onChange={e => setBranch(e.target.value)}
+                                        placeholder="Branch Name"
+                                        className="w-full text-sm font-semibold bg-slate-50 px-4 py-3.5 rounded-2xl border-2 border-transparent focus:border-indigo-600 focus:bg-white outline-none transition-all shadow-inner"
+                                      />
+                                    </div>
+                                  </div>
+                                  <div>
+                                    <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5 px-1">UPI ID</label>
+                                    <input
+                                      type="text" value={upiId} onChange={e => setUpiId(e.target.value)}
+                                      placeholder="name@okbank"
+                                      className="w-full text-sm font-semibold bg-slate-50 px-4 py-3.5 rounded-2xl border-2 border-transparent focus:border-indigo-600 focus:bg-white outline-none transition-all shadow-inner"
+                                    />
+                                  </div>
+                                </div>
+                              </motion.div>
+                            )}
+                          </AnimatePresence>
+                        </div>
+                      )}
+
+
+                    {/* Section: Employer Details for Salary Account */}
+                    {type === 'bank' && subType === 'Salary' && (
+                      <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100 space-y-4 animate-in zoom-in-95 duration-200">
+                        <div className="flex items-center gap-2 mb-1">
+                          <Building2 className="w-4 h-4 text-indigo-500" />
+                          <h4 className="text-[10px] font-black text-slate-800 uppercase tracking-wider">Employer Details</h4>
+                        </div>
+                        <div className="grid grid-cols-2 gap-4">
+                          <div className="col-span-2">
+                            <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5 px-1">Employer Name</label>
+                            <input
+                              type="text" value={employerName} onChange={e => setEmployerName(e.target.value)}
+                              placeholder="e.g. Google India"
+                              className="w-full text-sm font-semibold bg-white px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-indigo-600 outline-none"
+                            />
+                          </div>
+                          <div className="col-span-2">
+                            <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5 px-1">Location / Office</label>
+                            <input
+                              type="text" value={employerLocation} onChange={e => setEmployerLocation(e.target.value)}
+                              placeholder="e.g. Bangalore"
+                              className="w-full text-sm font-semibold bg-white px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-indigo-600 outline-none"
+                            />
+                          </div>
                         </div>
                       </div>
                     )}

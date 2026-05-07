@@ -417,6 +417,16 @@ export const TransactionFormModal: React.FC<{
 
   const calculateSplit = (personName?: string): string => {
     const total = Number(amount) || itemsTotal;
+    const parseFraction = (val: string): number => {
+      if (!val) return 0;
+      if (typeof val === 'number') return val;
+      if (val.includes('/')) {
+        const [num, den] = val.split('/').map(n => parseFloat(n.trim()));
+        if (den && !isNaN(num) && !isNaN(den)) return num / den;
+      }
+      return parseFloat(val) || 0;
+    };
+
     const participants = 1 + splitWithList.length;
 
     if (splitShare === "Equally") {
@@ -429,7 +439,8 @@ export const TransactionFormModal: React.FC<{
       itemsList.forEach((itm, idx) => {
         const assignments = portionAssignments[idx] || {};
         const totalQty = Number(itm.qty) || 1;
-        const personQty = Number(assignments[target] || 0);
+        const personQty = parseFraction(assignments[target] || "");
+        
         if (personQty > 0 && itm.price) {
           sum += (itm.price / totalQty) * personQty;
         } else if (!personQty) {
@@ -504,9 +515,10 @@ export const TransactionFormModal: React.FC<{
 
           <form id="tx-form" onSubmit={handleSubmit} className="space-y-5 pb-4">
 
-            {/* ROW 1: Amount & Date Icon — hidden when By Items drives total in expense mode */}
-            {!(type === 'expense' && splitShare === 'By Items' && itemsTotal > 0) && (
-              <div className="bg-white rounded-2xl p-4 shadow-sm border border-slate-100">
+            {/* CARD 1: Basic View Fields */}
+            <div className="bg-white rounded-2xl p-4 shadow-sm border border-slate-100 space-y-5">
+              {/* Row 1: Amount & Date */}
+              {!(type === 'expense' && splitShare === 'By Items' && itemsTotal > 0) ? (
                 <div className="relative flex items-center justify-between bg-slate-50 rounded-xl p-3 focus-within:ring-2 focus-within:ring-indigo-600 transition-all">
                   <div className="flex items-center flex-1">
                     <span className="text-3xl font-bold text-slate-400 mr-2">₹</span>
@@ -527,217 +539,127 @@ export const TransactionFormModal: React.FC<{
                       <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider leading-none">Date</span>
                       <span className="text-xs font-bold text-slate-700 group-hover:text-indigo-600 transition-colors">{date && date.length >= 8 ? format(parseISO(date), "MMM dd") : "Date"}</span>
                     </div>
-                    <div className="w-8 h-8 flex items-center justify-center rounded-lg bg-slate-50">
-                      <Calendar className="w-4 h-4" />
-                    </div>
-                    <input
-                      type="date" value={date} onChange={(e) => setDate(e.target.value)}
-                      className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
-                    />
+                    <div className="w-8 h-8 flex items-center justify-center rounded-lg bg-slate-50"><Calendar className="w-4 h-4" /></div>
+                    <input type="date" value={date} onChange={(e) => setDate(e.target.value)} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" />
                   </label>
                 </div>
-              </div>
-            )}
-            {/* When By Items drives total: show derived total + date picker only */}
-            {type === 'expense' && splitShare === 'By Items' && itemsTotal > 0 && (
-              <div className="bg-white rounded-2xl p-4 shadow-sm border border-slate-100 flex items-center justify-between">
-                <div>
-                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Total (from items)</p>
-                  <p className="text-3xl font-black text-slate-900">₹{itemsTotal.toFixed(2)}</p>
-                </div>
-                <label className="relative flex items-center gap-2 px-3 py-2 bg-white border border-slate-200 rounded-xl shadow-sm text-slate-500 hover:text-indigo-600 hover:border-indigo-200 transition-all cursor-pointer group">
-                  <div className="flex flex-col items-end">
-                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider leading-none">Date</span>
-                    <span className="text-xs font-bold text-slate-700 group-hover:text-indigo-600 transition-colors">{date && date.length >= 8 ? format(parseISO(date), "MMM dd") : "Date"}</span>
+              ) : (
+                <div className="flex items-center justify-between bg-slate-50 rounded-xl p-3">
+                  <div>
+                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Total (from items)</p>
+                    <p className="text-3xl font-black text-slate-900">₹{itemsTotal.toFixed(2)}</p>
                   </div>
-                  <div className="w-8 h-8 flex items-center justify-center rounded-lg bg-slate-50"><Calendar className="w-4 h-4" /></div>
-                  <input type="date" value={date} onChange={(e) => setDate(e.target.value)} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" />
-                </label>
-              </div>
-            )}
+                  <label className="relative flex items-center gap-2 px-3 py-2 bg-white border border-slate-200 rounded-xl shadow-sm text-slate-500 hover:text-indigo-600 hover:border-indigo-200 transition-all cursor-pointer group">
+                    <div className="flex flex-col items-end">
+                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider leading-none">Date</span>
+                      <span className="text-xs font-bold text-slate-700 group-hover:text-indigo-600 transition-colors">{date && date.length >= 8 ? format(parseISO(date), "MMM dd") : "Date"}</span>
+                    </div>
+                    <div className="w-8 h-8 flex items-center justify-center rounded-lg bg-slate-50"><Calendar className="w-4 h-4" /></div>
+                    <input type="date" value={date} onChange={(e) => setDate(e.target.value)} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" />
+                  </label>
+                </div>
+              )}
 
-            {/* Type Specific Basic Fields */}
-            {type === "transfer" && (
-              <div className="bg-white rounded-2xl p-4 shadow-sm border border-slate-100 animate-in fade-in zoom-in-95 duration-200">
-                <div className="flex items-center gap-2">
-                  <div className="flex-1">
-                    <SearchableSelect
-                      label="From"
-                      options={accounts.map(a => ({ label: a.name, value: a.id }))}
-                      value={accountId}
-                      onChange={setAccountId}
-                      accentColor="blue"
-                    />
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const temp = accountId;
-                      setAccountId(toAccountId);
-                      setToAccountId(temp);
-                    }}
-                    className="mt-5 p-2 rounded-lg bg-slate-50 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 transition-all active:scale-90 group"
-                    title="Swap accounts"
-                  >
-                    <ArrowRightLeft className="w-4 h-4 group-hover:rotate-180 transition-transform duration-300" />
-                  </button>
-                  <div className="flex-1">
-                    <SearchableSelect
-                      label="To"
-                      options={accounts.map(a => ({ label: a.name, value: a.id }))}
-                      value={toAccountId}
-                      onChange={setToAccountId}
-                      accentColor="indigo"
-                    />
-                  </div>
-                </div>
+              {/* Row 2: Account & Category/Stream/ToAccount */}
+              <div className="grid grid-cols-2 gap-4">
+                {type === "transfer" ? (
+                  <>
+                    <SearchableSelect label="From" options={accounts.map(a => ({ label: a.name, value: a.id }))} value={accountId} onChange={setAccountId} accentColor="blue" />
+                    <SearchableSelect label="To" options={accounts.map(a => ({ label: a.name, value: a.id }))} value={toAccountId} onChange={setToAccountId} accentColor="indigo" />
+                  </>
+                ) : (
+                  <>
+                    <SearchableSelect label="Account" options={accounts.map(a => ({ label: a.name, value: a.id }))} value={accountId} onChange={setAccountId} accentColor={type === 'income' ? 'emerald' : 'indigo'} />
+                    <SearchableSelect label="Category" options={type === 'income' ? categories.income : categories.expense} value={category} onChange={handleCategoryChange} accentColor={type === 'income' ? 'emerald' : 'indigo'} />
+                  </>
+                )}
               </div>
-            )}
 
-            {type === "income" && (
-              <div className="bg-white rounded-2xl p-4 shadow-sm border border-slate-100 space-y-4 animate-in fade-in zoom-in-95 duration-200">
-                <div className="grid grid-cols-2 gap-4">
-                  <SearchableSelect
-                    label="Account"
-                    options={accounts.map(a => ({ label: a.name, value: a.id }))}
-                    value={accountId}
-                    onChange={setAccountId}
-                    accentColor="emerald"
-                  />
-                  <SearchableSelect
-                    label="Stream"
-                    options={categories.income}
-                    value={category}
-                    onChange={handleCategoryChange}
-                    accentColor="emerald"
-                  />
-                </div>
-                <div>
-                  <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Payee</label>
-                  <input
-                    type="text" value={payee} onChange={(e) => setPayee(e.target.value)} required
-                    placeholder="e.g. Acme Corp"
-                    className="w-full text-sm font-bold bg-slate-50 px-3 py-2.5 rounded-xl border-0 focus:ring-2 focus:ring-indigo-600 outline-none"
-                  />
-                </div>
-              </div>
-            )}
-
-            {type === "expense" && (
-              <div className="bg-white rounded-2xl p-4 shadow-sm border border-slate-100 space-y-4 animate-in fade-in zoom-in-95 duration-200">
-                <div className="grid grid-cols-2 gap-4">
-                  <SearchableSelect
-                    label="Account"
-                    options={accounts.map(a => ({ label: a.name, value: a.id }))}
-                    value={accountId}
-                    onChange={setAccountId}
-                  />
-                  <SearchableSelect
-                    label="Category"
-                    options={categories.expense}
-                    value={category}
-                    onChange={handleCategoryChange}
-                  />
-                </div>
+              {/* Row 3: Payee / Shop */}
+              {type !== "transfer" && (
                 <div className="relative">
                   <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Payee / Shop</label>
                   <input
-                    type="text"
-                    value={payee}
+                    type="text" value={payee} 
                     onChange={(e) => {
                       const val = e.target.value;
                       setPayee(val);
                       setShowPayeeSuggestions(true);
-
-                      // AI Auto-categorization
-                      if (val.length >= 3) {
-                        const prediction = predictCategory(val, ctxCategories);
-                        if (prediction) {
-                          setCategory(prediction.category);
-                          if (prediction.subCategory) setSubCategory(prediction.subCategory);
-                          if (prediction.subSubCategory) setSubSubCategory(prediction.subSubCategory);
-                          if (prediction.classification) setNeedWant(prediction.classification as any);
-                        }
+                      if (val.length >= 3 && type === 'expense') {
+                        const pred = predictCategory(val, ctxCategories);
+                        if (pred) { setCategory(pred.category); if (pred.subCategory) setSubCategory(pred.subCategory); if (pred.subSubCategory) setSubSubCategory(pred.subSubCategory); if (pred.classification) setNeedWant(pred.classification as any); }
                       }
                     }}
                     onFocus={() => setShowPayeeSuggestions(true)}
-                    required
-                    placeholder="e.g. Amazon, Swiggy"
+                    required placeholder={type === 'income' ? "e.g. Acme Corp" : "e.g. Amazon, Swiggy"}
                     className="w-full text-sm font-bold bg-slate-50 px-3 py-2.5 rounded-xl border-0 focus:ring-2 focus:ring-indigo-600 outline-none"
                   />
                   {showPayeeSuggestions && payee.length > 0 && (
                     <div className="absolute top-full left-0 right-0 z-[110] mt-1 bg-white border border-slate-200 rounded-xl shadow-xl overflow-hidden max-h-40 overflow-y-auto">
                       {entities.filter(e => e.name.toLowerCase().includes(payee.toLowerCase())).map(e => (
-                        <button
-                          key={e.id}
-                          type="button"
-                          onClick={() => {
-                            setPayee(e.name);
-                            if (e.category) setCategory(e.category);
-                            setShowPayeeSuggestions(false);
-                          }}
-                          className="w-full px-4 py-2 text-left text-sm hover:bg-slate-50 flex items-center gap-2 border-b border-slate-50 last:border-0"
-                        >
+                        <button key={e.id} type="button" onClick={() => { setPayee(e.name); if (e.category) setCategory(e.category); setShowPayeeSuggestions(false); }} className="w-full px-4 py-2 text-left text-sm hover:bg-slate-50 flex items-center gap-2 border-b border-slate-50 last:border-0">
                           <div className="w-6 h-6 rounded bg-slate-100 flex items-center justify-center text-[10px] font-bold uppercase">{e.name.charAt(0)}</div>
-                          <div className="flex-1">
-                            <p className="font-bold text-slate-700">{e.name}</p>
-                            {e.category && <p className="text-[10px] text-slate-400 uppercase">{e.category}</p>}
-                          </div>
+                          <div className="flex-1 text-xs font-bold text-slate-700">{e.name}</div>
                         </button>
                       ))}
                     </div>
                   )}
                 </div>
+              )}
+            </div>
+
+            {/* Visual Break / Toggle */}
+            {(type === "expense" || type === "income") && (
+              <div className="relative py-2">
+                <div className="absolute inset-0 flex items-center" aria-hidden="true">
+                  <div className="w-full border-t-2 border-dashed border-slate-200"></div>
+                </div>
+                <div className="relative flex justify-center">
+                  <button
+                    type="button"
+                    onClick={() => setViewMode(v => v === "normal" ? "detailed" : "normal")}
+                    className={cn(
+                      "inline-flex items-center gap-2 px-5 py-2 rounded-full border-2 text-[10px] font-black uppercase tracking-widest transition-all shadow-sm",
+                      viewMode === "detailed" 
+                        ? "bg-indigo-600 border-indigo-600 text-white" 
+                        : "bg-white border-slate-200 text-slate-400 hover:text-indigo-600 hover:border-indigo-200"
+                    )}
+                  >
+                    {viewMode === "normal" ? (
+                      <><Plus className="w-3.5 h-3.5" /> Advanced Details</>
+                    ) : (
+                      <><ChevronUp className="w-3.5 h-3.5" /> Basic View</>
+                    )}
+                  </button>
+                </div>
               </div>
             )}
 
-            {/* View Toggle */}
-            {(type === "expense" || type === "income") && (
-              <button
-                type="button"
-                onClick={() => setViewMode(v => v === "normal" ? "detailed" : "normal")}
-                className="w-full flex items-center justify-center gap-2 py-2.5 text-sm font-bold text-indigo-600 hover:text-indigo-700 bg-indigo-50/50 hover:bg-indigo-50 rounded-xl transition-colors"
-              >
-                {viewMode === "normal" ? (
-                  <><ChevronDown className="w-4 h-4" /> Expand Details</>
-                ) : (
-                  <><ChevronUp className="w-4 h-4" /> Hide Details</>
-                )}
-              </button>
-            )}
-
-            {/* Detailed View Fields */}
+            {/* Detailed View — Card Based Organization */}
             {viewMode === "detailed" && type === "expense" && (
-              <div className="bg-white rounded-2xl p-4 space-y-6 border border-slate-100 shadow-sm animate-in fade-in zoom-in-95 duration-200">
-
-                {/* Section 2: Details */}
-                <div className="space-y-4">
-                  <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-4 animate-in fade-in slide-in-from-top-4 duration-300">
+                
+                {/* CARD 2: Context & Notes */}
+                <div className="bg-white rounded-2xl p-4 shadow-sm border border-slate-100 space-y-4">
+                  <div className="space-y-4">
                     {localStorage.getItem('s_subcats') !== 'false' && (
                         <SearchableSelect
                           label="Sub Category"
                           options={getSubcatObjects(category)?.map(sc => sc.name) || []}
                           value={subCategory}
-                          onChange={(val) => {
-                            setSubCategory(val);
-                            setSubSubCategory("");
-                          }}
-                          allowCustom
-                          placeholder="Select or type..."
+                          onChange={(val) => { setSubCategory(val); setSubSubCategory(""); }}
+                          allowCustom placeholder="Select or type..."
                         />
                     )}
 
-                    {/* Sub-Sub-Category (3rd Tier) */}
                     {!isCustomSubCat && subCategory && getSubcatObjects(category).find(sc => sc.name === subCategory)?.children?.length > 0 && (
                       <SearchableSelect
-                        label="Specific Item / Person"
+                        label="Specific Item"
                         options={getSubcatObjects(category).find(sc => sc.name === subCategory)?.children?.map((ssc: any) => ssc.name) || []}
-                        value={subSubCategory}
-                        onChange={setSubSubCategory}
-                        placeholder="Search specifics..."
-                        allowCustom
+                        value={subSubCategory} onChange={setSubSubCategory} placeholder="Search..." allowCustom
                       />
                     )}
+                    
                     <div>
                       <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Purpose / Short Note</label>
                       <input
@@ -749,7 +671,8 @@ export const TransactionFormModal: React.FC<{
                   </div>
                 </div>
 
-                  {/* Items / Routes section — Transport shows route entry, others show generic items */}
+                {/* CARD 3: Items & Inventory */}
+                <div className="bg-white rounded-2xl p-4 shadow-sm border border-slate-100 space-y-4">
                   <div className="space-y-3 bg-slate-50/50 p-3 rounded-xl border border-slate-100">
                     <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">
                       {category === 'Transportation' ? 'Routes & Tickets' : 'Items & Inventory'}
@@ -834,7 +757,6 @@ export const TransactionFormModal: React.FC<{
                         {itemsList.map((itm, i) => (
                           <div key={i}>
                             {editingItemIdx === i ? (
-                              // Inline edit mode
                               <div className="bg-indigo-50 rounded-xl p-3 border border-indigo-200 space-y-2 animate-in zoom-in-95 duration-150">
                                 <div className="flex gap-2">
                                   <input
@@ -859,7 +781,6 @@ export const TransactionFormModal: React.FC<{
                                 </div>
                               </div>
                             ) : (
-                              // Display mode
                               <div className="flex items-center justify-between bg-white px-3 py-2 rounded-lg border border-slate-100 shadow-sm group/item">
                                 <div className="flex flex-col">
                                   <span className="text-sm font-bold text-slate-700">{itm.name}</span>
@@ -877,9 +798,10 @@ export const TransactionFormModal: React.FC<{
                       </div>
                     )}
                   </div>
+                </div>
 
-                {/* Section 3: Classification */}
-                <div className="space-y-4 pt-4 border-t border-slate-100">
+                {/* CARD 4: Audience, Priority & Tags */}
+                <div className="bg-white rounded-2xl p-4 shadow-sm border border-slate-100 space-y-5">
                   <div>
                     <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Audience</p>
                     <div className="grid grid-cols-4 gap-2">
@@ -931,8 +853,8 @@ export const TransactionFormModal: React.FC<{
                   </div>
                 </div>
 
-                {/* Section 4: Split Logic Engine */}
-                <div className="pt-4 border-t border-slate-100">
+                {/* CARD 5: Split Management */}
+                <div className="bg-white rounded-2xl p-4 shadow-sm border border-slate-100 space-y-4">
                   <div className="flex items-center justify-between mb-4">
                     <div className="flex items-center gap-2 text-sm font-bold text-slate-800">
                       <Users className="w-4 h-4 text-indigo-500" />
@@ -948,19 +870,15 @@ export const TransactionFormModal: React.FC<{
                     </button>
                   </div>
 
-                  {!(Number(amount) > 0 || itemsTotal > 0) && (
-                    <p className="text-[9px] text-slate-400 italic">Enter an amount or add items to enable split.</p>
-                  )}
-
                   {isSplit && (
                     <div className="space-y-4 p-4 bg-indigo-50/30 border border-indigo-100 rounded-2xl">
                       <div>
                         <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">With (Press Enter to add)</label>
-                        <div className="bg-white border border-slate-200 rounded-xl p-2 flex flex-wrap gap-2 focus-within:border-indigo-600 focus-within:ring-2 focus-within:ring-indigo-100 transition-all">
+                        <div className="bg-white border border-slate-200 rounded-xl p-2 flex flex-wrap gap-2">
                           {splitWithList.map(person => (
-                            <span key={person} className="inline-flex items-center gap-1.5 bg-indigo-600 text-white text-[11px] font-bold px-2.5 py-1 rounded-lg shadow-sm">
+                            <span key={person} className="inline-flex items-center gap-1.5 bg-indigo-600 text-white text-[11px] font-bold px-2.5 py-1 rounded-lg">
                               {person}
-                              <button type="button" onClick={() => removeSplitPerson(person)} className="hover:text-indigo-200"><X className="w-3.5 h-3.5" /></button>
+                              <button type="button" onClick={() => removeSplitPerson(person)}><X className="w-3.5 h-3.5" /></button>
                             </span>
                           ))}
                           <input
@@ -968,112 +886,73 @@ export const TransactionFormModal: React.FC<{
                             onChange={(e) => setSplitWithInput(e.target.value)}
                             onKeyDown={addSplitPerson}
                             placeholder={splitWithList.length === 0 ? "e.g. John" : ""}
-                            className="flex-1 min-w-[100px] text-sm px-2 py-1 border-0 focus:ring-0 outline-none bg-transparent font-medium"
+                            className="flex-1 min-w-[100px] text-sm px-2 py-1 border-0 focus:ring-0 outline-none bg-transparent"
                           />
                         </div>
                       </div>
 
                       {splitWithList.length > 0 && (
-                        <div className="space-y-4 animate-in fade-in slide-in-from-top-2 duration-300">
+                        <div className="space-y-4">
                           <div className="grid grid-cols-2 gap-3">
                             <div>
                               <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">Strategy</label>
-                              <select
-                                value={splitShare} onChange={(e) => setSplitShare(e.target.value)}
-                                className="w-full text-xs font-bold bg-white px-3 py-2.5 rounded-xl border border-slate-200 focus:ring-2 focus:ring-indigo-600 outline-none appearance-none"
-                              >
+                              <select value={splitShare} onChange={(e) => setSplitShare(e.target.value)} className="w-full text-xs font-bold bg-white px-3 py-2.5 rounded-xl border border-slate-200">
                                 <option>Equally</option><option>Percentages</option><option>Exact Amounts</option>
                                 {itemsList.length > 0 && <option>By Items</option>}
                               </select>
                             </div>
                             <div>
                               <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">Due Date</label>
-                              <input
-                                type="date" value={splitDueDate} onChange={(e) => setSplitDueDate(e.target.value)}
-                                className="w-full text-xs font-bold bg-white px-3 py-2.5 rounded-xl border border-slate-200 focus:ring-2 focus:ring-indigo-600 outline-none"
-                              />
+                              <input type="date" value={splitDueDate} onChange={(e) => setSplitDueDate(e.target.value)} className="w-full text-xs font-bold bg-white px-3 py-2.5 rounded-xl border border-slate-200" />
                             </div>
                           </div>
 
-                          {splitShare === "By Items" && itemsList.length > 0 && (
-                            <div className="space-y-4 pt-4 border-t border-indigo-100/30">
-                              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest px-1">Assign Portions</p>
-                              <p className="text-[9px] text-slate-400 px-1">For each item, enter how many units each person consumed. Leave 0 to exclude.</p>
-                              {itemsList.map((itm, idx) => {
-                                const totalQty = Number(itm.qty) || 1;
-                                const assignments = portionAssignments[idx] || {};
-                                const assignedSum = Object.values(assignments).reduce((sum, val) => sum + Number(val || 0), 0);
-                                const isOver = assignedSum > totalQty;
-
-                                return (
-                                  <div key={idx} className={cn("bg-white/60 p-3 rounded-xl border space-y-3 transition-colors", isOver ? "border-red-300 bg-red-50/50" : "border-indigo-100/50")}>
-                                    <div className="flex justify-between items-center">
-                                      <div>
-                                        <span className="text-xs font-bold text-slate-700">{itm.name}</span>
-                                        <span className="text-[10px] text-slate-400 ml-1.5">{itm.qty} {itm.unit} total • ₹{itm.price || 0}</span>
-                                      </div>
-                                      <div className="text-right">
-                                        <span className="text-[10px] font-bold text-indigo-600 block">₹{itm.price ? (itm.price / totalQty).toFixed(2) : 0}/{itm.unit}</span>
-                                        <span className={cn("text-[9px] font-bold px-1.5 py-0.5 rounded-full", isOver ? "bg-red-100 text-red-600" : assignedSum === totalQty ? "bg-emerald-100 text-emerald-600" : "bg-slate-100 text-slate-500")}>
-                                          Assigned: {assignedSum}/{totalQty} {itm.unit}
-                                        </span>
-                                      </div>
-                                    </div>
-                                    <div className="grid grid-cols-2 gap-2">
-                                      {["You", ...splitWithList].map(person => {
-                                        const portionVal = (portionAssignments[idx] || {})[person] || "";
-                                        return (
-                                          <div key={person} className="flex items-center gap-2 bg-white rounded-lg border border-slate-200 px-2 py-1.5">
-                                            <span className="text-[10px] font-bold text-slate-500 min-w-[36px] truncate">{person}</span>
-                                            <input
-                                              type="number"
-                                              min="0" max={itm.qty}
-                                              value={portionVal}
-                                              onChange={e => setPortionFor(idx, person, e.target.value)}
-                                              placeholder="0"
-                                              className="flex-1 text-xs font-bold border-0 bg-transparent focus:ring-0 outline-none text-right w-0 min-w-0"
-                                            />
-                                            <span className="text-[10px] text-slate-400 shrink-0">{itm.unit}</span>
-                                          </div>
-                                        );
-                                      })}
-                                    </div>
+                          {splitShare === "By Items" && (
+                            <div className="space-y-3">
+                              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest px-1">Assign Portions (e.g. 1/2, 0.5)</p>
+                              {itemsList.map((itm, idx) => (
+                                <div key={idx} className="bg-white/60 p-3 rounded-xl border border-indigo-100/50 space-y-2">
+                                  <div className="flex justify-between text-xs font-bold">
+                                    <span>{itm.name}</span>
+                                    <span className="text-indigo-600">{itm.qty} {itm.unit}</span>
                                   </div>
-                                );
-                              })}
+                                  <div className="grid grid-cols-2 gap-2">
+                                    {["You", ...splitWithList].map(person => (
+                                      <div key={person} className="flex items-center gap-1 bg-white rounded-lg border border-slate-100 p-1.5">
+                                        <span className="text-[9px] font-bold text-slate-400 truncate w-12">{person}</span>
+                                        <input
+                                          type="text" 
+                                          value={(portionAssignments[idx] || {})[person] || ""}
+                                          onChange={e => setPortionFor(idx, person, e.target.value)}
+                                          className="w-full text-[10px] font-bold bg-transparent border-0 p-0 focus:ring-0 text-right"
+                                          placeholder="0"
+                                        />
+                                      </div>
+                                    ))}
+                                  </div>
+                                </div>
+                              ))}
                             </div>
                           )}
 
-                          <div className="bg-white/60 rounded-xl p-3 space-y-4 border border-indigo-100/50">
+                          <div className="bg-white/60 rounded-xl p-3 space-y-3">
                             <div className="flex justify-between items-center px-2 py-1 bg-slate-50/50 rounded-lg">
                               <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">You</span>
                               <span className="text-[14px] font-black text-slate-900">₹{calculateYourShare()}</span>
                             </div>
                             {splitWithList.map(person => (
-                              <div key={person} className="pt-3 border-t border-indigo-100/30 flex items-center gap-4">
-                                <div className="min-w-[70px]">
-                                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest leading-tight">{person}</p>
-                                </div>
-
-                                {(splitShare === 'Percentages' || splitShare === 'Exact Amounts') ? (
-                                  <div className="flex-1 flex items-center gap-2 bg-white px-3 py-1.5 rounded-xl border border-slate-100 shadow-sm focus-within:ring-2 focus-within:ring-indigo-100 transition-all">
-                                    <span className="text-[10px] font-bold text-slate-400">{splitShare === 'Percentages' ? '%' : '₹'}</span>
+                              <div key={person} className="flex items-center justify-between px-2 pt-2 border-t border-indigo-50">
+                                <span className="text-[10px] font-bold text-slate-500">{person}</span>
+                                <div className="flex items-center gap-3">
+                                  {(splitShare === 'Percentages' || splitShare === 'Exact Amounts') && (
                                     <input
-                                      type="number"
-                                      value={splitValues[person] || ''}
+                                      type="number" value={splitValues[person] || ''}
                                       onChange={(e) => setSplitValues({ ...splitValues, [person]: e.target.value })}
+                                      className="w-12 text-[10px] font-bold bg-white border border-slate-200 rounded px-1 py-0.5"
                                       placeholder="0"
-                                      className="w-full text-xs font-bold border-0 p-0 focus:ring-0 outline-none placeholder:text-slate-200"
                                     />
-                                  </div>
-                                ) : splitShare === 'By Items' ? (
-                                  <div className="flex-1 text-[10px] font-bold text-slate-400 italic">Itemized Share</div>
-                                ) : (
-                                  <div className="flex-1 text-[10px] font-bold text-slate-300 italic">Equal Share</div>
-                                )}
-
-                                <div className="text-right min-w-[80px]">
-                                  <p className="text-[13px] font-black text-indigo-600">₹{calculateSplit(person)}</p>
+                                  )}
+                                  <span className="text-[12px] font-black text-indigo-600">₹{calculateSplit(person)}</span>
                                 </div>
                               </div>
                             ))}
@@ -1087,39 +966,41 @@ export const TransactionFormModal: React.FC<{
             )}
 
             {viewMode === "detailed" && type === "income" && (
-              <div className="bg-white rounded-2xl p-4 space-y-6 border border-slate-100 shadow-sm animate-in fade-in zoom-in-95 duration-200">
-                <div className="grid grid-cols-2 gap-4">
-                  {localStorage.getItem('s_subcats') !== 'false' && (
+              <div className="space-y-4 animate-in fade-in slide-in-from-top-4 duration-300">
+                <div className="bg-white rounded-2xl p-4 shadow-sm border border-slate-100 space-y-4">
+                  <div className="space-y-4">
+                    {localStorage.getItem('s_subcats') !== 'false' && (
+                      <div>
+                        <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Sub Category</label>
+                        {isCustomSubCat ? (
+                          <div className="relative">
+                            <input
+                              type="text" value={customSubCat} onChange={(e) => setCustomSubCat(e.target.value)}
+                              placeholder="Type new category..."
+                              className="w-full text-sm font-semibold bg-indigo-50/50 px-3 py-2.5 rounded-xl border border-indigo-200 outline-none"
+                            />
+                            <button type="button" onClick={() => setIsCustomSubCat(false)} className="absolute right-3 top-2.5 text-indigo-400"><X className="w-4 h-4" /></button>
+                          </div>
+                        ) : (
+                          <select
+                            value={subCategory} onChange={(e) => e.target.value === 'NEW' ? setIsCustomSubCat(true) : setSubCategory(e.target.value)}
+                            className="w-full text-sm font-semibold bg-slate-50 px-3 py-2.5 rounded-xl border-0 focus:ring-2 focus:ring-indigo-600 outline-none"
+                          >
+                            <option value="">Select...</option>
+                            {SUBCATEGORY_MAP[category]?.map(sc => <option key={sc} value={sc}>{sc}</option>)}
+                            <option value="NEW" className="text-indigo-600 font-bold">+ Create New...</option>
+                          </select>
+                        )}
+                      </div>
+                    )}
                     <div>
-                      <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Sub Category</label>
-                      {isCustomSubCat ? (
-                        <div className="relative">
-                          <input
-                            type="text" value={customSubCat} onChange={(e) => setCustomSubCat(e.target.value)}
-                            placeholder="Type new category..."
-                            className="w-full text-sm font-semibold bg-indigo-50/50 px-3 py-2.5 rounded-xl border border-indigo-200 focus:ring-2 focus:ring-indigo-600 outline-none shadow-inner"
-                          />
-                          <button type="button" onClick={() => setIsCustomSubCat(false)} className="absolute right-3 top-2.5 text-indigo-400 hover:text-indigo-600 transition-colors"><X className="w-4 h-4" /></button>
-                        </div>
-                      ) : (
-                        <select
-                          value={subCategory} onChange={(e) => e.target.value === 'NEW' ? setIsCustomSubCat(true) : setSubCategory(e.target.value)}
-                          className="w-full text-sm font-semibold bg-slate-50 px-3 py-2.5 rounded-xl border-0 focus:ring-2 focus:ring-indigo-600 outline-none appearance-none cursor-pointer"
-                        >
-                          <option value="">Select...</option>
-                          {SUBCATEGORY_MAP[category]?.map(sc => <option key={sc} value={sc}>{sc}</option>)}
-                          <option value="NEW" className="text-indigo-600 font-bold">+ Create New...</option>
-                        </select>
-                      )}
+                      <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Purpose / Short Note</label>
+                      <input
+                        type="text" value={notes} onChange={(e) => setNotes(e.target.value)}
+                        placeholder="e.g. March Salary"
+                        className="w-full text-sm bg-slate-50 px-3 py-2.5 rounded-xl border-0 focus:ring-2 focus:ring-indigo-600 outline-none"
+                      />
                     </div>
-                  )}
-                  <div>
-                    <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Purpose / Short Note</label>
-                    <input
-                      type="text" value={notes} onChange={(e) => setNotes(e.target.value)}
-                      placeholder="e.g. March Salary"
-                      className="w-full text-sm bg-slate-50 px-3 py-2.5 rounded-xl border-0 focus:ring-2 focus:ring-indigo-600 outline-none"
-                    />
                   </div>
                 </div>
               </div>
