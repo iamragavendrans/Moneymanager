@@ -5,7 +5,7 @@ import {
   History, Clock, IndianRupee, Shield, FileText, Zap, Droplets, Flame, Wifi, 
   Smartphone, Home, Tv, Dumbbell, Milk, Newspaper, Wrench, Car, Building, Box
 } from "lucide-react";
-import { cn, formatINR } from "../utils";
+import { cn, formatINR, getGridCols } from "../utils";
 import { useFinance, Entity, Transaction } from "../context/FinanceContext";
 import { format, differenceInDays, parseISO, isSameDay } from "date-fns";
 import { ImageWithFallback } from "./figma/ImageWithFallback";
@@ -139,6 +139,7 @@ export const EntityManagementModal = ({ type, onClose }: { type: string; onClose
     else setView("list");
   };
 
+
   // --- Sub-Renders ---
   const renderList = () => {
     if (type === 'shop' || type === 'person' || type === 'recurring' || type === 'subscription') {
@@ -157,7 +158,7 @@ export const EntityManagementModal = ({ type, onClose }: { type: string; onClose
                     {groupName} <div className="h-px flex-1 bg-slate-100" />
                   </h4>
                 )}
-                <div className="grid grid-cols-3 gap-3">
+                <div className={cn("grid gap-3", getGridCols(groupEntities.length))}>
                   {groupEntities.map(ent => {
                     let logoUrl = null;
                     let netBalance = 0;
@@ -305,7 +306,7 @@ export const EntityManagementModal = ({ type, onClose }: { type: string; onClose
                    return (
                      <div key={group.group} className="space-y-3">
                        <p className="text-[8px] font-black text-slate-300 uppercase tracking-widest px-1">{group.group}</p>
-                       <div className="grid grid-cols-3 gap-3">
+                       <div className={cn("grid gap-3", getGridCols(visibleItems.length))}>
                          {visibleItems.map(tpl => (
                            <div 
                              key={tpl.name}
@@ -352,7 +353,7 @@ export const EntityManagementModal = ({ type, onClose }: { type: string; onClose
             <p className="font-medium text-sm">No {config.title.toLowerCase()} found.</p>
           </div>
         ) : (
-          <div className="grid grid-cols-2 gap-3">
+          <div className={cn("grid gap-3", getGridCols(filteredEntities.length))}>
             {filteredEntities.map(ent => (
               <div key={ent.id} onClick={() => handleViewDetails(ent)} className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm flex items-center justify-between cursor-pointer hover:border-indigo-100 hover:shadow-md transition-all group">
                 <div className="flex items-center gap-3 overflow-hidden">

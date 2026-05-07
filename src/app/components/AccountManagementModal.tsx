@@ -1,20 +1,20 @@
 import React, { useState, useEffect } from "react";
-import { X, Building2, CreditCard, Wallet, Smartphone, Banknote, TrendingUp, Utensils, PiggyBank, HandCoins, Check, Trash2, ArrowLeft } from "lucide-react";
+import { X, Building2, CreditCard, Wallet, Smartphone, Banknote, TrendingUp, Utensils, PiggyBank, HandCoins, Check, Trash2, ArrowLeft, Gem } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useFinance, Account } from "../context/FinanceContext";
-import { cn } from "../utils";
+import { cn, getGridCols } from "../utils";
 import { toast } from "sonner";
 
 const ACCOUNT_TYPES = [
   { id: "bank", label: "Bank", icon: Building2 },
   { id: "credit_card", label: "Card", icon: CreditCard },
   { id: "wallet", label: "Wallet", icon: Wallet },
-  { id: "UPI", label: "UPI", icon: Smartphone },
   { id: "cash", label: "Cash", icon: Banknote },
+  { id: "debit", label: "Debit", icon: CreditCard },
   { id: "loan", label: "Loan", icon: HandCoins },
   { id: "investment", label: "Invest", icon: TrendingUp },
   { id: "pf", label: "PF", icon: PiggyBank },
-  { id: "meal_card", label: "Meal", icon: Utensils },
+  { id: "asset", label: "Assets", icon: Gem },
 ];
 
 const BRAND_MAP: Record<string, string> = {
@@ -156,7 +156,7 @@ export const AccountManagementModal = ({ accId, onClose }: { accId?: string | nu
       type,
       balance: Number(balance),
       currency: "INR",
-      lastFour: type === 'credit_card' ? cardNumber.slice(-4) : (type === 'bank' ? lastFour : ''),
+      lastFour: (type === 'credit_card' || type === 'debit') ? cardNumber.slice(-4) : (type === 'bank' ? lastFour : ''),
       fullAccountNumber,
       ifsc,
       creditLimit: creditLimit ? parseFloat(creditLimit) : undefined,
@@ -187,9 +187,21 @@ export const AccountManagementModal = ({ accId, onClose }: { accId?: string | nu
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm animate-in fade-in duration-200 overflow-y-auto">
       <div className="bg-white rounded-3xl w-full max-w-lg shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200 my-8">
         <div className="p-6 border-b border-slate-100 flex items-center justify-between bg-slate-50/50 sticky top-0 z-10 backdrop-blur-md">
-          <div>
-            <h2 className="text-xl font-bold text-slate-800">{isEdit ? "Edit Account" : "Add New Account"}</h2>
-            <p className="text-xs text-slate-500 font-medium mt-0.5">Configure your financial instrument</p>
+          <div className="flex items-center gap-4">
+            {step === "fields" && !isEdit && (
+              <button 
+                onClick={() => setStep("type")}
+                className="p-2 hover:bg-white rounded-xl transition-colors shadow-sm text-slate-400 hover:text-indigo-600"
+              >
+                <ArrowLeft className="w-5 h-5" />
+              </button>
+            )}
+            <div>
+              <h2 className="text-xl font-bold text-slate-800">{isEdit ? "Edit Account" : "Add New Account"}</h2>
+              <p className="text-xs text-slate-500 font-medium mt-0.5">
+                {step === "type" ? "Select account category" : "Configure your financial instrument"}
+              </p>
+            </div>
           </div>
           <button onClick={onClose} className="p-2 hover:bg-white rounded-xl transition-colors shadow-sm"><X className="w-5 h-5 text-slate-400" /></button>
         </div>
@@ -204,7 +216,7 @@ export const AccountManagementModal = ({ accId, onClose }: { accId?: string | nu
                 exit={{ opacity: 0, x: -20 }}
                 className="space-y-6"
               >
-                <div className="grid grid-cols-3 gap-3">
+                <div className={cn("grid gap-3", getGridCols(ACCOUNT_TYPES.length))}>
                   {ACCOUNT_TYPES.map(at => {
                     const Icon = at.icon;
                     const isActive = type === at.id;
@@ -326,25 +338,25 @@ export const AccountManagementModal = ({ accId, onClose }: { accId?: string | nu
                       {/* Type-Specific Identifier Field */}
                       <div>
                         <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5 px-1">
-                          {type === 'credit_card' ? 'Card Number' : 
+                          {(type === 'credit_card' || type === 'debit') ? 'Card Number' : 
                            type === 'bank' ? 'Last 4 Digits' :
                            type === 'wallet' ? 'Mobile Number' :
                            type === 'UPI' ? 'UPI ID' : 'Identifier'}
                         </label>
                         <input
                           type="text" 
-                          value={type === 'credit_card' ? cardNumber : 
+                          value={(type === 'credit_card' || type === 'debit') ? cardNumber : 
                                  type === 'wallet' ? walletMobile :
                                  type === 'UPI' ? upiId : lastFour} 
                           onChange={e => {
                             const val = e.target.value;
-                            if (type === 'credit_card') setCardNumber(val);
+                            if (type === 'credit_card' || type === 'debit') setCardNumber(val);
                             else if (type === 'wallet') setWalletMobile(val);
                             else if (type === 'UPI') setUpiId(val);
                             else setLastFour(val);
                           }}
-                          placeholder={type === 'credit_card' ? '4xxx xxxx xxxx xxxx' : 'Optional'}
-                          maxLength={type === 'credit_card' ? 19 : 20}
+                          placeholder={(type === 'credit_card' || type === 'debit') ? '4xxx xxxx xxxx xxxx' : 'Optional'}
+                          maxLength={(type === 'credit_card' || type === 'debit') ? 19 : 20}
                           className="w-full text-sm font-semibold bg-slate-50 px-4 py-3.5 rounded-2xl border-2 border-transparent focus:border-indigo-600 focus:bg-white outline-none transition-all shadow-inner"
                         />
                       </div>
@@ -372,21 +384,23 @@ export const AccountManagementModal = ({ accId, onClose }: { accId?: string | nu
                       </div>
                     )}
 
-                    {/* Section: Credit Card Details */}
-                    {type === 'credit_card' && (
+                    {/* Section: Card Details (Credit & Debit) */}
+                    {(type === 'credit_card' || type === 'debit') && (
                       <div className="grid grid-cols-2 gap-4 pt-2 border-t border-slate-50 animate-in slide-in-from-top-2">
-                        <div>
-                          <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5 px-1">Credit Limit</label>
-                          <div className="relative flex items-center">
-                            <span className="absolute left-4 text-slate-400 font-bold text-sm">₹</span>
-                            <input
-                              type="number" value={creditLimit} onChange={e => setCreditLimit(e.target.value)}
-                              placeholder="e.g. 100000"
-                              className="w-full text-sm font-semibold bg-slate-50 pl-8 pr-4 py-3.5 rounded-2xl border-2 border-transparent focus:border-indigo-600 focus:bg-white outline-none transition-all shadow-inner"
-                            />
+                        {type === 'credit_card' && (
+                          <div>
+                            <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5 px-1">Credit Limit</label>
+                            <div className="relative flex items-center">
+                              <span className="absolute left-4 text-slate-400 font-bold text-sm">₹</span>
+                              <input
+                                type="number" value={creditLimit} onChange={e => setCreditLimit(e.target.value)}
+                                placeholder="e.g. 100000"
+                                className="w-full text-sm font-semibold bg-slate-50 pl-8 pr-4 py-3.5 rounded-2xl border-2 border-transparent focus:border-indigo-600 focus:bg-white outline-none transition-all shadow-inner"
+                              />
+                            </div>
                           </div>
-                        </div>
-                        <div>
+                        )}
+                        <div className={type === 'debit' ? 'col-span-2' : ''}>
                           <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5 px-1">Expiry Date</label>
                           <input
                             type="text" value={expiryDate} onChange={e => setExpiryDate(e.target.value)}
@@ -394,13 +408,15 @@ export const AccountManagementModal = ({ accId, onClose }: { accId?: string | nu
                             className="w-full text-sm font-semibold bg-slate-50 px-4 py-3.5 rounded-2xl border-2 border-transparent focus:border-indigo-600 focus:bg-white outline-none transition-all shadow-inner"
                           />
                         </div>
-                        <div className="col-span-2">
-                          <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5 px-1">Bill Due Date</label>
-                          <input
-                            type="date" value={dueDate} onChange={e => setDueDate(e.target.value)}
-                            className="w-full text-sm font-semibold bg-slate-50 px-4 py-3.5 rounded-2xl border-2 border-transparent focus:border-indigo-600 focus:bg-white outline-none transition-all shadow-inner"
-                          />
-                        </div>
+                        {type === 'credit_card' && (
+                          <div className="col-span-2">
+                            <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5 px-1">Bill Due Date</label>
+                            <input
+                              type="date" value={dueDate} onChange={e => setDueDate(e.target.value)}
+                              className="w-full text-sm font-semibold bg-slate-50 px-4 py-3.5 rounded-2xl border-2 border-transparent focus:border-indigo-600 focus:bg-white outline-none transition-all shadow-inner"
+                            />
+                          </div>
+                        )}
                       </div>
                     )}
 

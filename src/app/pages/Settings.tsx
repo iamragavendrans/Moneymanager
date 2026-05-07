@@ -6,7 +6,7 @@ import {
   Briefcase, X, Calendar, Tags, Package, FileJson, Target,
   Clock, PieChart, Layers, LogOut, Building
 } from "lucide-react";
-import { cn } from "../utils";
+import { cn, getGridCols } from "../utils";
 import { EntityManagementModal } from "../components/EntityManagementModal";
 import { ProfileManagementModal } from "../components/ProfileManagementModal";
 import { CategoryManagementModal } from "../components/CategoryManagementModal";
@@ -224,7 +224,7 @@ export const Settings = () => {
       {/* 1. Categories */}
       <div>
         <SectionHeader icon={Tags} title="Categories" desc="Structure & Tagging Insights" />
-        <div className="grid grid-cols-3 gap-3">
+        <div className={cn("grid gap-3", getGridCols(4))}>
           <SettingCell icon={Tags} title="Categories" sub="Master List" color="text-emerald-600" bg="bg-emerald-50" onClick={() => setShowCategoriesModal(true)} />
           <SettingCell
             icon={Layers} title="Sub Categories" sub={subCatsEnabled ? "Enabled" : "Disabled"}
@@ -240,7 +240,7 @@ export const Settings = () => {
       {/* 2. Entities Management */}
       <div>
         <SectionHeader icon={Database} title="Entities Management" desc="Core financial ledgers & relations" />
-        <div className="grid grid-cols-3 gap-3">
+        <div className={cn("grid gap-3", getGridCols(9))}>
           {[
             { id: 'shop', icon: Store, title: "Shops", sub: "Merchants", color: "text-blue-600", bg: "bg-blue-50" },
             { id: 'person', icon: Users, title: "People", sub: "Khata / Split", color: "text-emerald-600", bg: "bg-emerald-50" },
@@ -264,7 +264,7 @@ export const Settings = () => {
       {/* 3. Localization */}
       <div>
         <SectionHeader icon={Globe} title="Localization" desc="Currency & Regional Standards" />
-        <div className="grid grid-cols-3 gap-3">
+        <div className={cn("grid gap-3", getGridCols(3))}>
           <SettingCell icon={IndianRupee} title="Currency" sub="INR (₹) Lakhs" color="text-indigo-600" bg="bg-indigo-50" onClick={() => toast.info('Multi-currency support coming soon')} />
           <SettingCell icon={Clock} title="Timezone" sub="GMT +5:30 (IST)" color="text-indigo-600" bg="bg-indigo-50" onClick={() => toast.info('Timezone selection coming soon')} />
           <SettingCell icon={Calendar} title="Fiscal Year" sub="April Start" color="text-indigo-600" bg="bg-indigo-50" onClick={() => toast.info('Fiscal year config coming soon')} />
@@ -274,7 +274,7 @@ export const Settings = () => {
       {/* 4. Reminders */}
       <div>
         <SectionHeader icon={Bell} title="Reminders" desc="Automated Financial Alerts" />
-        <div className="grid grid-cols-3 gap-3">
+        <div className={cn("grid gap-3", getGridCols(3))}>
           <SettingCell
             icon={Bell} title="Bills" sub="Due Notifications" color="text-amber-600" bg="bg-amber-50"
             active={reminders.bills} onToggle={() => handleReminderToggle('bills')}
@@ -290,7 +290,7 @@ export const Settings = () => {
       {/* 5. Profile */}
       <div>
         <SectionHeader icon={Users} title="Profile" desc="Data Sync & Portability" />
-        <div className="grid grid-cols-2 gap-3">
+        <div className={cn("grid gap-3", getGridCols(4))}>
           <SettingCell
             icon={Cloud} title="Drive Sync" sub="Auto Backup" color="text-blue-600" bg="bg-blue-50"
             active={sync.drive} onToggle={handleDriveSync}

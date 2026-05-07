@@ -48,7 +48,7 @@ export interface Profile {
 export interface Account {
   id: string;
   name: string;
-  type: "bank" | "UPI" | "wallet" | "cash" | "credit_card" | "loan" | "investment" | "meal_card" | "pf";
+  type: "bank" | "UPI" | "wallet" | "cash" | "credit_card" | "loan" | "investment" | "meal_card" | "pf" | "debit" | "asset";
   balance: number;
   currency: string;
   lastFour?: string;
@@ -193,7 +193,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
   const [profile, setProfile] = useState<Profile>(() => {
     const saved = localStorage.getItem("finance_profile");
-    return saved ? JSON.parse(saved) : { companyName: "Acme Corp" };
+    return saved ? JSON.parse(saved) : { companyName: "Acme Corp", logoDevToken: "pk_E7r5x7Z9Z7Z7Z7Z7Z7Z7Z7" };
   });
 
   const [categories, setCategories] = useState<CategoryDef[]>(() => {
