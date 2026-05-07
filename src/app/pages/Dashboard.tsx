@@ -636,6 +636,42 @@ export const Dashboard = () => {
             )}
           </Card>
 
+          <Card className="p-5">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="font-bold text-[15px] text-slate-800">Budget Pulse</h3>
+              <Link to="/settings" className="text-indigo-600 text-sm font-semibold hover:underline">Adjust</Link>
+            </div>
+            <div className="space-y-4">
+              {Object.entries(profile.budgets || {}).length === 0 ? (
+                <p className="text-sm text-slate-400 text-center py-4">No budgets set. Define them in Settings.</p>
+              ) : (
+                Object.entries(profile.budgets || {}).map(([cat, limit]) => {
+                  const spent = transactions
+                    .filter(t => t.type === 'expense' && t.category === cat && isSameMonth(new Date(t.date), now))
+                    .reduce((sum, t) => sum + t.amount, 0);
+                  const pct = Math.min(Math.round((spent / limit) * 100), 100);
+                  const isOver = spent > limit;
+                  return (
+                    <div key={cat} className="space-y-1.5">
+                      <div className="flex justify-between text-xs font-bold">
+                        <span className="text-slate-600">{cat}</span>
+                        <span className={isOver ? "text-red-500" : "text-slate-400"}>
+                          {formatINR(spent)} / {formatINR(limit)}
+                        </span>
+                      </div>
+                      <div className="h-2 w-full bg-slate-100 rounded-full overflow-hidden">
+                        <div 
+                          className={cn("h-full transition-all duration-500", isOver ? "bg-red-500" : pct > 80 ? "bg-orange-400" : "bg-indigo-500")}
+                          style={{ width: `${pct}%` }}
+                        />
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+          </Card>
+
           <Card className="p-5 hidden lg:block">
             <div className="flex items-center justify-between mb-4">
               <h3 className="font-bold text-[15px] text-slate-800">Recent Transactions</h3>

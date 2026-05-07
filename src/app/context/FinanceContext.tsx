@@ -42,6 +42,7 @@ export interface Profile {
   taxRegime?: "old" | "new";
   baseCurrency?: string;
   maskBalances?: boolean;
+  budgets?: Record<string, number>;
 }
 
 export interface Account {
@@ -163,6 +164,7 @@ interface FinanceContextType {
   deleteCategory: (id: string) => void;
   reorderCategories: (ordered: CategoryDef[]) => void;
   resetCategories: () => void;
+  updateBudget: (category: string, amount: number) => void;
 }
 
 const FinanceContext = createContext<FinanceContextType | undefined>(undefined);
@@ -285,6 +287,13 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const resetCategories = () =>
     setCategories([...DEFAULT_EXPENSE_CATEGORIES, ...DEFAULT_INCOME_CATEGORIES]);
 
+  const updateBudget = (category: string, amount: number) => {
+    setProfile(prev => ({
+      ...prev,
+      budgets: { ...(prev.budgets || {}), [category]: amount }
+    }));
+  };
+
   // --- Profile ---
   const updateProfile = (p: Partial<Profile>) => setProfile((prev: Profile) => ({ ...prev, ...p }));
 
@@ -347,6 +356,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
       getNetWorth, getTotalExpenses, getTotalIncome,
       resetData, wipeData, restoreData,
       categories, updateCategory, addCategory, deleteCategory, reorderCategories, resetCategories,
+      updateBudget,
     }}>
       {children}
     </FinanceContext.Provider>
