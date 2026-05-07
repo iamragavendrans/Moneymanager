@@ -108,6 +108,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Upload OTA bundle to Capgo
+        continue-on-error: true
         env:
           CAPGO_API_KEY: ${{ secrets.CAPGO_API_KEY }}
         run: |
