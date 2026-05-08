@@ -444,37 +444,54 @@ export const Dashboard = () => {
     };
 
     if (globalFilter === "1M" || globalFilter === "1W") {
-      const weeksToSubtract = globalFilter === "1W" ? 0 : 4;
       const refStart = globalFilter === "1W" ? startOfWeek(referenceDate) : startOfMonth(referenceDate);
       const refEnd = globalFilter === "1W" ? endOfWeek(referenceDate) : endOfMonth(referenceDate);
-      const start = startOfWeek(subWeeks(refStart, weeksToSubtract));
+      
+      const start = startOfWeek(refStart);
       const end = endOfWeek(refEnd);
       const days = eachDayOfInterval({ start, end });
 
+      if (globalFilter === "1W") {
+        return (
+          <div className="flex flex-col gap-2 w-full animate-in fade-in duration-300">
+            <div className="flex gap-2 min-w-max pl-8">
+              {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((day, i) => <div key={i} className="w-8 text-center text-[10px] font-bold text-slate-400">{day}</div>)}
+            </div>
+            <div className="flex gap-2 min-w-max items-center">
+              <div className="w-8 text-right text-[10px] font-bold text-slate-400 pr-2">W1</div>
+              {days.slice(0, 7).map((day, dIdx) => {
+                const stats = getDayStats(day);
+                return (
+                  <div key={dIdx} onClick={() => setSelectedDate(day)} className={`w-8 h-8 rounded-lg ${getBgColor(stats)} hover:scale-110 hover:ring-2 ring-indigo-200 cursor-pointer transition-all shrink-0`} title={`${format(day, "MMM dd")}: ${stats.type}`} />
+                );
+              })}
+            </div>
+          </div>
+        );
+      }
+
+      // Month View: Standard Calendar Grid (Days as columns, Weeks as rows)
       const matrixRows = Math.ceil(days.length / 7);
       const matrix = Array(matrixRows).fill(null).map(() => Array(7).fill(null));
       days.forEach((d, i) => { matrix[Math.floor(i / 7)][getDay(d)] = d; });
 
       return (
-        <div className="flex flex-col gap-2 w-full overflow-x-auto pb-4 scrollbar-hide">
+        <div className="flex flex-col gap-2 w-full overflow-x-auto pb-4 scrollbar-hide animate-in fade-in duration-300">
           <div className="flex gap-2 min-w-max pl-8">
             {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((day, i) => <div key={i} className="w-6 text-center text-[10px] font-bold text-slate-400">{day}</div>)}
           </div>
-          {matrix.map((week, wIdx) => {
-            if (!week.some(d => d !== null)) return null;
-            return (
-              <div key={wIdx} className="flex gap-2 min-w-max items-center">
-                <div className="w-6 text-right text-[10px] font-bold text-slate-400 pr-2">W{wIdx + 1}</div>
-                {week.map((day, dIdx) => {
-                  if (!day) return <div key={dIdx} className="w-6 h-6 bg-transparent" />;
-                  const stats = getDayStats(day);
-                  return (
-                    <div key={dIdx} onClick={() => setSelectedDate(day)} className={`w-6 h-6 rounded-[4px] ${getBgColor(stats)} hover:scale-110 hover:ring-2 ring-slate-300 cursor-pointer transition-all`} title={`${format(day, "MMM dd")}: ${stats.type}`} />
-                  );
-                })}
-              </div>
-            )
-          })}
+          {matrix.map((week, wIdx) => (
+            <div key={wIdx} className="flex gap-2 min-w-max items-center">
+              <div className="w-6 text-right text-[10px] font-bold text-slate-400 pr-2">W{wIdx + 1}</div>
+              {week.map((day, dIdx) => {
+                if (!day) return <div key={dIdx} className="w-6 h-6 bg-transparent" />;
+                const stats = getDayStats(day);
+                return (
+                  <div key={dIdx} onClick={() => setSelectedDate(day)} className={`w-6 h-6 rounded-[4px] ${getBgColor(stats)} hover:scale-110 hover:ring-2 ring-indigo-200 cursor-pointer transition-all shrink-0`} title={`${format(day, "MMM dd")}: ${stats.type}`} />
+                );
+              })}
+            </div>
+          ))}
         </div>
       );
     } else {
