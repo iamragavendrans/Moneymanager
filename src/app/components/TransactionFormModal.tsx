@@ -22,11 +22,21 @@ interface SearchableSelectProps {
 const SearchableSelect: React.FC<SearchableSelectProps> = ({ options, value, onChange, placeholder = "Search...", label, className, accentColor = "indigo", allowCustom }) => {
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
+  const [openUp, setOpenUp] = useState(false);
   const containerRef = React.useRef<HTMLDivElement>(null);
 
   const normalizedOptions = options.map(o => typeof o === "string" ? { label: o, value: o } : o);
   const filtered = normalizedOptions.filter(o => o.label.toLowerCase().includes(search.toLowerCase()));
   const currentLabel = normalizedOptions.find(o => o.value === value)?.label || value || "";
+
+  useEffect(() => {
+    if (open && containerRef.current) {
+      const rect = containerRef.current.getBoundingClientRect();
+      const spaceBelow = window.innerHeight - rect.bottom;
+      if (spaceBelow < 300) setOpenUp(true);
+      else setOpenUp(false);
+    }
+  }, [open]);
 
   useEffect(() => {
     const handleClick = (e: MouseEvent) => { if (containerRef.current && !containerRef.current.contains(e.target as Node)) setOpen(false); };
@@ -57,7 +67,10 @@ const SearchableSelect: React.FC<SearchableSelectProps> = ({ options, value, onC
       </div>
 
       {open && (
-        <div className="absolute top-full left-0 right-0 z-[1000] mt-1 bg-white border border-slate-100 rounded-[1.5rem] shadow-2xl overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
+        <div className={cn(
+          "absolute left-0 right-0 z-[1000] bg-white border border-slate-100 rounded-[1.5rem] shadow-2xl overflow-hidden animate-in fade-in duration-200",
+          openUp ? "bottom-full mb-2 slide-in-from-bottom-2" : "top-full mt-1 slide-in-from-top-2"
+        )}>
           <div className="p-2 border-b border-slate-50">
             <input
               autoFocus
@@ -561,17 +574,29 @@ export const TransactionFormModal: React.FC<{
               )}
 
               {/* Row 2: Account & Category/Stream/ToAccount */}
-              <div className="grid grid-cols-2 gap-4">
+              <div className="relative">
                 {type === "transfer" ? (
-                  <>
+                  <div className="relative grid grid-cols-2 gap-4">
                     <SearchableSelect label="From" options={accounts.map(a => ({ label: a.name, value: a.id }))} value={accountId} onChange={setAccountId} accentColor="blue" />
                     <SearchableSelect label="To" options={accounts.map(a => ({ label: a.name, value: a.id }))} value={toAccountId} onChange={setToAccountId} accentColor="indigo" />
-                  </>
+                    <button 
+                      type="button"
+                      onClick={() => {
+                        const tmp = accountId;
+                        setAccountId(toAccountId);
+                        setToAccountId(tmp);
+                      }}
+                      className="absolute left-1/2 top-[60%] -translate-x-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-white border border-slate-200 shadow-md flex items-center justify-center text-slate-400 hover:text-indigo-600 hover:border-indigo-200 transition-all z-10"
+                      title="Swap Accounts"
+                    >
+                      <ArrowRightLeft className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
                 ) : (
-                  <>
+                  <div className="grid grid-cols-2 gap-4">
                     <SearchableSelect label="Account" options={accounts.map(a => ({ label: a.name, value: a.id }))} value={accountId} onChange={setAccountId} accentColor={type === 'income' ? 'emerald' : 'indigo'} />
                     <SearchableSelect label="Category" options={type === 'income' ? categories.income : categories.expense} value={category} onChange={handleCategoryChange} accentColor={type === 'income' ? 'emerald' : 'indigo'} />
-                  </>
+                  </div>
                 )}
               </div>
 
@@ -673,8 +698,8 @@ export const TransactionFormModal: React.FC<{
 
                 {/* CARD 3: Items & Inventory */}
                 <div className="bg-white rounded-2xl p-4 shadow-sm border border-slate-100 space-y-4">
-                  <div className="space-y-3 bg-slate-50/50 p-3 rounded-xl border border-slate-100">
-                    <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">
+                  <div className="space-y-4">
+                    <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1 px-1">
                       {category === 'Transportation' ? 'Routes & Tickets' : 'Items & Inventory'}
                     </label>
                     <div className="space-y-2">
