@@ -10,15 +10,18 @@ import { cn, getGridCols } from "../utils";
 import { EntityManagementModal } from "../components/EntityManagementModal";
 
 const ENTITIES_MGMT = [
+  // Row 1
   { id: 'shop', icon: Store, title: "Shops", sub: "Merchants", color: "text-blue-600", bg: "bg-blue-50" },
   { id: 'person', icon: Users, title: "People", sub: "Khata / Split", color: "text-emerald-600", bg: "bg-emerald-50" },
-  { id: 'recurring', icon: Repeat, title: "Recurring", sub: "Utility Bills", color: "text-amber-600", bg: "bg-amber-50" },
-  { id: 'subscription', icon: CreditCardIcon, title: "Subs", sub: "Digital Services", color: "text-pink-600", bg: "bg-pink-50" },
-  { id: 'giftcard', icon: Gift, title: "Gift Cards", sub: "Balances", color: "text-orange-600", bg: "bg-orange-50" },
-  { id: 'protection', icon: ShieldCheck, title: "Protection", sub: "Insure & Warranty", color: "text-cyan-600", bg: "bg-cyan-50" },
-  { id: 'asset', icon: Building, title: "Assets", sub: "Vehicles & Home", color: "text-indigo-600", bg: "bg-indigo-50" },
-  { id: 'inventory', icon: Package, title: "Inventory", sub: "Consumables", color: "text-orange-600", bg: "bg-orange-50" },
   { id: 'employment', icon: Briefcase, title: "Employment", sub: "Tax & Salary", color: "text-slate-600", bg: "bg-slate-50", isSpecial: true },
+  // Row 2
+  { id: 'recurring', icon: Repeat, title: "Recurring", sub: "Consumables", color: "text-amber-600", bg: "bg-amber-50" },
+  { id: 'subscription', icon: CreditCardIcon, title: "Subs", sub: "Digital Services", color: "text-pink-600", bg: "bg-pink-50" },
+  { id: 'membership', icon: ShieldCheck, title: "Memberships", sub: "Clubs & Sports", color: "text-cyan-600", bg: "bg-cyan-50" },
+  // Row 3
+  { id: 'giftcard', icon: Gift, title: "Gift Cards", sub: "Balances", color: "text-orange-600", bg: "bg-orange-50" },
+  { id: 'inventory', icon: Package, title: "Inventory", sub: "Supplies", color: "text-orange-600", bg: "bg-orange-50" },
+  { id: 'asset', icon: Building, title: "Assets", sub: "Vehicles & Home", color: "text-indigo-600", bg: "bg-indigo-50" },
 ];
 import { ProfileManagementModal } from "../components/ProfileManagementModal";
 import { CategoryManagementModal } from "../components/CategoryManagementModal";

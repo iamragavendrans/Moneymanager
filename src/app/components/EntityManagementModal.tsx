@@ -3,7 +3,8 @@ import {
   X, Plus, Store, Users, Repeat, CreditCard, Gift, ShieldCheck, Trash2, Edit2, 
   ArrowRight, Package, MapPin, Link as LinkIcon, PauseCircle, PlayCircle, 
   History, Clock, IndianRupee, Shield, FileText, Zap, Droplets, Flame, Wifi, 
-  Smartphone, Home, Tv, Dumbbell, Milk, Newspaper, Wrench, Car, Building, Box
+  Smartphone, Home, Tv, Dumbbell, Milk, Newspaper, Wrench, Car, Building, Box,
+  ChevronDown, ChevronUp, Play, Gamepad2, LayoutGrid
 } from "lucide-react";
 import { cn, formatINR, getGridCols } from "../utils";
 import { useFinance, Entity, Transaction } from "../context/FinanceContext";
@@ -16,8 +17,8 @@ const entityConfig: Record<string, { title: string, icon: any, desc: string, col
   person: { title: "People (Khata)", icon: Users, desc: "Track lending & borrowing", color: "text-indigo-600 bg-indigo-50" },
   recurring: { title: "Recurring Bills", icon: Repeat, desc: "Utility and regular bills", color: "text-amber-600 bg-amber-50" },
   subscription: { title: "Subscriptions", icon: CreditCard, desc: "Digital services", color: "text-rose-600 bg-rose-50" },
+  membership: { title: "Memberships", icon: ShieldCheck, desc: "Clubs & Community", color: "text-cyan-600 bg-cyan-50" },
   giftcard: { title: "Gift Cards", icon: Gift, desc: "Unused gift card balances", color: "text-emerald-600 bg-emerald-50" },
-  protection: { title: "Protection & Insure", icon: ShieldCheck, desc: "Insurance & Warranties", color: "text-slate-600 bg-slate-100" },
   asset: { title: "Assets & Valuables", icon: Building, desc: "Vehicle, Home & High Value", color: "text-teal-600 bg-teal-50" },
   inventory: { title: "Inventory", icon: Package, desc: "Consumable Home Supplies", color: "text-orange-600 bg-orange-50" },
   document: { title: "Documents & Tax", icon: FileText, desc: "Legal & tax related docs", color: "text-purple-600 bg-purple-50" },
@@ -79,6 +80,7 @@ export const EntityManagementModal = ({ type, onClose }: { type: string; onClose
   const [showAddTx, setShowAddTx] = useState(false);
 
   const [formData, setFormData] = useState<any>({});
+  const [showAdvanced, setShowAdvanced] = useState(false);
 
   const config = entityConfig[type] || entityConfig.shop;
   const filteredEntities = entities.filter(e => e.type === type);
@@ -142,23 +144,94 @@ export const EntityManagementModal = ({ type, onClose }: { type: string; onClose
 
   // --- Sub-Renders ---
   const renderList = () => {
-    if (type === 'shop' || type === 'person' || type === 'recurring' || type === 'subscription') {
-      const groups = type === 'person' ? ['Family', 'Friend', 'Colleague', 'Acquaintance', 'Other'] : [null];
+    const activeEntities = filteredEntities.filter(e => (e.status as string) !== 'terminated');
+
+    if (type === 'shop' || type === 'person' || type === 'recurring' || type === 'subscription' || type === 'membership') {
+      const groups: { name: string, filter: (e: Entity) => boolean, templates?: any[] }[] = [];
+
+      if (type === 'person') {
+        ['Family', 'Friend', 'Colleague', 'Acquaintance', 'Other'].forEach(g => {
+          groups.push({ name: g, filter: (e) => e.relationship === g || (!e.relationship && g === 'Other') });
+        });
+      } else if (type === 'subscription') {
+        const subTypes = ['App', 'Game', 'Service'];
+        subTypes.forEach(st => {
+          groups.push({ 
+            name: st + 's', 
+            filter: (e) => e.subType === st || (!e.subType && st === 'Service'),
+          });
+        });
+        groups.push({ 
+          name: 'Other Subscriptions', 
+          filter: (e) => !['App', 'Game', 'Service'].includes(e.subType || '')
+        });
+      } else if (type === 'recurring') {
+        groups.push({ 
+          name: 'Essential Utilities', 
+          filter: (e) => ['Electricity', 'Water', 'Gas'].includes(e.category || ''),
+          templates: [
+            { name: 'Electricity', category: 'Electricity', icon: Zap, color: 'text-amber-500 bg-amber-50' },
+            { name: 'Water', category: 'Water', icon: Droplets, color: 'text-blue-500 bg-blue-50' },
+            { name: 'Gas', category: 'Gas', icon: Flame, color: 'text-orange-500 bg-orange-50' },
+          ]
+        });
+        groups.push({ 
+          name: 'Connectivity', 
+          filter: (e) => ['Internet', 'Mobile', 'Data', 'Broadband', 'Postpaid', 'Prepaid'].includes(e.category || ''),
+          templates: [
+            { name: 'Broadband', category: 'Internet', icon: Wifi, color: 'text-indigo-500 bg-indigo-50' },
+            { name: 'Mobile', category: 'Mobile', icon: Smartphone, color: 'text-rose-500 bg-rose-50' },
+            { name: 'Data Pack', category: 'Data', icon: Repeat, color: 'text-teal-500 bg-teal-50' },
+          ]
+        });
+        groups.push({ 
+          name: 'Housing & Lifestyle', 
+          filter: (e) => ['Rent', 'Maintenance', 'Milk'].includes(e.category || ''),
+          templates: [
+            { name: 'Rent', category: 'Rent', icon: Home, color: 'text-emerald-500 bg-emerald-50' },
+            { name: 'Maintenance', category: 'Maintenance', icon: Wrench, color: 'text-slate-500 bg-slate-100' },
+            { name: 'Milk / Dairy', category: 'Milk', icon: Milk, color: 'text-sky-400 bg-sky-50' },
+          ]
+        });
+        groups.push({ 
+          name: 'Other Bills', 
+          filter: (e) => !['Electricity', 'Water', 'Gas', 'Internet', 'Mobile', 'Data', 'Broadband', 'Postpaid', 'Prepaid', 'Rent', 'Maintenance', 'Milk'].includes(e.category || '')
+        });
+      } else if (type === 'membership') {
+        groups.push({ 
+          name: 'Clubs & Organizations', 
+          filter: (e) => ['Gym', 'Sports', 'Club', 'Community', 'Organization'].includes(e.category || ''),
+          templates: [
+            { name: 'Gym Membership', category: 'Gym', icon: Dumbbell, color: 'text-indigo-600 bg-indigo-50' },
+            { name: 'Sports Club', category: 'Sports', icon: Tv, color: 'text-emerald-600 bg-emerald-50' },
+            { name: 'Social Club', category: 'Club', icon: Users, color: 'text-blue-600 bg-blue-50' },
+            { name: 'Community Org', category: 'Community', icon: Home, color: 'text-amber-600 bg-amber-50' },
+            { name: 'Professional Org', category: 'Organization', icon: Building, color: 'text-rose-600 bg-rose-50' },
+          ]
+        });
+        groups.push({ 
+          name: 'Other Memberships', 
+          filter: (e) => !['Gym', 'Sports', 'Club', 'Community', 'Organization'].includes(e.category || '')
+        });
+      } else {
+        groups.push({ name: 'All Entities', filter: () => true });
+      }
       
       return (
-        <div className="space-y-6">
-          {groups.map(groupName => {
-            const groupEntities = filteredEntities.filter(e => type === 'person' ? (e.relationship === groupName || (!e.relationship && groupName === 'Other')) : true);
-            if (groupEntities.length === 0 && type === 'person') return null;
+        <div className="space-y-8">
+          {groups.map(group => {
+            const groupEntities = activeEntities.filter(group.filter);
+            const visibleTemplates = group.templates?.filter(tpl => !activeEntities.some(e => e.name.toLowerCase() === tpl.name.toLowerCase())) || [];
+            
+            if (groupEntities.length === 0 && visibleTemplates.length === 0) return null;
 
             return (
-              <div key={groupName || 'all'} className="space-y-3">
-                {groupName && (
-                  <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] px-1 flex items-center gap-2">
-                    {groupName} <div className="h-px flex-1 bg-slate-100" />
-                  </h4>
-                )}
-                <div className={cn("grid gap-3", getGridCols(groupEntities.length))}>
+              <div key={group.name} className="space-y-3">
+                <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] px-1 flex items-center gap-2">
+                  {group.name} <div className="h-px flex-1 bg-slate-100" />
+                </h4>
+                <div className="grid grid-cols-3 gap-3">
+                  {/* Existing Entities */}
                   {groupEntities.map(ent => {
                     let logoUrl = null;
                     let netBalance = 0;
@@ -169,12 +242,12 @@ export const EntityManagementModal = ({ type, onClose }: { type: string; onClose
                     } else {
                       const personTxns = transactions.filter(t => 
                         t.payee.toLowerCase() === ent.name.toLowerCase() || 
-                        t.split?.with.includes(ent.name)
+                        t.split?.with?.includes(ent.name)
                       );
                       personTxns.forEach(t => {
                         if (t.type === 'income' && t.payee.toLowerCase() === ent.name.toLowerCase()) netBalance -= t.amount;
                         else if (t.type === 'expense' && t.payee.toLowerCase() === ent.name.toLowerCase()) netBalance += t.amount;
-                        else if (t.split?.with.includes(ent.name)) {
+                        else if (t.split?.with?.includes(ent.name)) {
                           if (t.split.shareStrategy === 'Equally') netBalance += t.amount / (1 + t.split.with.length);
                           else if (t.split.shares?.[ent.name]) {
                             if (t.split.shareStrategy === 'Percentages') netBalance += (t.amount * Number(t.split.shares[ent.name])) / 100;
@@ -191,25 +264,25 @@ export const EntityManagementModal = ({ type, onClose }: { type: string; onClose
                       <div 
                         key={ent.id} 
                         onClick={() => handleViewDetails(ent)} 
-                        className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm flex flex-col items-center justify-center text-center cursor-pointer hover:border-indigo-100 hover:shadow-md transition-all group aspect-square relative overflow-hidden"
+                        className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm flex flex-col items-center justify-center text-center cursor-pointer hover:border-indigo-100 hover:shadow-md transition-all group aspect-square relative"
                       >
                         <div className="absolute top-2 left-2 z-10">
                           <div className={cn("w-1.5 h-1.5 rounded-full", ent.status === 'paused' ? "bg-amber-400" : "bg-emerald-400")} />
                         </div>
                         
-                        {(type === 'recurring' || type === 'subscription') && daysLeft !== null && (
-                          <div className="absolute top-2 right-2">
-                             <div className={cn("text-[7px] font-black px-1.5 py-0.5 rounded-full uppercase tracking-tighter shadow-sm border", 
-                               daysLeft <= 3 ? "bg-rose-50 text-rose-600 border-rose-100" : 
-                               daysLeft <= 7 ? "bg-amber-50 text-amber-600 border-amber-100" : 
-                               "bg-emerald-50 text-emerald-600 border-emerald-100"
+                         {(type === 'recurring' || type === 'subscription') && daysLeft !== null && (
+                          <div className="absolute -top-1.5 -right-1.5 z-20">
+                             <div className={cn("min-w-[18px] h-[18px] px-1 flex items-center justify-center rounded-full text-[10px] font-black text-white shadow-[0_2px_4px_rgba(0,0,0,0.2)] border border-white/40", 
+                               daysLeft <= 3 ? "bg-[#FF3B30]" : 
+                               daysLeft <= 7 ? "bg-[#FF9500]" : 
+                               "bg-[#34C759]"
                              )}>
-                               {daysLeft === 0 ? "Today" : daysLeft < 0 ? "Over" : `${daysLeft}d`}
+                               {daysLeft === 0 ? "!" : daysLeft < 0 ? "!" : daysLeft}
                              </div>
                           </div>
                         )}
                         
-                        <div className={cn("w-12 h-12 mb-3 flex items-center justify-center bg-slate-50 rounded-xl transition-transform group-hover:scale-110 overflow-hidden p-1.5 shadow-inner", type === 'person' && "rounded-full")}>
+                        <div className={cn("w-10 h-10 mb-2 flex items-center justify-center bg-slate-50 rounded-xl transition-transform group-hover:scale-110 overflow-hidden p-1.5 shadow-inner", type === 'person' && "rounded-full")}>
                           {logoUrl ? (
                             <ImageWithFallback src={logoUrl} alt={ent.name} className="w-full h-full object-contain" />
                           ) : (
@@ -224,13 +297,13 @@ export const EntityManagementModal = ({ type, onClose }: { type: string; onClose
                         </div>
                         
                         <div className="w-full">
-                          <h4 className={cn("font-bold text-[10px] line-clamp-1 leading-tight", ent.status === 'paused' ? "text-slate-500 opacity-70" : "text-slate-800")}>{ent.name}</h4>
+                          <h4 className={cn("font-bold text-[9px] line-clamp-1 leading-tight", ent.status === 'paused' ? "text-slate-500 opacity-70" : "text-slate-800")}>{ent.name}</h4>
                           {(type === 'recurring' || type === 'subscription') ? (
-                            <p className="text-[9px] font-black text-slate-400 tracking-tighter mt-1 leading-none">
+                            <p className="text-[8px] font-black text-slate-400 tracking-tighter mt-1 leading-none">
                               {ent.amount ? formatINR(ent.amount) : 'Var.'}
                             </p>
                           ) : type === 'person' && netBalance !== 0 ? (
-                            <p className={cn("text-[9px] font-black tracking-tighter mt-1 leading-none", netBalance > 0 ? "text-emerald-600" : "text-rose-600")}>
+                            <p className={cn("text-[8px] font-black tracking-tighter mt-1 leading-none", netBalance > 0 ? "text-emerald-600" : "text-rose-600")}>
                               {netBalance > 0 ? "+" : "-"}{formatINR(Math.abs(netBalance))}
                             </p>
                           ) : (
@@ -240,100 +313,54 @@ export const EntityManagementModal = ({ type, onClose }: { type: string; onClose
                       </div>
                     );
                   })}
+
+                  {/* Template Items (Dashed) */}
+                  {visibleTemplates.map(tpl => (
+                    <div 
+                      key={tpl.name}
+                      onClick={() => {
+                         setFormData({ 
+                           name: tpl.name, 
+                           category: tpl.category || 'Other',
+                           subType: (tpl as any).subType,
+                           provider: tpl.provider || tpl.name,
+                           status: 'active' 
+                         });
+                         setView("form");
+                      }}
+                      className="bg-white p-4 rounded-2xl border border-dashed border-slate-200 flex flex-col items-center justify-center text-center cursor-pointer hover:border-indigo-300 hover:bg-indigo-50/30 transition-all group aspect-square shadow-sm"
+                    >
+                      <div className={cn("w-10 h-10 rounded-xl flex items-center justify-center mb-2 transition-transform group-hover:scale-110 shadow-sm", tpl.color)}>
+                         <tpl.icon className="w-5 h-5" />
+                      </div>
+                      <p className="text-[9px] font-bold text-slate-500 leading-tight">{tpl.name}</p>
+                    </div>
+                  ))}
                 </div>
               </div>
             );
           })}
 
-          {/* Templates Section */}
-          {(type === 'recurring' || type === 'subscription') && (
-            <div className={cn("space-y-6", filteredEntities.length > 0 && "pt-6 border-t border-slate-100/50")}>
-               {(() => {
-                 const templates: Record<string, { group: string, items: any[] }[]> = {
-                   recurring: [
-                     {
-                       group: 'Essential Utilities',
-                       items: [
-                         { name: 'Electricity', category: 'Electricity', icon: Zap, color: 'text-amber-500 bg-amber-50' },
-                         { name: 'Water', category: 'Water', icon: Droplets, color: 'text-blue-500 bg-blue-50' },
-                         { name: 'Gas', category: 'Gas', icon: Flame, color: 'text-orange-500 bg-orange-50' },
-                       ]
-                     },
-                     {
-                       group: 'Connectivity',
-                       items: [
-                         { name: 'Internet', category: 'Internet', icon: Wifi, color: 'text-indigo-500 bg-indigo-50' },
-                         { name: 'Mobile', category: 'Mobile', icon: Smartphone, color: 'text-rose-500 bg-rose-50' },
-                         { name: 'DTH/Cable', category: 'DTH', icon: Tv, color: 'text-purple-500 bg-purple-50' },
-                       ]
-                     },
-                     {
-                       group: 'Housing & Maintenance',
-                       items: [
-                         { name: 'Rent', category: 'Rent', icon: Home, color: 'text-emerald-500 bg-emerald-50' },
-                         { name: 'Society Maint.', category: 'Maintenance', icon: Wrench, color: 'text-slate-500 bg-slate-100' },
-                       ]
-                     },
-                     {
-                       group: 'Daily Lifestyle',
-                       items: [
-                         { name: 'Gym', category: 'Gym', icon: Dumbbell, color: 'text-blue-600 bg-blue-50' },
-                         { name: 'Milk', category: 'Milk', icon: Milk, color: 'text-sky-400 bg-sky-50' },
-                         { name: 'Newspaper', category: 'Newspaper', icon: Newspaper, color: 'text-slate-400 bg-slate-100' },
-                       ]
-                     }
-                   ],
-                   subscription: [
-                     {
-                       group: 'Streaming & Apps',
-                       items: [
-                         { name: 'Netflix', category: 'Other', provider: 'Netflix', icon: PlayCircle, color: 'text-red-500 bg-red-50' },
-                         { name: 'Spotify', category: 'Other', provider: 'Spotify', icon: Repeat, color: 'text-emerald-500 bg-emerald-50' },
-                         { name: 'Disney+', category: 'Other', provider: 'Disney+', icon: PlayCircle, color: 'text-blue-600 bg-blue-50' },
-                         { name: 'YouTube', category: 'Other', provider: 'YouTube', icon: PlayCircle, color: 'text-red-600 bg-red-50' },
-                         { name: 'Amazon Prime', category: 'Other', provider: 'Amazon', icon: Repeat, color: 'text-sky-500 bg-sky-50' },
-                       ]
-                     }
-                   ]
-                 };
-
-                 const activeTemplates = templates[type] || [];
-                 
-                 return activeTemplates.map(group => {
-                   const visibleItems = group.items.filter(tpl => !filteredEntities.some(e => e.name.toLowerCase() === tpl.name.toLowerCase()));
-                   if (visibleItems.length === 0) return null;
-
-                   return (
-                     <div key={group.group} className="space-y-3">
-                       <p className="text-[8px] font-black text-slate-300 uppercase tracking-widest px-1">{group.group}</p>
-                       <div className={cn("grid gap-3", getGridCols(visibleItems.length))}>
-                         {visibleItems.map(tpl => (
-                           <div 
-                             key={tpl.name}
-                             onClick={() => {
-                                setFormData({ 
-                                  name: tpl.name, 
-                                  category: tpl.category, 
-                                  provider: tpl.provider || tpl.name,
-                                  status: 'active' 
-                                });
-                                setView("form");
-                             }}
-                             className="bg-white p-4 rounded-2xl border border-dashed border-slate-200 flex flex-col items-center justify-center text-center cursor-pointer hover:border-indigo-300 hover:bg-indigo-50/30 transition-all group aspect-square"
-                           >
-                             <div className={cn("w-10 h-10 rounded-xl flex items-center justify-center mb-2 transition-transform group-hover:scale-110 shadow-sm", tpl.color)}>
-                                <tpl.icon className="w-5 h-5" />
-                             </div>
-                             <p className="text-[10px] font-bold text-slate-600 leading-tight">{tpl.name}</p>
-                           </div>
-                         ))}
-                       </div>
-                     </div>
-                   );
-                 });
-               })()}
-            </div>
-          )}
+          {/* Terminated / No More Section */}
+          {(() => {
+            const terminated = filteredEntities.filter(e => (e.status as string) === 'terminated');
+            if (terminated.length === 0) return null;
+            return (
+              <div className="space-y-3 pt-4">
+                <h4 className="text-[10px] font-black text-rose-400 uppercase tracking-[0.2em] px-1 flex items-center gap-2">
+                  No More / Cancelled <div className="h-px flex-1 bg-rose-50" />
+                </h4>
+                <div className="grid grid-cols-3 gap-3 opacity-60 grayscale">
+                  {terminated.map(ent => (
+                    <div key={ent.id} onClick={() => handleViewDetails(ent)} className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm flex flex-col items-center justify-center text-center cursor-pointer hover:border-slate-200 transition-all group aspect-square relative">
+                       <h4 className="font-bold text-[9px] text-slate-400 line-clamp-1">{ent.name}</h4>
+                       <p className="text-[8px] font-black text-slate-300 uppercase mt-1">Cancelled</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            );
+          })()}
 
           {filteredEntities.length === 0 && !(type === 'recurring' || type === 'subscription') && (
             <div className="text-center py-16 text-slate-400">
@@ -442,8 +469,8 @@ export const EntityManagementModal = ({ type, onClose }: { type: string; onClose
     } else if (type === "person") {
       relevantTxns = transactions.filter(t => 
         t.payee.toLowerCase() === activeEntity.name.toLowerCase() || 
-        t.tags.includes(activeEntity.name) ||
-        t.split?.with.includes(activeEntity.name)
+        t.tags?.includes(activeEntity.name) ||
+        t.split?.with?.includes(activeEntity.name)
       );
 
       let lent = 0;
@@ -452,7 +479,7 @@ export const EntityManagementModal = ({ type, onClose }: { type: string; onClose
       relevantTxns.forEach(t => {
         if (t.type === 'income' && t.payee.toLowerCase() === activeEntity.name.toLowerCase()) borrowed += t.amount;
         else if (t.type === 'expense' && t.payee.toLowerCase() === activeEntity.name.toLowerCase()) lent += t.amount;
-        else if (t.split?.with.includes(activeEntity.name)) {
+        else if (t.split?.with?.includes(activeEntity.name)) {
           if (t.split.shareStrategy === 'Equally') lent += t.amount / (1 + t.split.with.length);
           else if (t.split.shares?.[activeEntity.name]) {
             if (t.split.shareStrategy === 'Percentages') lent += (t.amount * Number(t.split.shares[activeEntity.name])) / 100;
@@ -588,7 +615,7 @@ export const EntityManagementModal = ({ type, onClose }: { type: string; onClose
         </div>
       );
     } else if (type === "asset") {
-      relevantTxns = transactions.filter(t => t.notes?.toLowerCase().includes(activeEntity.name.toLowerCase()) || t.tags.includes(activeEntity.name));
+      relevantTxns = transactions.filter(t => t.notes?.toLowerCase().includes(activeEntity.name.toLowerCase()) || t.tags?.includes(activeEntity.name));
       stats = (
         <div className="grid grid-cols-2 gap-4 mb-6">
           <div className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm">
@@ -664,7 +691,12 @@ export const EntityManagementModal = ({ type, onClose }: { type: string; onClose
              )}
              <div>
                <h3 className="text-2xl font-black text-slate-800 leading-none mb-1">{activeEntity.name}</h3>
-               <p className="text-[10px] text-slate-400 uppercase font-black tracking-widest">{type === 'person' ? (activeEntity.relationship || 'Contact') : type === 'recurring' ? 'Recurring Bill' : type === 'subscription' ? 'Subscription' : (activeEntity.mode || activeEntity.category || 'Entity')}</p>
+               <p className="text-[10px] text-slate-400 uppercase font-black tracking-widest">
+                 {type === 'person' ? (activeEntity.relationship || 'Contact') : 
+                  type === 'recurring' ? 'Recurring Bill' : 
+                  type === 'subscription' ? (activeEntity.subType || 'Service') : 
+                  (activeEntity.mode || activeEntity.category || 'Entity')}
+               </p>
              </div>
            </div>
            <div className="flex gap-2">
@@ -836,22 +868,78 @@ export const EntityManagementModal = ({ type, onClose }: { type: string; onClose
             </div>
           )}
 
-          {type === "protection" && (
+          {type === "membership" && (
             <div className="space-y-4">
               <div>
-                <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Coverage Type</label>
-                <select value={formData.category || ''} onChange={(e) => setFormData({...formData, category: e.target.value})} className="w-full text-sm font-semibold bg-slate-50 px-3 py-2.5 rounded-xl border-0 focus:ring-2 focus:ring-indigo-600 outline-none appearance-none">
-                  <option value="Health Insurance">Health Insurance</option>
-                  <option value="Life Insurance">Life Insurance</option>
-                  <option value="Vehicle Insurance">Vehicle Insurance</option>
-                  <option value="Home Insurance">Home Insurance</option>
-                  <option value="Warranty">Extended Warranty</option>
-                  <option value="Gadget Insurance">Gadget Protection</option>
-                </select>
+                <div className="flex items-center justify-between mb-3 px-1">
+                  <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider">Membership Type</label>
+                  <button 
+                    type="button" 
+                    onClick={() => setShowAdvanced(!showAdvanced)} 
+                    className="text-[9px] font-black text-indigo-600 uppercase tracking-tighter hover:underline"
+                  >
+                    {formData.category && !showAdvanced ? "Change Type" : "Use Templates"}
+                  </button>
+                </div>
+
+                {formData.category && !showAdvanced ? (
+                  <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100 flex items-center gap-4">
+                    <div className="w-12 h-12 rounded-xl bg-white border border-slate-100 flex items-center justify-center text-indigo-600 shadow-sm">
+                      {getCategoryIcon(formData.category, formData.name)}
+                    </div>
+                    <div>
+                      <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1">Selected Type</p>
+                      <p className="text-sm font-bold text-slate-800">{formData.category}</p>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {!showAdvanced ? (
+                      <input
+                        type="text"
+                        value={formData.category || ""}
+                        onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+                        placeholder="e.g. Rotary, Housing Society, Golf Club"
+                        className="w-full text-sm font-semibold bg-slate-50 px-4 py-3 rounded-xl border-0 focus:ring-2 focus:ring-indigo-600 outline-none"
+                      />
+                    ) : (
+                      <div className="grid grid-cols-3 gap-2">
+                        {[
+                          { id: 'Club', icon: Users, label: 'Club', color: 'text-blue-600 bg-blue-50' },
+                          { id: 'Sports', icon: Tv, label: 'Sports', color: 'text-emerald-600 bg-emerald-50' },
+                          { id: 'Gym', icon: Dumbbell, label: 'Gym', color: 'text-indigo-600 bg-indigo-50' },
+                          { id: 'Community', icon: Home, label: 'Community', color: 'text-amber-600 bg-amber-50' },
+                          { id: 'Organization', icon: Building, label: 'Org', color: 'text-rose-600 bg-rose-50' },
+                          { id: 'Other', icon: LayoutGrid, label: 'Other', color: 'text-slate-600 bg-slate-50' },
+                        ].map(cat => (
+                          <button
+                            key={cat.id}
+                            type="button"
+                            onClick={() => {
+                              setFormData({ ...formData, category: cat.id });
+                              setShowAdvanced(false);
+                            }}
+                            className={cn(
+                              "flex flex-col items-center justify-center p-3 rounded-2xl border transition-all gap-1.5",
+                              formData.category === cat.id 
+                                ? "bg-white border-indigo-600 shadow-md ring-2 ring-indigo-50 ring-inset" 
+                                : "bg-slate-50 border-transparent hover:bg-white hover:border-slate-200"
+                            )}
+                          >
+                            <div className={cn("w-8 h-8 rounded-lg flex items-center justify-center", cat.color)}>
+                              <cat.icon className="w-4 h-4" />
+                            </div>
+                            <span className={cn("text-[9px] font-black uppercase tracking-tighter", formData.category === cat.id ? "text-indigo-600" : "text-slate-500")}>{cat.label}</span>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Premium / Cost</label>
+                  <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Cost / Fee</label>
                   <input
                     type="number" value={formData.amount || ""} onChange={(e) => setFormData({...formData, amount: Number(e.target.value)})}
                     placeholder="₹ 0.00"
@@ -867,7 +955,7 @@ export const EntityManagementModal = ({ type, onClose }: { type: string; onClose
                 </div>
               </div>
               <div>
-                <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Policy / Warranty No.</label>
+                <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Membership ID / Reference</label>
                 <input
                   type="text" value={formData.policyNo || ""} onChange={(e) => setFormData({...formData, policyNo: e.target.value})}
                   placeholder="ID-XXXXXXXX"
@@ -879,86 +967,132 @@ export const EntityManagementModal = ({ type, onClose }: { type: string; onClose
 
           {(type === "recurring" || type === "subscription") && (
             <div className="space-y-4">
-              <div>
-                <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Category</label>
-                <select
-                  value={formData.category || ""}
-                  onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-                  className="w-full bg-slate-50 border border-slate-100 rounded-xl px-4 py-3 text-sm font-bold text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 transition-all"
-                >
-                  <option value="">Select Type</option>
-                  <option value="Electricity">Electricity</option>
-                  <option value="Water">Water</option>
-                  <option value="Gas">Gas</option>
-                  <option value="Internet">Internet</option>
-                  <option value="Mobile">Mobile</option>
-                  <option value="DTH">DTH / Cable</option>
-                  <option value="Rent">Rent</option>
-                  <option value="Maintenance">Maintenance</option>
-                  <option value="Gym">Gym</option>
-                  <option value="Milk">Milk</option>
-                  <option value="Newspaper">Newspaper</option>
-                  <option value="Other">Other</option>
-                </select>
-              </div>
+              {type === 'subscription' ? (
+                <div>
+                  <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-3">Subscription Type</label>
+                  <div className="flex gap-3">
+                    {[
+                      { id: 'App', icon: Play, label: 'App' },
+                      { id: 'Game', icon: Gamepad2, label: 'Game' },
+                      { id: 'Service', icon: LayoutGrid, label: 'Service' }
+                    ].map(t => (
+                      <button
+                        key={t.id}
+                        type="button"
+                        onClick={() => setFormData({ ...formData, subType: t.id })}
+                        className={cn(
+                          "flex-1 py-3 rounded-xl border text-xs font-bold transition-all flex items-center justify-center gap-2",
+                          formData.subType === t.id 
+                            ? "bg-indigo-600 border-indigo-600 text-white shadow-lg shadow-indigo-100" 
+                            : "bg-white border-slate-100 text-slate-500 hover:border-indigo-200"
+                        )}
+                      >
+                        <t.icon className="w-3.5 h-3.5" />
+                        {t.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                <div>
+                  <div className="flex items-center justify-between mb-3 px-1">
+                    <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider">Category</label>
+                    <button 
+                      type="button" 
+                      onClick={() => setShowAdvanced(!showAdvanced)} // Reusing showAdvanced for grid toggle or just state
+                      className="text-[9px] font-black text-indigo-600 uppercase tracking-tighter hover:underline"
+                    >
+                      {formData.category && !showAdvanced ? "Change Category" : "Use Templates"}
+                    </button>
+                  </div>
 
-              {/* Common Configuration Fields */}
-              <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100 space-y-4">
-                <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Configuration Details</p>
-                {(() => {
-                  const cat = formData.category?.toLowerCase() || formData.name?.toLowerCase();
-                  const commonFields: Record<string, string[]> = {
-                    electricity: ["Consumer Number", "Meter Number", "Electricity Board"],
-                    water: ["Connection ID", "Consumer Number", "Service Station"],
-                    gas: ["Consumer ID", "LPG ID", "Distributor Name"],
-                    internet: ["User ID", "Customer ID", "Service Provider"],
-                    mobile: ["Mobile Number", "SIM Number", "Network Operator"],
-                    dth: ["VC Number", "Subscriber ID", "DTH Operator"],
-                    rent: ["Owner Name", "Bank Account No.", "Owner PAN (Tax)"],
-                    maintenance: ["Flat / Door No.", "Society Name", "Maintenance Code"],
-                    gym: ["Membership ID", "Trainer Name", "Gym Branch"],
-                    milk: ["Customer ID", "Daily Qty (Litres)", "Vendor Name"],
-                    newspaper: ["Subscriber ID", "Vendor Name", "Paper Type"],
-                    netflix: ["Profile Name", "Login Email", "Subscription Plan"],
-                    spotify: ["Profile Name", "Email ID", "Plan Type"],
-                  };
-                  
-                  let fields = ["Provider / ID", "Reference Details"];
-                  for (const key in commonFields) {
-                    if (cat.includes(key)) {
-                      fields = commonFields[key];
-                      break;
-                    }
-                  }
-
-                  return (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      {fields.map(field => (
-                        <div key={field}>
-                          <label className="block text-[8px] font-black text-slate-400 uppercase tracking-tighter mb-1">{field}</label>
-                          <input
-                            type="text"
-                            value={formData.configDetails?.[field] || ""}
-                            onChange={(e) => setFormData({
-                              ...formData,
-                              configDetails: {
-                                ...(formData.configDetails || {}),
-                                [field]: e.target.value
-                              }
-                            })}
-                            className="w-full text-xs font-bold bg-white px-3 py-2 rounded-lg border border-slate-100 focus:ring-2 focus:ring-indigo-600 outline-none shadow-sm"
-                            placeholder="Enter detail..."
-                          />
-                        </div>
-                      ))}
+                  {formData.category && !showAdvanced ? (
+                    <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100 flex items-center gap-4">
+                      <div className="w-12 h-12 rounded-xl bg-white border border-slate-100 flex items-center justify-center text-indigo-600 shadow-sm">
+                        {getCategoryIcon(formData.category, formData.name)}
+                      </div>
+                      <div>
+                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1">Selected Category</p>
+                        <p className="text-sm font-bold text-slate-800">{formData.category}</p>
+                      </div>
                     </div>
-                  );
-                })()}
-              </div>
+                  ) : (
+                    <div className="space-y-3">
+                      {!showAdvanced ? (
+                        <input
+                          type="text"
+                          value={formData.category || ""}
+                          onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+                          placeholder="e.g. Broadband, Groceries, Personal"
+                          className="w-full text-sm font-semibold bg-slate-50 px-4 py-3 rounded-xl border-0 focus:ring-2 focus:ring-indigo-600 outline-none"
+                        />
+                      ) : (
+                        <div className="grid grid-cols-3 gap-2">
+                          {[
+                            { id: 'Electricity', icon: Zap, color: 'text-amber-500 bg-amber-50' },
+                            { id: 'Water', icon: Droplets, color: 'text-blue-500 bg-blue-50' },
+                            { id: 'Gas', icon: Flame, color: 'text-orange-500 bg-orange-50' },
+                            { id: 'Broadband', icon: Wifi, color: 'text-indigo-500 bg-indigo-50' },
+                            { id: 'Mobile', icon: Smartphone, color: 'text-rose-500 bg-rose-50' },
+                            { id: 'Data Pack', icon: Repeat, color: 'text-teal-500 bg-teal-50' },
+                            { id: 'Rent', icon: Home, color: 'text-emerald-500 bg-emerald-50' },
+                            { id: 'Maintenance', icon: Wrench, color: 'text-slate-500 bg-slate-50' },
+                            { id: 'Milk / Dairy', icon: Milk, color: 'text-sky-400 bg-sky-50' },
+                            { id: 'Other', icon: LayoutGrid, color: 'text-slate-400 bg-slate-50' },
+                          ].map(cat => (
+                            <button
+                              key={cat.id}
+                              type="button"
+                              onClick={() => {
+                                setFormData({ ...formData, category: cat.id });
+                                setShowAdvanced(false);
+                              }}
+                              className={cn(
+                                "flex flex-col items-center justify-center p-3 rounded-2xl border transition-all gap-1.5",
+                                formData.category === cat.id 
+                                  ? "bg-white border-indigo-600 shadow-md ring-2 ring-indigo-50 ring-inset" 
+                                  : "bg-slate-50 border-transparent hover:bg-white hover:border-slate-200"
+                              )}
+                            >
+                              <div className={cn("w-8 h-8 rounded-lg flex items-center justify-center", cat.color)}>
+                                <cat.icon className="w-4 h-4" />
+                              </div>
+                              <span className={cn("text-[9px] font-black uppercase tracking-tighter truncate w-full px-1", formData.category === cat.id ? "text-indigo-600" : "text-slate-500")}>{cat.id}</span>
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {type === 'recurring' && (formData.category === 'Mobile' || formData.category?.includes('Mobile')) && (
+                <div className="bg-slate-50 p-3 rounded-2xl border border-slate-100 flex items-center justify-between">
+                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider ml-1">Plan Type</span>
+                  <div className="flex bg-white rounded-xl p-1 border border-slate-100 shadow-sm">
+                    {['Prepaid', 'Postpaid'].map(pt => (
+                      <button
+                        key={pt}
+                        type="button"
+                        onClick={() => setFormData({ ...formData, subType: pt })}
+                        className={cn(
+                          "px-4 py-1.5 rounded-lg text-[10px] font-black transition-all uppercase tracking-tighter",
+                          formData.subType === pt 
+                            ? "bg-indigo-600 text-white shadow-md shadow-indigo-100" 
+                            : "text-slate-400 hover:text-slate-600"
+                        )}
+                      >
+                        {pt}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Amount (Approx)</label>
+                  <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Cost (₹)</label>
                   <input
                     type="number" value={formData.amount || ""} onChange={(e) => setFormData({...formData, amount: Number(e.target.value)})}
                     placeholder="₹ 0.00"
@@ -966,13 +1100,92 @@ export const EntityManagementModal = ({ type, onClose }: { type: string; onClose
                   />
                 </div>
                 <div>
-                  <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Next Due Date</label>
-                  <input
-                    type="date" value={formData.nextDue || ""} onChange={(e) => setFormData({...formData, nextDue: e.target.value})}
-                    className="w-full text-sm font-semibold bg-slate-50 px-3 py-2.5 rounded-xl border-0 focus:ring-2 focus:ring-indigo-600 outline-none"
-                  />
+                  <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Billing Cycle</label>
+                  <select 
+                    value={formData.recurringDuration || 'Monthly'} 
+                    onChange={(e) => setFormData({...formData, recurringDuration: e.target.value})}
+                    className="w-full text-sm font-semibold bg-slate-50 px-3 py-2.5 rounded-xl border-0 focus:ring-2 focus:ring-indigo-600 outline-none appearance-none"
+                  >
+                    <option value="Weekly">Weekly</option>
+                    <option value="Monthly">Monthly</option>
+                    <option value="Quarterly">Quarterly</option>
+                    <option value="Yearly">Yearly</option>
+                  </select>
                 </div>
               </div>
+
+              <div>
+                <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Start Date / Next Due</label>
+                <input
+                  type="date" value={formData.nextDue || formData.startDate || ""} 
+                  onChange={(e) => setFormData({...formData, nextDue: e.target.value, startDate: e.target.value})}
+                  className="w-full text-sm font-semibold bg-slate-50 px-3 py-2.5 rounded-xl border-0 focus:ring-2 focus:ring-indigo-600 outline-none"
+                />
+              </div>
+
+              {/* Advanced Configuration Section */}
+              {type === 'recurring' && (
+                <div className="pt-2">
+                  <button 
+                    type="button"
+                    onClick={() => setShowAdvanced(!showAdvanced)}
+                    className="w-full flex items-center justify-between p-4 bg-slate-50 rounded-2xl border border-slate-100 group hover:bg-white hover:border-slate-200 transition-all"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 rounded-lg bg-white border border-slate-100 flex items-center justify-center text-slate-400 group-hover:text-indigo-600 transition-colors">
+                        <Wrench className="w-4 h-4" />
+                      </div>
+                      <span className="text-xs font-bold text-slate-600">Advanced Configuration</span>
+                    </div>
+                    {showAdvanced ? <ChevronUp className="w-4 h-4 text-slate-400" /> : <ChevronDown className="w-4 h-4 text-slate-400" />}
+                  </button>
+
+                  {showAdvanced && (
+                    <div className="mt-3 bg-white p-4 rounded-2xl border border-slate-100 space-y-4 animate-in slide-in-from-top-2 duration-300">
+                      {(() => {
+                        const cat = (formData.category || formData.name || "").toLowerCase();
+                        const commonFields: Record<string, string[]> = {
+                          electricity: ["Consumer Number", "Meter Number", "Electricity Board"],
+                          water: ["Connection ID", "Consumer Number", "Service Station"],
+                          gas: ["Consumer ID", "LPG ID", "Distributor Name"],
+                          internet: ["User ID", "Customer ID", "Service Provider"],
+                          mobile: ["Mobile Number", "Operator / Circle"],
+                          rent: ["Owner Name", "Bank Account No.", "Owner PAN (Tax)"],
+                          maintenance: ["Flat / Door No.", "Society Name", "Maintenance Code"],
+                        };
+                        
+                        let fields = ["Provider / ID", "Reference Details"];
+                        for (const key in commonFields) {
+                          if (cat.includes(key)) { fields = commonFields[key]; break; }
+                        }
+
+                        return (
+                          <div className="grid grid-cols-2 gap-4">
+                            {fields.map(field => (
+                              <div key={field}>
+                                <label className="block text-[8px] font-black text-slate-400 uppercase tracking-tighter mb-1">{field}</label>
+                                <input
+                                  type="text"
+                                  value={formData.configDetails?.[field] || ""}
+                                  onChange={(e) => setFormData({
+                                    ...formData,
+                                    configDetails: {
+                                      ...(formData.configDetails || {}),
+                                      [field]: e.target.value
+                                    }
+                                  })}
+                                  className="w-full text-xs font-bold bg-slate-50 px-3 py-2 rounded-lg border-0 focus:ring-2 focus:ring-indigo-600 outline-none"
+                                  placeholder="—"
+                                />
+                              </div>
+                            ))}
+                          </div>
+                        );
+                      })()}
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           )}
 

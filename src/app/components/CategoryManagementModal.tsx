@@ -16,9 +16,8 @@ import { toast } from "sonner";
 // ─── helpers ────────────────────────────────────────────────────────────────
 const ICONS = Object.keys(CATEGORY_ICON_MAP);
 const PALETTE = [
-  "#ef4444","#f97316","#f59e0b","#eab308","#84cc16","#22c55e",
-  "#10b981","#14b8a6","#06b6d4","#0ea5e9","#3b82f6","#6366f1",
-  "#8b5cf6","#a855f7","#d946ef","#ec4899","#f43f5e","#64748b",
+  "#ef4444","#f97316","#f59e0b","#10b981","#06b6d4","#3b82f6",
+  "#6366f1","#8b5cf6","#d946ef","#ec4899","#64748b","#334155"
 ];
 const CLASSIFICATIONS: NeedWantType[] = ["need","want","investment","discretionary"];
 const CLSF_LABEL: Record<NeedWantType, string> = { need:"Need", want:"Want", investment:"Invest", discretionary:"Disc" };
@@ -52,7 +51,9 @@ function CategoryEditForm({ cat, onSave, onCancel, isNew }: EditFormProps) {
   const [showColorPicker, setShowColorPicker] = useState(false);
 
   return (
-    <div className="bg-indigo-50 border border-indigo-200 rounded-2xl p-4 space-y-3 animate-in zoom-in-95 duration-150">
+    <div className="bg-white border border-slate-100 rounded-[2rem] p-6 space-y-6 animate-in zoom-in-95 duration-150 shadow-xl shadow-slate-200/50">
+      <div className="space-y-2">
+        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Basic Identity</p>
       <div className="flex gap-2 items-center">
         {/* Icon button */}
         <div className="relative">
@@ -62,10 +63,11 @@ function CategoryEditForm({ cat, onSave, onCancel, isNew }: EditFormProps) {
             {CATEGORY_ICON_MAP[icon] || "📦"}
           </button>
           {showIconPicker && (
-            <div className="absolute top-12 left-0 z-[200] bg-white border border-slate-200 rounded-2xl p-3 shadow-2xl grid grid-cols-6 gap-1.5 w-52">
+            <div className="absolute top-12 left-0 z-[200] bg-white border border-slate-200 rounded-3xl p-5 shadow-2xl grid grid-cols-5 gap-3 w-64 animate-in zoom-in-95 duration-200">
+              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1 col-span-5 px-1">Select Icon</p>
               {ICONS.map(k => (
                 <button key={k} type="button" onClick={() => { setIcon(k); setShowIconPicker(false); }}
-                  className={cn("w-8 h-8 rounded-lg flex items-center justify-center text-base hover:bg-slate-100 transition-all", icon === k && "bg-indigo-100 ring-2 ring-indigo-400")}>
+                  className={cn("w-9 h-9 rounded-xl flex items-center justify-center text-lg hover:bg-slate-50 transition-all border border-transparent", icon === k && "bg-indigo-50 border-indigo-200 text-indigo-600 scale-110")}>
                   {CATEGORY_ICON_MAP[k]}
                 </button>
               ))}
@@ -79,12 +81,13 @@ function CategoryEditForm({ cat, onSave, onCancel, isNew }: EditFormProps) {
             className="w-10 h-10 rounded-xl border-2 border-white shadow-md hover:scale-110 transition-transform"
             style={{ background: color }} />
           {showColorPicker && (
-            <div className="absolute top-12 left-0 z-[200] bg-white border border-slate-200 rounded-2xl p-3 shadow-2xl">
-              <div className="grid grid-cols-6 gap-2">
+            <div className="absolute top-12 left-0 z-[200] bg-white border border-slate-200 rounded-3xl p-5 shadow-2xl w-64 animate-in zoom-in-95 duration-200">
+              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4 px-1">Select Accent Color</p>
+              <div className="grid grid-cols-4 gap-4">
                 {PALETTE.map(c => (
                   <button key={c} type="button" onClick={() => { setColor(c); setShowColorPicker(false); }}
-                    className="w-7 h-7 rounded-full hover:scale-125 transition-transform ring-offset-1"
-                    style={{ background: c, outline: color === c ? `3px solid ${c}` : "none" }} />
+                    className="w-8 h-8 rounded-full hover:scale-110 transition-transform ring-offset-2 hover:ring-2 ring-slate-200"
+                    style={{ background: c, outline: color === c ? `4px solid ${c}44` : "none" }} />
                 ))}
               </div>
             </div>
@@ -98,45 +101,54 @@ function CategoryEditForm({ cat, onSave, onCancel, isNew }: EditFormProps) {
           autoFocus
         />
       </div>
+    </div>
 
       {/* Classification */}
-      <div className="flex gap-1.5 flex-wrap">
-        {CLASSIFICATIONS.map(c => (
-          <button key={c} type="button" onClick={() => setCls(c)}
-            className={cn("text-[9px] font-black uppercase px-2.5 py-1 rounded-full tracking-wider border transition-all",
-              cls === c
-                ? cn(CLASSIFICATION_COLORS[c].bg, CLASSIFICATION_COLORS[c].text, CLASSIFICATION_COLORS[c].border)
-                : "bg-slate-100 text-slate-500 border-transparent hover:bg-slate-200"
-            )}>
-            {CLSF_LABEL[c]}
-          </button>
-        ))}
+      <div className="space-y-2">
+        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Classification</p>
+        <div className="flex gap-2 flex-wrap">
+          {CLASSIFICATIONS.map(c => (
+            <button key={c} type="button" onClick={() => setCls(c)}
+              className={cn("text-[9px] font-black uppercase px-4 py-2 rounded-full tracking-widest border transition-all duration-300",
+                cls === c
+                  ? cn(CLASSIFICATION_COLORS[c].bg, CLASSIFICATION_COLORS[c].text, CLASSIFICATION_COLORS[c].border, "shadow-md scale-105")
+                  : "bg-slate-50 text-slate-400 border-slate-100 hover:bg-slate-100"
+              )}>
+              {CLSF_LABEL[c]}
+            </button>
+          ))}
+        </div>
       </div>
 
       {/* Limits */}
-      <div className="grid grid-cols-2 gap-3">
-        <div>
-          <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Budget Limit</label>
-          <input type="number" value={budgetLimit || ""} onChange={e => setBudgetLimit(Number(e.target.value))}
-            className="w-full text-xs font-bold bg-white border border-indigo-200 px-3 py-2 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none" />
-        </div>
-        <div>
-          <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Monthly Max</label>
-          <input type="number" value={monthlyLimit || ""} onChange={e => setMonthlyLimit(Number(e.target.value))}
-            className="w-full text-xs font-bold bg-white border border-indigo-200 px-3 py-2 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none" />
+      <div className="space-y-2">
+        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Financial Limits</p>
+        <div className="grid grid-cols-2 gap-4">
+          <div className="relative group">
+            <input type="number" value={budgetLimit || ""} onChange={e => setBudgetLimit(Number(e.target.value))}
+              placeholder="0"
+              className="w-full text-xs font-black bg-slate-50 border border-slate-100 px-4 py-3 rounded-2xl focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all" />
+            <label className="absolute -top-2 left-3 bg-white px-2 text-[8px] font-black text-slate-400 uppercase tracking-widest">Budget</label>
+          </div>
+          <div className="relative group">
+            <input type="number" value={monthlyLimit || ""} onChange={e => setMonthlyLimit(Number(e.target.value))}
+              placeholder="0"
+              className="w-full text-xs font-black bg-slate-50 border border-slate-100 px-4 py-3 rounded-2xl focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all" />
+            <label className="absolute -top-2 left-3 bg-white px-2 text-[8px] font-black text-slate-400 uppercase tracking-widest">Monthly</label>
+          </div>
         </div>
       </div>
 
-      <div className="flex gap-2 pt-1">
+      <div className="flex gap-3 pt-2">
         <button type="button" onClick={onCancel}
-          className="flex-1 py-2 border border-slate-200 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-50">
+          className="flex-1 py-4 border border-slate-100 rounded-2xl text-[10px] font-black text-slate-400 hover:bg-slate-50 uppercase tracking-[0.2em] transition-all">
           Cancel
         </button>
         <button type="button"
           disabled={!name.trim()}
           onClick={() => onSave({ name: name.trim(), icon, color, classification: cls, budgetLimit, monthlyLimit })}
-          className="flex-1 py-2 bg-indigo-600 text-white rounded-xl text-xs font-bold hover:bg-indigo-700 disabled:opacity-40">
-          {isNew ? "Create" : "Save"}
+          className="flex-[2] py-4 bg-slate-900 text-white rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] hover:bg-slate-800 disabled:opacity-30 shadow-lg shadow-slate-200 transition-all active:scale-[0.98]">
+          {isNew ? "Create Category" : "Save Changes"}
         </button>
       </div>
     </div>
@@ -148,17 +160,29 @@ function SubCatEditor({ cat, onClose }: { cat: CategoryDef; onClose: () => void 
   const { categories, updateCategory } = useFinance();
   const [children, setChildren] = useState<SubCategory[]>(cat.children || []);
   const [input, setInput] = useState("");
+  const [inputIcon, setInputIcon] = useState("others");
+  const [showInputIconPicker, setShowInputIconPicker] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
   const [editVal, setEditVal] = useState("");
-  const [expandingId, setExpandingId] = useState<string | null>(null);
+  const [editIcon, setEditIcon] = useState("");
+  const [showEditIconPicker, setShowEditIconPicker] = useState(false);
 
   const slugify = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_|_$/g, "");
+  
+  const guessIcon = (name: string, fallback: string) => {
+    const n = name.toLowerCase();
+    if (n.includes("fruit")) return "snacks"; // Better than popcorn if we had an apple icon, but let's see
+    if (n.includes("drink") || n.includes("beverage") || n.includes("juice")) return "snacks"; 
+    if (n.includes("bakery") || n.includes("cake") || n.includes("sweet")) return "snacks";
+    return fallback;
+  };
 
   const add = () => {
     const v = input.trim();
     if (v && !children.some(c => c.name === v)) { 
-      setChildren(prev => [...prev, { id: slugify(v), name: v, sortOrder: prev.length }]); 
+      setChildren(prev => [...prev, { id: slugify(v), name: v, icon: inputIcon, sortOrder: prev.length }]); 
       setInput(""); 
+      setInputIcon("others");
     }
   };
 
@@ -174,103 +198,31 @@ function SubCatEditor({ cat, onClose }: { cat: CategoryDef; onClose: () => void 
     setChildren(newChildren);
   };
 
-  const startEdit = (sc: SubCategory) => { setEditId(sc.id); setEditVal(sc.name); };
+  const startEdit = (sc: SubCategory) => { 
+    setEditId(sc.id); 
+    setEditVal(sc.name); 
+    setEditIcon(sc.icon || cat.icon || "others");
+  };
   const saveEdit = () => {
     if (editVal.trim() && editId !== null) {
-      setChildren(prev => prev.map(x => x.id === editId ? { ...x, name: editVal.trim() } : x));
+      setChildren(prev => prev.map(x => x.id === editId ? { ...x, name: editVal.trim(), icon: editIcon } : x));
     }
-    setEditId(null); setEditVal("");
-  };
-
-  const [editLeafId, setEditLeafId] = useState<string | null>(null);
-  const [editLeafVal, setEditLeafVal] = useState("");
-  const startEditLeaf = (ssc: SubCategory) => { setEditLeafId(ssc.id); setEditLeafVal(ssc.name); };
-  const saveEditLeaf = (parentId: string) => {
-    if (editLeafVal.trim() && editLeafId) {
-      setChildren(prev => prev.map(p => p.id === parentId ? {
-        ...p, children: p.children?.map(c => c.id === editLeafId ? { ...c, name: editLeafVal.trim() } : c)
-      } : p));
-    }
-    setEditLeafId(null); setEditLeafVal("");
-  };
-
-  const moveLeaf = (parentId: string, leafId: string, dir: 'up' | 'down') => {
-    setChildren(prev => prev.map(p => {
-      if (p.id !== parentId || !p.children) return p;
-      const idx = p.children.findIndex(c => c.id === leafId);
-      const newIdx = dir === 'up' ? idx - 1 : idx + 1;
-      if (newIdx < 0 || newIdx >= p.children.length) return p;
-      const newC = [...p.children];
-      [newC[idx], newC[newIdx]] = [newC[newIdx], newC[idx]];
-      return { ...p, children: newC };
-    }));
-  };
-
-  const [movingLeafId, setMovingLeafId] = useState<{ parentId: string, leafId: string } | null>(null);
-  const groupLeaf = (newParentId: string) => {
-    if (!movingLeafId) return;
-    const { parentId, leafId } = movingLeafId;
-    const sourceParent = children.find(c => c.id === parentId);
-    const leaf = sourceParent?.children?.find(c => c.id === leafId);
-    if (!leaf) return;
-
-    setChildren(prev => prev.map(p => {
-      if (p.id === parentId) return { ...p, children: p.children?.filter(c => c.id !== leafId) };
-      if (p.id === newParentId) return { ...p, children: [...(p.children || []), leaf] };
-      return p;
-    }));
-    setMovingLeafId(null);
-    toast.success("Regrouped!");
-  };
-
-  const addNested = (parentId: string, name: string) => {
-    const v = name.trim();
-    if (!v) return;
-    setChildren(prev => prev.map(p => {
-      if (p.id === parentId) {
-        const existing = p.children || [];
-        if (existing.some(e => e.name === v)) return p;
-        return { ...p, children: [...existing, { id: slugify(v), name: v, sortOrder: existing.length }] };
-      }
-      return p;
-    }));
-  };
-
-  const removeNested = (parentId: string, childId: string) => {
-    setChildren(prev => prev.map(p => {
-      if (p.id === parentId) {
-        return { ...p, children: p.children?.filter(c => c.id !== childId) };
-      }
-      return p;
-    }));
+    setEditId(null); setEditVal(""); setEditIcon(""); setShowEditIconPicker(false);
   };
 
   const save = () => {
-    const flat: string[] = [];
-    children.forEach(c => {
-      flat.push(c.name);
-      if (c.children) c.children.forEach(cc => flat.push(cc.name));
-    });
-
     updateCategory(cat.id, { 
       children,
-      subcategories: Array.from(new Set(flat))
+      subcategories: children.map(c => c.name)
     });
-    toast.success("Hierarchy Persisted");
+    toast.success("Subcategories Updated");
     onClose();
   };
 
-  // Immediate save on move/edit to avoid 'Deploy' friction
   useEffect(() => {
-    const flat: string[] = [];
-    children.forEach(c => {
-      flat.push(c.name);
-      if (c.children) c.children.forEach(cc => flat.push(cc.name));
-    });
-
     updateCategory(cat.id, { 
       children,
-      subcategories: Array.from(new Set(flat))
+      subcategories: children.map(c => c.name)
     });
   }, [children]);
 
@@ -279,120 +231,115 @@ function SubCatEditor({ cat, onClose }: { cat: CategoryDef; onClose: () => void 
       <div className="flex items-center justify-between px-2">
         <div className="flex items-center gap-2">
           <Layers className="w-3 h-3 text-indigo-500" />
-          <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Hierarchy Engine</p>
+          <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Category Structure</p>
         </div>
         <button onClick={onClose} className="text-[10px] font-black text-indigo-600 hover:text-indigo-700 uppercase tracking-widest px-3 py-1.5 bg-indigo-50 rounded-full transition-colors">
           Close Editor
         </button>
       </div>
 
-      {/* Modern Input Group */}
-      <div className="relative group">
-        <input 
-          value={input} 
-          onChange={e => setInput(e.target.value)}
-          onKeyDown={(e: React.KeyboardEvent) => { if (e.key === "Enter") { e.preventDefault(); add(); } }}
-          placeholder="What's the main group? (e.g. Dairy)"
-          className="w-full text-xs font-bold bg-white border border-slate-100 shadow-sm px-5 py-4 rounded-[1.5rem] focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none placeholder:text-slate-300 transition-all group-hover:shadow-md"
-        />
-        <button 
-          onClick={add} 
-          className="absolute right-2 top-2 bottom-2 px-6 bg-indigo-600 text-white rounded-[1rem] hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-100 active:scale-95 flex items-center justify-center gap-2"
-        >
-          <Plus className="w-4 h-4" />
-          <span className="text-[10px] font-black uppercase">Add Group</span>
-        </button>
+      {/* Modern Input Group with Icon Picker */}
+      <div className="flex gap-3">
+        <div className="relative">
+          <button onClick={() => setShowInputIconPicker(!showInputIconPicker)}
+            className="h-[52px] w-[52px] bg-white border border-slate-100 rounded-2xl flex items-center justify-center text-xl shadow-sm hover:border-indigo-300 transition-all">
+            {CATEGORY_ICON_MAP[inputIcon] || "📦"}
+          </button>
+          {showInputIconPicker && (
+            <div className="absolute top-14 left-0 z-[210] bg-white border border-slate-200 rounded-[2rem] p-4 shadow-2xl grid grid-cols-5 gap-2 w-64 animate-in zoom-in-95 duration-200">
+              <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1 col-span-5 px-1 text-center">Subcategory Icon</p>
+              {ICONS.map(k => (
+                <button key={k} onClick={() => { setInputIcon(k); setShowInputIconPicker(false); }}
+                  className={cn("w-9 h-9 rounded-xl flex items-center justify-center text-lg hover:bg-slate-50 transition-all", inputIcon === k && "bg-indigo-50 text-indigo-600 ring-2 ring-indigo-100")}>
+                  {CATEGORY_ICON_MAP[k]}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+        <div className="relative group flex-1">
+          <input 
+            value={input} 
+            onChange={e => setInput(e.target.value)}
+            onKeyDown={(e: React.KeyboardEvent) => { if (e.key === "Enter") { e.preventDefault(); add(); } }}
+            placeholder="New subgroup name..."
+            className="w-full text-xs font-bold bg-white border border-slate-100 shadow-sm px-5 h-[52px] rounded-2xl focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none placeholder:text-slate-300 transition-all group-hover:shadow-md"
+          />
+          <button 
+            onClick={add} 
+            className="absolute right-1.5 top-1.5 bottom-1.5 px-4 bg-slate-900 text-white rounded-xl hover:bg-slate-800 transition-all active:scale-95 flex items-center justify-center gap-2"
+          >
+            <Plus className="w-3.5 h-3.5" />
+            <span className="text-[9px] font-black uppercase tracking-widest">Add</span>
+          </button>
+        </div>
       </div>
 
-      {/* Hierarchy List */}
-      <div className="flex flex-col gap-3 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
+      {/* Hierarchy Grid (3x3 Style) */}
+      <div className="grid grid-cols-3 gap-3 max-h-[400px] overflow-y-auto pr-1 custom-scrollbar pb-2">
         {children.length === 0 ? (
-          <div className="py-12 text-center bg-slate-50/50 rounded-3xl border border-dashed border-slate-200">
+          <div className="col-span-3 py-12 text-center bg-slate-50/50 rounded-3xl border border-dashed border-slate-200">
              <Layers className="w-8 h-8 mx-auto mb-3 text-slate-200" />
-             <p className="text-[10px] font-bold text-slate-400 uppercase">Tree is currently empty</p>
+             <p className="text-[10px] font-bold text-slate-400 uppercase">No subcategories yet</p>
           </div>
         ) : children.map((sc: SubCategory) => (
-          <div key={sc.id} className="space-y-2">
-            <div className="flex items-center justify-between bg-white border border-slate-100 rounded-[1.5rem] px-5 py-4 group shadow-sm hover:shadow-md transition-all duration-300 hover:border-indigo-100">
-              <div className="flex items-center gap-4 flex-1">
-                <button 
-                  onClick={() => setExpandingId(expandingId === sc.id ? null : sc.id)} 
-                  className={cn("p-1.5 rounded-xl transition-all", expandingId === sc.id ? "bg-indigo-50 text-indigo-600" : "bg-slate-50 text-slate-400")}
-                >
-                   <ChevronRight className={cn("w-4 h-4 transition-transform duration-300", expandingId === sc.id && "rotate-90")} />
-                </button>
-                {editId === sc.id ? (
-                  <input autoFocus value={editVal} onChange={e => setEditVal(e.target.value)}
-                    onKeyDown={(e: React.KeyboardEvent) => { if (e.key === "Enter") saveEdit(); if (e.key === "Escape") setEditId(null); }}
-                    onBlur={saveEdit}
-                    className="text-xs font-black bg-indigo-50 border-0 p-0 outline-none text-indigo-600 w-full" />
-                ) : (
-                  <div>
-                    <span className="text-[11px] font-black text-slate-800 uppercase tracking-tight">{sc.name}</span>
-                    <p className="text-[8px] font-bold text-slate-400 uppercase mt-0.5">{sc.children?.length || 0} nested items</p>
-                  </div>
-                )}
+          <div key={sc.id} 
+            onClick={() => { if (editId !== sc.id) startEdit(sc); }}
+            className={cn(
+              "relative group flex flex-col items-center justify-center p-3 rounded-[2rem] border transition-all duration-300 h-32 cursor-pointer",
+              editId === sc.id ? "bg-indigo-50 border-indigo-200 shadow-inner" : "bg-white border-slate-100 hover:border-transparent hover:shadow-xl hover:shadow-slate-200/50 hover:-translate-y-1"
+            )}>
+            {/* Icon Wrapper */}
+            <div className="relative">
+              <div 
+                onClick={() => { if (editId === sc.id) setShowEditIconPicker(!showEditIconPicker); }}
+                className={cn("w-12 h-12 rounded-2xl flex items-center justify-center text-2xl mb-2 transition-all duration-500", 
+                  editId === sc.id ? "bg-white shadow-md cursor-pointer hover:scale-110" : "bg-slate-50 text-slate-400 group-hover:scale-110 group-hover:rotate-3")}
+              >
+                {CATEGORY_ICON_MAP[editId === sc.id ? editIcon : (sc.icon || cat.icon || 'others')]}
               </div>
-              <div className="flex items-center gap-1.5 transition-all">
-                <button onClick={() => move(sc.id, 'up')} className="p-1 bg-slate-50 hover:bg-indigo-50 rounded-lg text-slate-400 hover:text-indigo-600 border border-slate-100 transition-colors"><ChevronRight className="w-3.5 h-3.5 -rotate-90" /></button>
-                <button onClick={() => move(sc.id, 'down')} className="p-1 bg-slate-50 hover:bg-indigo-50 rounded-lg text-slate-400 hover:text-indigo-600 border border-slate-100 transition-colors"><ChevronRight className="w-3.5 h-3.5 rotate-90" /></button>
-                <button onClick={() => startEdit(sc)} className="p-1.5 bg-slate-50 hover:bg-indigo-50 text-slate-400 hover:text-indigo-600 rounded-xl border border-slate-100 transition-colors"><Edit2 className="w-3.5 h-3.5" /></button>
-                <button onClick={() => remove(sc.id)} className="p-1.5 bg-slate-50 hover:bg-red-50 text-slate-400 hover:text-red-500 rounded-xl border border-slate-100 transition-colors"><Trash2 className="w-3.5 h-3.5" /></button>
-              </div>
+              
+              {editId === sc.id && showEditIconPicker && (
+                <div className="absolute top-0 left-1/2 -translate-x-1/2 z-[220] bg-white border border-slate-200 rounded-[2rem] p-3 shadow-2xl grid grid-cols-4 gap-1.5 w-48 animate-in zoom-in-95 duration-200">
+                  {ICONS.slice(0, 24).map(k => (
+                    <button key={k} onClick={(e) => { e.stopPropagation(); setEditIcon(k); setShowEditIconPicker(false); }}
+                      className={cn("w-8 h-8 rounded-lg flex items-center justify-center text-base hover:bg-slate-50", editIcon === k && "bg-indigo-50 text-indigo-600")}>
+                      {CATEGORY_ICON_MAP[k]}
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
 
-            {expandingId === sc.id && (
-              <div className="ml-7 space-y-2 pl-5 border-l-2 border-indigo-50 animate-in slide-in-from-left-6 duration-300">
-                {sc.children?.map((ssc: SubCategory) => (
-                  <div key={ssc.id} className="flex flex-col gap-1">
-                    <div className="flex items-center justify-between bg-white border border-slate-50 rounded-2xl px-4 py-3 group/leaf hover:border-indigo-100 transition-all shadow-sm">
-                      {editLeafId === ssc.id ? (
-                        <input autoFocus value={editLeafVal} onChange={e => setEditLeafVal(e.target.value)}
-                          onKeyDown={(e) => { if (e.key === "Enter") saveEditLeaf(sc.id); if (e.key === "Escape") setEditLeafId(null); }}
-                          onBlur={() => saveEditLeaf(sc.id)}
-                          className="text-[10px] font-black bg-indigo-50 border-0 p-0 outline-none text-indigo-600 w-full" />
-                      ) : (
-                        <span className="text-[10px] font-black text-slate-600">{ssc.name}</span>
-                      )}
-                      
-                      <div className="flex items-center gap-1 transition-all">
-                        <button onClick={() => moveLeaf(sc.id, ssc.id, 'up')} className="p-1 bg-slate-50 rounded-lg text-slate-400 hover:text-slate-700 border border-slate-100"><ChevronRight className="w-2.5 h-2.5 -rotate-90" /></button>
-                        <button onClick={() => moveLeaf(sc.id, ssc.id, 'down')} className="p-1 bg-slate-50 rounded-lg text-slate-400 hover:text-slate-700 border border-slate-100"><ChevronRight className="w-2.5 h-2.5 rotate-90" /></button>
-                        <button onClick={() => setMovingLeafId({ parentId: sc.id, leafId: ssc.id })} className="p-1 bg-slate-50 rounded-lg text-slate-400 hover:text-blue-500 border border-slate-100"><Move className="w-3 h-3" /></button>
-                        <button onClick={() => startEditLeaf(ssc)} className="p-1 bg-slate-50 rounded-lg text-slate-400 hover:text-indigo-600 border border-slate-100"><Edit2 className="w-3 h-3" /></button>
-                        <button onClick={() => removeNested(sc.id, ssc.id)} className="p-1 bg-slate-50 rounded-lg text-slate-400 hover:text-red-500 border border-slate-100"><X className="w-3 h-3" /></button>
-                      </div>
-                    </div>
-                    {movingLeafId?.leafId === ssc.id && (
-                      <div className="bg-indigo-50 p-2 rounded-xl border border-indigo-100 space-y-2 animate-in zoom-in-95">
-                         <p className="text-[8px] font-black text-indigo-400 uppercase tracking-widest">Regroup to:</p>
-                         <div className="flex flex-wrap gap-1">
-                            {children.filter(p => p.id !== sc.id).map(p => (
-                              <button key={p.id} onClick={() => groupLeaf(p.id)} className="px-2 py-1 bg-white border border-indigo-200 rounded-lg text-[9px] font-bold text-indigo-600 hover:bg-indigo-600 hover:text-white transition-all">
-                                {p.name}
-                              </button>
-                            ))}
-                         </div>
-                         <button onClick={() => setMovingLeafId(null)} className="text-[8px] font-bold text-red-500 uppercase">Cancel</button>
-                      </div>
-                    )}
-                  </div>
-                ))}
-                <div className="relative pt-1">
-                  <input 
-                    placeholder="Add specific detail..."
-                    onKeyDown={(e: React.KeyboardEvent<HTMLInputElement>) => {
-                      if (e.key === "Enter") {
-                        addNested(sc.id, e.currentTarget.value);
-                        e.currentTarget.value = "";
-                      }
-                    }}
-                    className="w-full text-[10px] font-black bg-white border border-dashed border-slate-200 focus:border-indigo-500 px-4 py-3 rounded-2xl focus:ring-0 outline-none placeholder:text-slate-300 transition-colors"
-                  />
-                  <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-1 text-[8px] font-black text-slate-300 uppercase pointer-events-none">
-                     Enter to save
-                  </div>
-                </div>
+            {/* Label / Input */}
+            {editId === sc.id ? (
+              <input autoFocus value={editVal} onChange={e => setEditVal(e.target.value)}
+                onKeyDown={(e) => { if (e.key === "Enter") saveEdit(); if (e.key === "Escape") setEditId(null); }}
+                className="text-[10px] font-black text-center bg-transparent border-b border-indigo-300 outline-none text-indigo-600 w-full px-1" />
+            ) : (
+              <span className="text-[10px] font-black text-slate-700 uppercase tracking-tight text-center leading-[1.1] w-full px-1 break-words line-clamp-2">{sc.name}</span>
+            )}
+
+            {/* Float Controls */}
+            <div className={cn(
+              "absolute top-2 right-2 flex flex-col gap-1 transition-all duration-300",
+              editId === sc.id ? "opacity-100" : "opacity-0 group-hover:opacity-100 translate-x-2 group-hover:translate-x-0"
+            )}>
+               {editId === sc.id ? (
+                 <button onClick={(e) => { e.stopPropagation(); saveEdit(); }} className="p-1.5 bg-green-500 text-white rounded-lg shadow-lg hover:bg-green-600"><Check className="w-2.5 h-2.5" /></button>
+               ) : (
+                 <>
+                   <button onClick={(e) => { e.stopPropagation(); startEdit(sc); }} className="p-1.5 bg-white border border-slate-100 text-slate-400 hover:text-indigo-600 rounded-lg shadow-sm hover:shadow-md transition-all"><Edit2 className="w-2.5 h-2.5" /></button>
+                   <button onClick={(e) => { e.stopPropagation(); remove(sc.id); }} className="p-1.5 bg-white border border-slate-100 text-slate-400 hover:text-red-500 rounded-lg shadow-sm hover:shadow-md transition-all"><Trash2 className="w-2.5 h-2.5" /></button>
+                 </>
+               )}
+            </div>
+
+            {/* Reorder Buttons (Small) */}
+            {!editId && (
+              <div className="absolute bottom-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-all">
+                <button onClick={(e) => { e.stopPropagation(); move(sc.id, 'up'); }} className="p-1 bg-slate-50 text-slate-400 hover:text-slate-800 rounded-md border border-slate-100"><ChevronRight className="w-2 h-2 -rotate-90" /></button>
+                <button onClick={(e) => { e.stopPropagation(); move(sc.id, 'down'); }} className="p-1 bg-slate-50 text-slate-400 hover:text-slate-800 rounded-md border border-slate-100"><ChevronRight className="w-2 h-2 rotate-90" /></button>
               </div>
             )}
           </div>
@@ -402,7 +349,7 @@ function SubCatEditor({ cat, onClose }: { cat: CategoryDef; onClose: () => void 
       <div className="pt-2">
         <button onClick={save} className="w-full py-5 bg-slate-900 text-white rounded-[1.5rem] text-xs font-black uppercase tracking-[0.3em] hover:bg-slate-800 transition-all shadow-2xl shadow-slate-200 active:scale-[0.98] flex items-center justify-center gap-3">
           <Zap className="w-4 h-4 text-amber-400" />
-          Deploy Taxonomy
+          Save Changes
         </button>
       </div>
     </div>
@@ -479,33 +426,33 @@ function CategoryDetailView({ cat, onBack }: { cat: CategoryDef; onBack: () => v
   const toggle = (field: "disabled" | "favorite") =>
     updateCategory(cat.id, { [field]: !cat[field] });
 
-  const totalSpecifics = (cat.children || []).reduce((acc, curr) => acc + (curr.children?.length || 0), 0);
+
 
   return (
     <div className="space-y-6 animate-in slide-in-from-right-8 duration-500 pb-2">
       {/* Immersive Header */}
-      <div className="relative p-6 rounded-[2.5rem] overflow-hidden group/header border border-white shadow-xl shadow-slate-200/30">
-        <div className="absolute inset-0 opacity-10 blur-3xl group-hover:opacity-20 transition-opacity duration-1000" style={{ background: cat.color }} />
-        <div className="relative z-10 flex items-center gap-5">
-           <button onClick={onBack} className="p-2.5 bg-white shadow-sm hover:shadow-md border border-slate-100 rounded-2xl text-slate-400 hover:text-slate-800 transition-all hover:-translate-x-1">
-             <ChevronRight className="w-5 h-5 rotate-180" />
-           </button>
-           <div className="w-16 h-16 rounded-[1.5rem] bg-white flex items-center justify-center text-3xl shadow-lg border border-slate-50 transition-transform duration-500 group-hover/header:scale-105"
+      <div className="relative pt-2 pb-6 flex items-center gap-6 group/header">
+         <button onClick={onBack} className="w-12 h-12 flex items-center justify-center bg-white shadow-sm hover:shadow-md border border-slate-100 rounded-full text-slate-400 hover:text-slate-800 transition-all hover:-translate-x-1 shrink-0">
+           <ChevronRight className="w-5 h-5 rotate-180" />
+         </button>
+         
+         <div className="flex items-center gap-5 flex-1">
+           <div className="w-20 h-20 rounded-full bg-white flex items-center justify-center text-4xl shadow-xl shadow-slate-200/50 border border-slate-50 transition-transform duration-500 group-hover/header:scale-105 shrink-0"
              style={{ color: cat.color }}>
              {CATEGORY_ICON_MAP[cat.icon] || "📦"}
            </div>
-           <div className="flex-1">
-             <h3 className="font-black text-2xl text-slate-800 tracking-tight leading-none mb-1.5">{cat.name}</h3>
+           <div>
+             <h3 className="font-black text-2xl text-slate-800 tracking-tight leading-none mb-2">{cat.name}</h3>
              <div className="flex items-center gap-2">
                 <ClassBadge cls={cat.classification} />
-                <span className="text-[9px] font-black text-slate-300 uppercase tracking-[0.2em]">{cat.children?.length || 0} Main • {totalSpecifics} Specifics</span>
+                <span className="text-[9px] font-black text-slate-300 uppercase tracking-[0.2em]">{cat.children?.length || 0} Subcategories</span>
              </div>
            </div>
-        </div>
+         </div>
       </div>
 
       {/* Elite Control Strip */}
-      <div className="flex gap-2.5 px-1">
+      <div className="flex gap-4 px-2 justify-center mt-2 mb-6">
          {[
            { id: 'edit', label: 'Edit Info', icon: Edit2, color: 'text-indigo-600', bg: 'bg-indigo-50', active: editing, onClick: () => setEditing(!editing) },
            { id: 'fav', label: 'Favorite', icon: Star, color: 'text-amber-500', bg: 'bg-amber-50', active: cat.favorite, onClick: () => toggle('favorite') },
@@ -516,21 +463,21 @@ function CategoryDetailView({ cat, onBack }: { cat: CategoryDef; onBack: () => v
              key={btn.id}
              onClick={btn.onClick}
              className={cn(
-               "flex-1 flex items-center justify-center gap-2 py-3 rounded-[1.25rem] border transition-all duration-300",
+               "w-14 h-14 flex items-center justify-center rounded-full border transition-all duration-300",
                btn.active 
                  ? "bg-slate-900 text-white border-slate-900 shadow-lg shadow-slate-200" 
                  : `bg-white border-slate-100 ${btn.color} hover:shadow-md hover:border-slate-200`
              )}
+             title={btn.label}
            >
-              <btn.icon className={cn("w-4 h-4", btn.active ? "text-white" : btn.color)} />
-              <span className="text-[9px] font-black uppercase tracking-widest hidden sm:inline">{btn.label}</span>
+              <btn.icon className={cn("w-5 h-5", btn.active ? "text-white" : btn.color)} />
            </button>
          ))}
       </div>
 
       {editing && (
         <div className="animate-in slide-in-from-top-4 duration-300">
-           <CategoryEditForm cat={cat} onSave={(p) => { updateCategory(cat.id, p); setEditing(false); toast.success('Category Config Restructured'); }} onCancel={() => setEditing(false)} />
+           <CategoryEditForm cat={cat} onSave={(p) => { updateCategory(cat.id, p); setEditing(false); toast.success('Category updated'); }} onCancel={() => setEditing(false)} />
         </div>
       )}
 
@@ -539,16 +486,16 @@ function CategoryDetailView({ cat, onBack }: { cat: CategoryDef; onBack: () => v
            <div className="flex flex-col items-center gap-2 text-white">
               <AlertTriangle className="w-10 h-10 animate-bounce" />
               <h4 className="font-black text-xl uppercase tracking-widest">Delete {cat.name}?</h4>
-              <p className="text-[11px] opacity-90 max-w-[200px] mx-auto leading-relaxed">This will permanently erase all taxonomy links for this category.</p>
+              <p className="text-[11px] opacity-90 max-w-[200px] mx-auto leading-relaxed">This will permanently erase all settings and history for this category.</p>
            </div>
            <div className="flex gap-3">
-              <button onClick={() => setConfirmDelete(false)} className="flex-1 py-3 bg-white/20 hover:bg-white/30 text-white font-black text-xs rounded-2xl transition-colors">ABORT</button>
-              <button onClick={() => { deleteCategory(cat.id); onBack(); toast.success('Taxonomy Purged'); }} className="flex-1 py-3 bg-white text-red-600 font-black text-xs rounded-2xl shadow-xl hover:bg-red-50 transition-colors">CONFIRM DELETE</button>
+              <button onClick={() => setConfirmDelete(false)} className="flex-1 py-3 bg-white/20 hover:bg-white/30 text-white font-black text-xs rounded-2xl transition-colors">CANCEL</button>
+              <button onClick={() => { deleteCategory(cat.id); onBack(); toast.success('Category Deleted'); }} className="flex-1 py-3 bg-white text-red-600 font-black text-xs rounded-2xl shadow-xl hover:bg-red-50 transition-colors">CONFIRM DELETE</button>
            </div>
         </div>
       )}
 
-      {/* Re-designed Hierarchy Engine */}
+      {/* Re-designed Subcategory Manager */}
       {!editing && !confirmDelete && (
         <div className="bg-slate-50/50 rounded-[2rem] border border-slate-100 overflow-hidden shadow-inner p-1">
            <SubCatEditor cat={cat} onClose={() => {}} />
@@ -568,6 +515,7 @@ export function CategoryManagementModal({ onClose }: { onClose: () => void }) {
   const [dragOver, setDragOver] = useState<string | null>(null);
   const [confirmReset, setConfirmReset] = useState(false);
   const [selectedCatId, setSelectedCatId] = useState<string | null>(null);
+  const [activeFilter, setActiveFilter] = useState<NeedWantType | null>(null);
 
   const selectedCat = categories.find(c => c.id === selectedCatId);
 
@@ -575,7 +523,8 @@ export function CategoryManagementModal({ onClose }: { onClose: () => void }) {
     .filter(c => {
       const matchTab = tab === "expense" ? c.type !== "income" : c.type === "income";
       const matchSearch = !search || c.name.toLowerCase().includes(search.toLowerCase());
-      return matchTab && matchSearch;
+      const matchFilter = !activeFilter || c.classification === activeFilter;
+      return matchTab && matchSearch && matchFilter;
     })
     .sort((a, b) => (a.sortOrder ?? 99) - (b.sortOrder ?? 99));
 
@@ -687,8 +636,20 @@ export function CategoryManagementModal({ onClose }: { onClose: () => void }) {
           )}
 
           {/* Classification legend */}
-          <div className="flex gap-1.5 flex-wrap mb-1">
-            {CLASSIFICATIONS.map(c => <ClassBadge key={c} cls={c} />)}
+          <div className="flex gap-2 flex-wrap mb-4 px-1 items-center">
+            {CLASSIFICATIONS.map(c => (
+              <button 
+                key={c} 
+                onClick={() => setActiveFilter(prev => prev === c ? null : c)}
+                className={cn(
+                  "transition-all duration-300 hover:scale-105 active:scale-95 rounded-full", 
+                  activeFilter === c ? "ring-2 ring-offset-1 ring-indigo-400 scale-105" : 
+                  activeFilter ? "opacity-40 grayscale" : "opacity-100"
+                )}
+              >
+                <ClassBadge cls={c} />
+              </button>
+            ))}
             <span className="text-[8px] text-slate-400 font-bold uppercase tracking-wider flex items-center gap-1 ml-auto">
               <GripVertical className="w-3 h-3" /> Drag to reorder
             </span>
@@ -742,7 +703,7 @@ export function CategoryManagementModal({ onClose }: { onClose: () => void }) {
             <p className="text-sm text-slate-500 mb-4">All custom categories and changes will be lost.</p>
             <div className="flex gap-3">
               <button onClick={() => setConfirmReset(false)} className="flex-1 py-2 border border-slate-200 rounded-xl text-sm font-semibold text-slate-600">Cancel</button>
-              <button onClick={() => { resetCategories(); setConfirmReset(false); toast.success("Categories reset!"); }}
+              <button onClick={() => { resetCategories(); setSelectedCatId(null); setConfirmReset(false); toast.success("Categories reset!"); }}
                 className="flex-1 py-2 bg-red-600 text-white rounded-xl text-sm font-bold">Reset</button>
             </div>
           </div>

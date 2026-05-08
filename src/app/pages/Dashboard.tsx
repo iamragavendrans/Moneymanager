@@ -338,7 +338,19 @@ export const Dashboard = () => {
         category: e.category || 'Bills',
         frequency: e.frequency,
         status: e.status === 'paused' ? 'hold' : 'pending',
-        icon: e.name.charAt(0).toUpperCase()
+        icon: (() => {
+          const cat = (e.category || '').toLowerCase();
+          if (cat.includes('electri')) return '⚡';
+          if (cat.includes('water')) return '💧';
+          if (cat.includes('gas')) return '🔥';
+          if (cat.includes('internet')) return '🌐';
+          if (cat.includes('mobile')) return '📱';
+          if (cat.includes('rent')) return '🏠';
+          if (cat.includes('dth') || cat.includes('tv')) return '📺';
+          if (cat.includes('netflix')) return '🍿';
+          if (cat.includes('spotify')) return '🎧';
+          return e.name.charAt(0).toUpperCase();
+        })()
       }));
 
     // 2. Loans & Chits
@@ -380,25 +392,7 @@ export const Dashboard = () => {
       });
   }, [entities, accounts]);
 
-  const scheduledItems = useMemo(() => {
-    return entities
-      .filter(e => e.type === 'recurring' && e.amount && e.frequency)
-      .slice(0, 5)
-      .map(e => ({
-        id: e.id,
-        entityId: e.id,
-        title: e.name,
-        due: e.nextDue ? format(new Date(e.nextDue), 'MMM dd, yyyy') : (e.frequency || 'Recurring'),
-        amt: formatINR(e.amount || 0),
-        badge: e.status === 'paused' ? 'Paused' : 'Active',
-        type: 'success' as string,
-        icon: '🔁',
-        status: e.status === 'paused' ? 'hold' : 'pending',
-        amount: e.amount || 0,
-        category: e.category || 'Bills',
-        frequency: e.frequency,
-      }));
-  }, [entities]);
+
 
   const NW_LABELS = ['need', 'want', 'investment', 'discretionary'] as const;
   const NW_COLORS = { need: '#3B82F6', want: '#F59E0B', investment: '#10B981', discretionary: '#A855F7' };
@@ -750,85 +744,49 @@ export const Dashboard = () => {
         </div>
 
         <div className="lg:col-span-5 space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-1 gap-6">
-            <Card className="p-5">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="font-bold text-[15px] text-slate-800">Upcoming Payments <span className="text-[10px] text-slate-400 font-normal ml-2 hidden sm:inline">(Swipe LR)</span></h3>
-                <Link to="/settings" className="text-indigo-600 text-sm font-semibold hover:underline">Manage</Link>
-              </div>
-              <div className="space-y-1">
-                {upcomingItems.map(item => {
-                  const isPaid = paidEntityIds.has(item.entityId);
-                  const displayStatus = isPaid ? 'paid' : item.status;
-                  let bg = "bg-white";
-                  if (displayStatus === 'paid') bg = "bg-emerald-50 opacity-60";
-                  if (displayStatus === 'hold') bg = "bg-amber-50";
-                  return (
-                    <SwipeableCard
-                      key={item.id}
-                      rightActionLabel={isPaid ? 'Undo' : 'Paid'}
-                      rightActionIcon={<Check className="w-4 h-4" />}
-                      leftActionLabel={displayStatus === 'hold' ? 'Unhold' : 'Hold'}
-                      leftActionIcon={<Clock className="w-4 h-4" />}
-                      onSwipeRight={() => handleMarkPaid(item)}
-                      onSwipeLeft={() => handleMarkHold(item.entityId, displayStatus)}
-                    >
-                      <div className={`transition-colors rounded-xl ${bg}`}>
-                        <ListCard
-                          icon={<div className={`w-10 h-10 rounded-xl flex items-center justify-center font-bold text-lg ${displayStatus === 'paid' ? 'bg-emerald-100 text-emerald-600' : displayStatus === 'hold' ? 'bg-amber-100 text-amber-600' : 'bg-red-100 text-red-600'}`}>{item.icon}</div>}
-                          title={item.title}
-                          subtitle={item.due}
-                          amount={item.amt}
-                          badgeText={displayStatus === 'paid' ? 'Paid ✓' : displayStatus === 'hold' ? 'On Hold' : item.badge}
-                          badgeType={displayStatus === 'paid' ? 'success' : displayStatus === 'hold' ? 'warning' : item.type}
-                        />
-                      </div>
-                    </SwipeableCard>
-                  );
-                })}
-                {upcomingItems.length === 0 && <p className="text-sm text-slate-400 text-center py-4">All caught up! Add subscriptions in Settings.</p>}
-              </div>
-            </Card>
-
-            <Card className="p-5">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="font-bold text-[15px] text-slate-800">Scheduled Transactions</h3>
-                <Link to="/settings" className="text-indigo-600 text-sm font-semibold hover:underline">Manage</Link>
-              </div>
-              <div className="space-y-1">
-                {scheduledItems.map(item => {
-                  const isPaid = paidEntityIds.has(item.entityId);
-                  const displayStatus = isPaid ? 'paid' : item.status;
-                  let bg = "bg-white";
-                  if (displayStatus === 'paid') bg = "bg-emerald-50 opacity-60";
-                  if (displayStatus === 'hold') bg = "bg-amber-50";
-                  return (
-                    <SwipeableCard
-                      key={item.id}
-                      rightActionLabel={isPaid ? 'Undo' : 'Paid'}
-                      rightActionIcon={<Check className="w-4 h-4" />}
-                      leftActionLabel={displayStatus === 'hold' ? 'Unhold' : 'Hold'}
-                      leftActionIcon={<Clock className="w-4 h-4" />}
-                      onSwipeRight={() => handleMarkPaid(item)}
-                      onSwipeLeft={() => handleMarkHold(item.entityId, displayStatus)}
-                    >
-                      <div className={`transition-colors rounded-xl ${bg}`}>
-                        <ListCard
-                          icon={<div className={`w-10 h-10 rounded-xl flex items-center justify-center text-xl ${displayStatus === 'paid' ? 'bg-emerald-100 text-emerald-600' : displayStatus === 'hold' ? 'bg-amber-100 text-amber-600' : 'bg-blue-50 text-blue-600'}`}>{item.icon}</div>}
-                          title={item.title}
-                          subtitle={item.due}
-                          amount={item.amt}
-                          badgeText={displayStatus === 'paid' ? 'Paid ✓' : displayStatus === 'hold' ? 'On Hold' : item.badge}
-                          badgeType={displayStatus === 'paid' ? 'success' : displayStatus === 'hold' ? 'warning' : item.type}
-                        />
-                      </div>
-                    </SwipeableCard>
-                  );
-                })}
-                {scheduledItems.length === 0 && <p className="text-sm text-slate-400 text-center py-4">No recurring items. Add them in Settings.</p>}
-              </div>
-            </Card>
-          </div>
+          <Card className="p-5">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="font-bold text-[15px] text-slate-800">Upcoming Bills & Subs <span className="text-[10px] text-slate-400 font-normal ml-2 hidden sm:inline">(Swipe LR)</span></h3>
+              <Link to="/settings" className="text-indigo-600 text-sm font-semibold hover:underline">Manage</Link>
+            </div>
+            <div className="space-y-1">
+              {upcomingItems.map(item => {
+                const isPaid = paidEntityIds.has(item.entityId);
+                const displayStatus = isPaid ? 'paid' : item.status;
+                let bg = "bg-white";
+                if (displayStatus === 'paid') bg = "bg-emerald-50 opacity-60";
+                if (displayStatus === 'hold') bg = "bg-amber-50";
+                return (
+                  <SwipeableCard
+                    key={item.id}
+                    rightActionLabel={isPaid ? 'Undo' : 'Paid'}
+                    rightActionIcon={<Check className="w-4 h-4" />}
+                    leftActionLabel={displayStatus === 'hold' ? 'Unhold' : 'Hold'}
+                    leftActionIcon={<Clock className="w-4 h-4" />}
+                    onSwipeRight={() => handleMarkPaid(item)}
+                    onSwipeLeft={() => handleMarkHold(item.entityId, displayStatus)}
+                  >
+                    <div className={`transition-colors rounded-xl ${bg}`}>
+                      <ListCard
+                        icon={<div className={`w-10 h-10 rounded-xl flex items-center justify-center font-bold text-lg ${displayStatus === 'paid' ? 'bg-emerald-100 text-emerald-600' : displayStatus === 'hold' ? 'bg-amber-100 text-amber-600' : 'bg-red-100 text-red-600'}`}>{item.icon}</div>}
+                        title={item.title}
+                        subtitle={item.due}
+                        amount={item.amt}
+                        badgeText={displayStatus === 'paid' ? 'Paid ✓' : displayStatus === 'hold' ? 'On Hold' : item.badge}
+                        badgeType={displayStatus === 'paid' ? 'success' : displayStatus === 'hold' ? 'warning' : item.type}
+                      />
+                    </div>
+                  </SwipeableCard>
+                );
+              })}
+              {upcomingItems.length === 0 && (
+                <div className="py-8 text-center bg-slate-50/50 rounded-2xl border border-dashed border-slate-200">
+                  <Clock className="w-8 h-8 mx-auto mb-2 text-slate-200" />
+                  <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">No upcoming bills</p>
+                </div>
+              )}
+            </div>
+          </Card>
 
           {/* Spend Breakdown Card */}
           <Card className="p-5">

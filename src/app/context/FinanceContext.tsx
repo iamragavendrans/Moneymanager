@@ -124,7 +124,7 @@ export interface Investment {
 
 export interface Entity {
   id: string;
-  type: "shop" | "person" | "recurring" | "subscription" | "giftcard" | "protection" | "asset" | "inventory" | "warranty";
+  type: "shop" | "person" | "recurring" | "subscription" | "giftcard" | "membership" | "asset" | "inventory" | "warranty" | "employment";
   name: string;
   category?: string;
   logoUrl?: string;
@@ -156,6 +156,7 @@ export interface Entity {
   totalBalance?: number;
   billingDetails?: string;
   recurringDuration?: string;
+  subType?: string;
   notes?: string;
 }
 
@@ -310,8 +311,11 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
   const reorderCategories = (ordered: CategoryDef[]) => setCategories(ordered);
 
-  const resetCategories = () =>
-    setCategories([...DEFAULT_EXPENSE_CATEGORIES, ...DEFAULT_INCOME_CATEGORIES]);
+  const resetCategories = () => {
+    // Deep clone to ensure we get fresh objects from defaults
+    const defaults = JSON.parse(JSON.stringify([...DEFAULT_EXPENSE_CATEGORIES, ...DEFAULT_INCOME_CATEGORIES]));
+    setCategories(defaults);
+  };
 
   const updateBudget = (category: string, amount: number) => {
     setProfile(prev => ({
