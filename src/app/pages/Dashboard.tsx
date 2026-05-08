@@ -1,9 +1,10 @@
 import React, { useState, useMemo } from "react";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from "recharts";
-import { ArrowUpRight, ArrowDownRight, Eye, EyeOff, LayoutGrid, ChevronDown, TrendingUp, X, Check, Clock, ChevronLeft, ChevronRight } from "lucide-react";
+import { ArrowUpRight, ArrowDownRight, ArrowRightLeft, CreditCard, ChevronRight, TrendingUp, TrendingDown, Target, Zap, Clock, Calendar, CheckCircle2, ChevronLeft, Search, Plus, Filter, Wallet, Info, HelpCircle, MoreVertical, Star, Shield, ShieldCheck, Sparkles, Eye, EyeOff, LayoutGrid, ChevronDown, X, Check } from "lucide-react";
 import { format, subDays, getDaysInMonth, getDay, startOfMonth, endOfMonth, startOfWeek, endOfWeek, subWeeks, eachDayOfInterval, addWeeks, subMonths, addMonths, subYears, addYears, addDays, differenceInCalendarDays, isSameDay, isSameMonth, endOfDay, startOfYear, endOfYear } from "date-fns";
 import { useFinance, Transaction, Account } from "../context/FinanceContext";
 import { formatINR, cn } from "../utils";
+import { CategoryIcon } from "../components/CategoryIcon";
 import { CATEGORY_CLASSIFICATION } from "../utils/categories";
 import { Link, useNavigate } from "react-router";
 import { TransactionFormModal } from "../components/TransactionFormModal";
@@ -18,9 +19,7 @@ const Card = ({ children, className = "", onClick }: { children: React.ReactNode
 const ListCard = ({ icon, title, subtitle, amount, badgeText, badgeType }: any) => (
   <div className="flex items-center justify-between py-3 hover:bg-slate-50 transition-colors rounded-xl px-2 -mx-2 pointer-events-none">
     <div className="flex items-center gap-3">
-      {typeof icon === 'string' ? (
-        <div className="w-10 h-10 bg-slate-100 rounded-xl flex items-center justify-center font-bold text-slate-700">{icon}</div>
-      ) : icon}
+      <div className="shrink-0">{icon}</div>
       <div>
         <p className="text-[14px] font-medium text-slate-800">{title}</p>
         <p className="text-[12px] text-slate-500">{subtitle}</p>
@@ -78,7 +77,12 @@ const SwipeableCard = ({ children, onSwipeLeft, onSwipeRight, rightActionLabel, 
 };
 
 export const Dashboard = () => {
-  const { getNetWorth, transactions, accounts, profile, updateProfile, investments, entities, addTransaction, updateEntity } = useFinance();
+  const { getNetWorth, transactions, accounts, profile, updateProfile, investments, entities, addTransaction, updateEntity, categories } = useFinance();
+  
+  const getCategoryData = (name: string) => {
+    return categories.find(c => c.name === name) || { icon: 'others', color: '#64748b' };
+  };
+
   const navigate = useNavigate();
   const [showHeroBreakdown, setShowHeroBreakdown] = useState(false);
   const [globalFilter, setGlobalFilter] = useState("1M");
@@ -338,19 +342,6 @@ export const Dashboard = () => {
         category: e.category || 'Bills',
         frequency: e.frequency,
         status: e.status === 'paused' ? 'hold' : 'pending',
-        icon: (() => {
-          const cat = (e.category || '').toLowerCase();
-          if (cat.includes('electri')) return '⚡';
-          if (cat.includes('water')) return '💧';
-          if (cat.includes('gas')) return '🔥';
-          if (cat.includes('internet')) return '🌐';
-          if (cat.includes('mobile')) return '📱';
-          if (cat.includes('rent')) return '🏠';
-          if (cat.includes('dth') || cat.includes('tv')) return '📺';
-          if (cat.includes('netflix')) return '🍿';
-          if (cat.includes('spotify')) return '🎧';
-          return e.name.charAt(0).toUpperCase();
-        })()
       }));
 
     // 2. Loans & Chits
@@ -368,7 +359,6 @@ export const Dashboard = () => {
           category: a.type === 'loan' ? 'EMI' : 'Chit',
           frequency: 'monthly',
           status: 'pending' as const,
-          icon: a.type === 'loan' ? '🏦' : '🐷'
         };
       })
       .filter(item => item.dueRaw <= cutoff);
@@ -768,7 +758,14 @@ export const Dashboard = () => {
                   >
                     <div className={`transition-colors rounded-xl ${bg}`}>
                       <ListCard
-                        icon={<div className={`w-10 h-10 rounded-xl flex items-center justify-center font-bold text-lg ${displayStatus === 'paid' ? 'bg-emerald-100 text-emerald-600' : displayStatus === 'hold' ? 'bg-amber-100 text-amber-600' : 'bg-red-100 text-red-600'}`}>{item.icon}</div>}
+                        icon={
+                          <CategoryIcon 
+                            icon={getCategoryData(item.category).icon} 
+                            color={getCategoryData(item.category).color} 
+                            size={18} 
+                            withContainer
+                          />
+                        }
                         title={item.title}
                         subtitle={item.due}
                         amount={item.amt}
@@ -836,7 +833,14 @@ export const Dashboard = () => {
               {recentTransactions.map(tx => (
                 <div key={tx.id} onClick={() => setEditTxId(tx.id)} className="cursor-pointer">
                   <ListCard
-                    icon={<div className={`w-10 h-10 rounded-xl flex items-center justify-center font-bold ${tx.type === 'expense' ? 'bg-orange-50 text-orange-500' : tx.type === 'income' ? 'bg-emerald-50 text-emerald-600' : 'bg-purple-50 text-purple-600'}`}>{tx.payee.charAt(0)}</div>}
+                    icon={
+                      <CategoryIcon 
+                        icon={getCategoryData(tx.category).icon} 
+                        color={getCategoryData(tx.category).color} 
+                        size={18} 
+                        withContainer 
+                      />
+                    }
                     title={tx.payee}
                     subtitle={
                       <div className="flex items-center gap-1.5 mt-0.5">

@@ -87,7 +87,7 @@ export const LockScreen: React.FC<LockScreenProps> = ({ onUnlock }) => {
                 </span>
               </button>
 
-              <button 
+              <button
                 onClick={() => setMode('pin')}
                 className="text-xs font-bold text-slate-500 hover:text-slate-400 transition-colors uppercase tracking-widest"
               >
@@ -119,7 +119,7 @@ export const LockScreen: React.FC<LockScreenProps> = ({ onUnlock }) => {
                   >
                     Unlock Vault
                   </button>
-                  <button 
+                  <button
                     type="button"
                     onClick={() => setMode('biometric')}
                     className="py-2 text-xs font-bold text-slate-500 hover:text-slate-400 uppercase tracking-widest"

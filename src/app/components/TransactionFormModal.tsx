@@ -4,8 +4,10 @@ import { X, ArrowDownRight, ArrowUpRight, ArrowRightLeft, ChevronDown, ChevronUp
 import { cn } from "../utils";
 import { useFinance, TransactionType } from "../context/FinanceContext";
 import { toast } from "sonner";
+import { LocationInput } from "./LocationInput";
 import { SUBCATEGORY_MAP, CATEGORY_CLASSIFICATION, SubCategory } from "../utils/categories";
 import { predictCategory } from "../utils/aiCategorization";
+import { CategoryIcon } from "./CategoryIcon";
 
 // ─── Searchable Select Component ──────────────────────────────────────────
 interface SearchableSelectProps {
@@ -17,9 +19,11 @@ interface SearchableSelectProps {
   className?: string;
   accentColor?: string;
   allowCustom?: boolean;
+  showIcons?: boolean;
 }
 
-const SearchableSelect: React.FC<SearchableSelectProps> = ({ options, value, onChange, placeholder = "Search...", label, className, accentColor = "indigo", allowCustom }) => {
+const SearchableSelect: React.FC<SearchableSelectProps> = ({ options, value, onChange, placeholder = "Search...", label, className, accentColor = "indigo", allowCustom, showIcons }) => {
+  const { categories } = useFinance();
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
   const [openUp, setOpenUp] = useState(false);
@@ -27,7 +31,18 @@ const SearchableSelect: React.FC<SearchableSelectProps> = ({ options, value, onC
 
   const normalizedOptions = options.map(o => typeof o === "string" ? { label: o, value: o } : o);
   const filtered = normalizedOptions.filter(o => o.label.toLowerCase().includes(search.toLowerCase()));
-  const currentLabel = normalizedOptions.find(o => o.value === value)?.label || value || "";
+  const currentOption = normalizedOptions.find(o => o.value === value);
+  const currentLabel = currentOption?.label || value || "";
+
+  const getIcon = (val: string) => {
+    const found = categories.find(c => c.name === val);
+    return found?.icon || 'others';
+  };
+
+  const getColor = (val: string) => {
+    const found = categories.find(c => c.name === val);
+    return found?.color;
+  };
 
   useEffect(() => {
     if (open && containerRef.current) {
@@ -62,7 +77,12 @@ const SearchableSelect: React.FC<SearchableSelectProps> = ({ options, value, onC
           open ? theme.split(' ').slice(0, 3).join(' ') + " bg-white shadow-lg ring-4" : "border-transparent hover:border-slate-200"
         )}
       >
-        <span className={cn("truncate", !currentLabel && "text-slate-300")}>{currentLabel || placeholder}</span>
+        <div className="flex items-center gap-2 overflow-hidden">
+          {showIcons && value && (
+            <CategoryIcon icon={getIcon(value)} color={getColor(value)} size={16} />
+          )}
+          <span className={cn("truncate", !currentLabel && "text-slate-300")}>{currentLabel || placeholder}</span>
+        </div>
         <ChevronDown className={cn("w-4 h-4 text-slate-400 transition-transform duration-300", open && "rotate-180")} />
       </div>
 
@@ -92,10 +112,11 @@ const SearchableSelect: React.FC<SearchableSelectProps> = ({ options, value, onC
                 type="button"
                 onClick={() => { onChange(o.value); setOpen(false); }}
                 className={cn(
-                  "w-full px-4 py-3 text-left text-[11px] font-black uppercase tracking-tight transition-colors border-b border-slate-50 last:border-0",
+                  "w-full px-4 py-3 text-left text-[11px] font-black uppercase tracking-tight transition-colors border-b border-slate-50 last:border-0 flex items-center gap-3",
                   o.value === value ? theme.split(' ').slice(2).join(' ') : "text-slate-600 hover:bg-slate-50"
                 )}
               >
+                {showIcons && <CategoryIcon icon={getIcon(o.value)} color={getColor(o.value)} size={16} />}
                 {o.label}
               </button>
             ))}
@@ -595,7 +616,14 @@ export const TransactionFormModal: React.FC<{
                 ) : (
                   <div className="grid grid-cols-2 gap-4">
                     <SearchableSelect label="Account" options={accounts.map(a => ({ label: a.name, value: a.id }))} value={accountId} onChange={setAccountId} accentColor={type === 'income' ? 'emerald' : 'indigo'} />
-                    <SearchableSelect label="Category" options={type === 'income' ? categories.income : categories.expense} value={category} onChange={handleCategoryChange} accentColor={type === 'income' ? 'emerald' : 'indigo'} />
+                    <SearchableSelect 
+                       label="Category" 
+                       options={type === 'income' ? activeCats('income') : activeCats('expense')} 
+                       value={category} 
+                       onChange={handleCategoryChange} 
+                       accentColor={type === 'income' ? 'emerald' : 'indigo'} 
+                       showIcons
+                     />
                   </div>
                 )}
               </div>
@@ -706,16 +734,18 @@ export const TransactionFormModal: React.FC<{
                       {category === 'Transportation' ? (
                         <>
                           <div className="grid grid-cols-2 gap-2">
-                            <input
-                              type="text" value={routeFrom} onChange={(e) => setRouteFrom(e.target.value)}
+                            <LocationInput
+                              value={routeFrom}
+                              onChange={setRouteFrom}
                               placeholder="From (e.g. Home)"
-                              className="text-sm bg-white px-3 py-2.5 rounded-xl border border-slate-200 focus:ring-2 focus:ring-indigo-600 outline-none shadow-sm"
+                              accentColor="indigo"
                             />
-                            <input
-                              type="text" value={routeTo} onChange={(e) => setRouteTo(e.target.value)}
+                            <LocationInput
+                              value={routeTo}
+                              onChange={setRouteTo}
                               onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); if (routeFrom.trim() && routeTo.trim()) { setItemInput(`${routeFrom.trim()} → ${routeTo.trim()}`); setItemUnit('ticket'); addItem(); setRouteFrom(''); setRouteTo(''); } } }}
                               placeholder="To (e.g. Office)"
-                              className="text-sm bg-white px-3 py-2.5 rounded-xl border border-slate-200 focus:ring-2 focus:ring-indigo-600 outline-none shadow-sm"
+                              accentColor="indigo"
                             />
                           </div>
                           <div className="flex items-center gap-2">
@@ -1012,7 +1042,7 @@ export const TransactionFormModal: React.FC<{
                             className="w-full text-sm font-semibold bg-slate-50 px-3 py-2.5 rounded-xl border-0 focus:ring-2 focus:ring-indigo-600 outline-none"
                           >
                             <option value="">Select...</option>
-                            {SUBCATEGORY_MAP[category]?.map(sc => <option key={sc} value={sc}>{sc}</option>)}
+                             {SUBCATEGORY_MAP[category]?.map((sc: string) => <option key={sc} value={sc}>{sc}</option>)}
                             <option value="NEW" className="text-indigo-600 font-bold">+ Create New...</option>
                           </select>
                         )}

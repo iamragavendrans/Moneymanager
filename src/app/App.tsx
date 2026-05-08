@@ -8,13 +8,13 @@ export default function App() {
   const securityEnabled = localStorage.getItem('s_biometric') === 'true';
   const [unlocked, setUnlocked] = useState(!securityEnabled);
 
-  if (!unlocked) {
-    return <LockScreen onUnlock={() => setUnlocked(true)} />;
-  }
-
   return (
     <FinanceProvider>
-      <RouterProvider router={router} />
+      {!unlocked ? (
+        <LockScreen onUnlock={() => setUnlocked(true)} />
+      ) : (
+        <RouterProvider router={router} />
+      )}
     </FinanceProvider>
   );
 }

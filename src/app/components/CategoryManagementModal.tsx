@@ -12,9 +12,10 @@ import {
   SubCategory
 } from "../utils/categories";
 import { toast } from "sonner";
+import { IconPickerModal } from "./IconPickerModal";
+import { CategoryIcon } from "./CategoryIcon";
 
 // ─── helpers ────────────────────────────────────────────────────────────────
-const ICONS = Object.keys(CATEGORY_ICON_MAP);
 const PALETTE = [
   "#ef4444","#f97316","#f59e0b","#10b981","#06b6d4","#3b82f6",
   "#6366f1","#8b5cf6","#d946ef","#ec4899","#64748b","#334155"
@@ -57,21 +58,18 @@ function CategoryEditForm({ cat, onSave, onCancel, isNew }: EditFormProps) {
       <div className="flex gap-2 items-center">
         {/* Icon button */}
         <div className="relative">
-          <button type="button" onClick={() => { setShowIconPicker(v => !v); setShowColorPicker(false); }}
-            className="w-10 h-10 rounded-xl flex items-center justify-center text-xl shadow-sm border border-indigo-200 bg-white hover:border-indigo-400 transition-all"
+          <button type="button" onClick={() => setShowIconPicker(true)}
+            className="w-10 h-10 rounded-xl flex items-center justify-center text-xl shadow-sm border border-indigo-200 bg-white hover:border-indigo-400 transition-all overflow-hidden"
             style={{ borderColor: color }}>
-            {CATEGORY_ICON_MAP[icon] || "📦"}
+            <CategoryIcon icon={icon} color={color} size={20} />
           </button>
           {showIconPicker && (
-            <div className="absolute top-12 left-0 z-[200] bg-white border border-slate-200 rounded-3xl p-5 shadow-2xl grid grid-cols-5 gap-3 w-64 animate-in zoom-in-95 duration-200">
-              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1 col-span-5 px-1">Select Icon</p>
-              {ICONS.map(k => (
-                <button key={k} type="button" onClick={() => { setIcon(k); setShowIconPicker(false); }}
-                  className={cn("w-9 h-9 rounded-xl flex items-center justify-center text-lg hover:bg-slate-50 transition-all border border-transparent", icon === k && "bg-indigo-50 border-indigo-200 text-indigo-600 scale-110")}>
-                  {CATEGORY_ICON_MAP[k]}
-                </button>
-              ))}
-            </div>
+            <IconPickerModal 
+              initialIcon={icon}
+              onClose={() => setShowIconPicker(false)}
+              onSelect={(newIcon) => { setIcon(newIcon); setShowIconPicker(false); }}
+              title="Category Icon"
+            />
           )}
         </div>
 
@@ -157,7 +155,7 @@ function CategoryEditForm({ cat, onSave, onCancel, isNew }: EditFormProps) {
 
 // ─── Sub-category chip editor ───────────────────────────────────────────────
 function SubCatEditor({ cat, onClose }: { cat: CategoryDef; onClose: () => void }) {
-  const { categories, updateCategory } = useFinance();
+  const { updateCategory } = useFinance();
   const [children, setChildren] = useState<SubCategory[]>(cat.children || []);
   const [input, setInput] = useState("");
   const [inputIcon, setInputIcon] = useState("others");
@@ -169,14 +167,6 @@ function SubCatEditor({ cat, onClose }: { cat: CategoryDef; onClose: () => void 
 
   const slugify = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_|_$/g, "");
   
-  const guessIcon = (name: string, fallback: string) => {
-    const n = name.toLowerCase();
-    if (n.includes("fruit")) return "snacks"; // Better than popcorn if we had an apple icon, but let's see
-    if (n.includes("drink") || n.includes("beverage") || n.includes("juice")) return "snacks"; 
-    if (n.includes("bakery") || n.includes("cake") || n.includes("sweet")) return "snacks";
-    return fallback;
-  };
-
   const add = () => {
     const v = input.trim();
     if (v && !children.some(c => c.name === v)) { 
@@ -241,20 +231,18 @@ function SubCatEditor({ cat, onClose }: { cat: CategoryDef; onClose: () => void 
       {/* Modern Input Group with Icon Picker */}
       <div className="flex gap-3">
         <div className="relative">
-          <button onClick={() => setShowInputIconPicker(!showInputIconPicker)}
-            className="h-[52px] w-[52px] bg-white border border-slate-100 rounded-2xl flex items-center justify-center text-xl shadow-sm hover:border-indigo-300 transition-all">
-            {CATEGORY_ICON_MAP[inputIcon] || "📦"}
+          <button onClick={() => setShowInputIconPicker(true)}
+            type="button"
+            className="h-[52px] w-[52px] bg-white border border-slate-200 rounded-2xl flex items-center justify-center shadow-sm hover:border-indigo-400 hover:shadow-md transition-all overflow-hidden shrink-0 group">
+            <CategoryIcon icon={inputIcon} color={cat.color} size={26} />
           </button>
           {showInputIconPicker && (
-            <div className="absolute top-14 left-0 z-[210] bg-white border border-slate-200 rounded-[2rem] p-4 shadow-2xl grid grid-cols-5 gap-2 w-64 animate-in zoom-in-95 duration-200">
-              <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1 col-span-5 px-1 text-center">Subcategory Icon</p>
-              {ICONS.map(k => (
-                <button key={k} onClick={() => { setInputIcon(k); setShowInputIconPicker(false); }}
-                  className={cn("w-9 h-9 rounded-xl flex items-center justify-center text-lg hover:bg-slate-50 transition-all", inputIcon === k && "bg-indigo-50 text-indigo-600 ring-2 ring-indigo-100")}>
-                  {CATEGORY_ICON_MAP[k]}
-                </button>
-              ))}
-            </div>
+            <IconPickerModal 
+              initialIcon={inputIcon}
+              onClose={() => setShowInputIconPicker(false)}
+              onSelect={(newIcon) => { setInputIcon(newIcon); setShowInputIconPicker(false); }}
+              title="Subcategory Icon"
+            />
           )}
         </div>
         <div className="relative group flex-1">
@@ -291,23 +279,25 @@ function SubCatEditor({ cat, onClose }: { cat: CategoryDef; onClose: () => void 
             )}>
             {/* Icon Wrapper */}
             <div className="relative">
-              <div 
-                onClick={() => { if (editId === sc.id) setShowEditIconPicker(!showEditIconPicker); }}
-                className={cn("w-12 h-12 rounded-2xl flex items-center justify-center text-2xl mb-2 transition-all duration-500", 
-                  editId === sc.id ? "bg-white shadow-md cursor-pointer hover:scale-110" : "bg-slate-50 text-slate-400 group-hover:scale-110 group-hover:rotate-3")}
-              >
-                {CATEGORY_ICON_MAP[editId === sc.id ? editIcon : (sc.icon || cat.icon || 'others')]}
-              </div>
+              <CategoryIcon 
+                icon={editId === sc.id ? editIcon : (sc.icon || cat.icon || 'others')} 
+                color={cat.color} 
+                size={22} 
+                withContainer
+                className={cn(
+                  "transition-all duration-500",
+                  editId === sc.id ? "cursor-pointer hover:scale-110" : "group-hover:scale-110 group-hover:rotate-3"
+                )}
+                onClick={() => { if (editId === sc.id) setShowEditIconPicker(true); }}
+              />
               
               {editId === sc.id && showEditIconPicker && (
-                <div className="absolute top-0 left-1/2 -translate-x-1/2 z-[220] bg-white border border-slate-200 rounded-[2rem] p-3 shadow-2xl grid grid-cols-4 gap-1.5 w-48 animate-in zoom-in-95 duration-200">
-                  {ICONS.slice(0, 24).map(k => (
-                    <button key={k} onClick={(e) => { e.stopPropagation(); setEditIcon(k); setShowEditIconPicker(false); }}
-                      className={cn("w-8 h-8 rounded-lg flex items-center justify-center text-base hover:bg-slate-50", editIcon === k && "bg-indigo-50 text-indigo-600")}>
-                      {CATEGORY_ICON_MAP[k]}
-                    </button>
-                  ))}
-                </div>
+                <IconPickerModal 
+                  initialIcon={editIcon}
+                  onClose={() => setShowEditIconPicker(false)}
+                  onSelect={(newIcon) => { setEditIcon(newIcon); setShowEditIconPicker(false); }}
+                  title="Edit Subgroup Icon"
+                />
               )}
             </div>
 
@@ -356,24 +346,9 @@ function SubCatEditor({ cat, onClose }: { cat: CategoryDef; onClose: () => void 
   );
 }
 
-// ─── Category Row ───────────────────────────────────────────────────────────
-interface RowProps {
-  cat: CategoryDef;
-  index: number;
-  total: number;
-  dragProps: {
-    dragging: string | null;
-    dragOver: string | null;
-    onDragStart: (id: string) => void;
-    onDragOver: (e: React.DragEvent, id: string) => void;
-    onDrop: (id: string) => void;
-    onDragEnd: () => void;
-  };
-}
-
-function CategoryTile({ cat, onClick, dragProps }: RowProps & { onClick: () => void }) {
+// ─── Category Tile ──────────────────────────────────────────────────────────
+function CategoryTile({ cat, onClick, dragProps }: any) {
   const { dragging, dragOver, onDragStart, onDragOver, onDrop, onDragEnd } = dragProps;
-
   const isDragging = dragging === cat.id;
   const isOver = dragOver === cat.id;
 
@@ -393,17 +368,14 @@ function CategoryTile({ cat, onClick, dragProps }: RowProps & { onClick: () => v
       )}
       onClick={onClick}
     >
-      {/* Dynamic Background Glow */}
       <div className="absolute inset-0 opacity-0 group-hover:opacity-10 transition-opacity duration-500" 
         style={{ background: `radial-gradient(circle at center, ${cat.color}, transparent)` }} />
 
-      {/* Icon Wrapper */}
-      <div className="w-14 h-14 rounded-2xl flex items-center justify-center text-3xl mb-2 transition-all duration-500 group-hover:scale-110 group-hover:rotate-3 relative z-10"
+      <div className="w-14 h-14 rounded-2xl flex items-center justify-center transition-all duration-500 group-hover:scale-110 group-hover:rotate-3 relative z-10 overflow-hidden"
         style={{ background: cat.color + "15", color: cat.color, boxShadow: `0 8px 20px -6px ${cat.color}44` }}>
-        {CATEGORY_ICON_MAP[cat.icon] || "📦"}
+        <CategoryIcon icon={cat.icon} color={cat.color} size={28} />
       </div>
 
-      {/* Info */}
       <div className="text-center w-full relative z-10">
         <p className={cn("text-[11px] font-black uppercase tracking-tight truncate px-1 mb-1", cat.disabled ? "line-through text-slate-400" : "text-slate-800")}>
           {cat.name}
@@ -417,7 +389,7 @@ function CategoryTile({ cat, onClick, dragProps }: RowProps & { onClick: () => v
   );
 }
 
-// ─── Main Detail View ────────────────────────────────────────────────────────
+// ─── Detail View ─────────────────────────────────────────────────────────────
 function CategoryDetailView({ cat, onBack }: { cat: CategoryDef; onBack: () => void }) {
   const { updateCategory, deleteCategory } = useFinance();
   const [editing, setEditing] = useState(false);
@@ -426,20 +398,17 @@ function CategoryDetailView({ cat, onBack }: { cat: CategoryDef; onBack: () => v
   const toggle = (field: "disabled" | "favorite") =>
     updateCategory(cat.id, { [field]: !cat[field] });
 
-
-
   return (
     <div className="space-y-6 animate-in slide-in-from-right-8 duration-500 pb-2">
-      {/* Immersive Header */}
       <div className="relative pt-2 pb-6 flex items-center gap-6 group/header">
          <button onClick={onBack} className="w-12 h-12 flex items-center justify-center bg-white shadow-sm hover:shadow-md border border-slate-100 rounded-full text-slate-400 hover:text-slate-800 transition-all hover:-translate-x-1 shrink-0">
            <ChevronRight className="w-5 h-5 rotate-180" />
          </button>
          
          <div className="flex items-center gap-5 flex-1">
-           <div className="w-20 h-20 rounded-full bg-white flex items-center justify-center text-4xl shadow-xl shadow-slate-200/50 border border-slate-50 transition-transform duration-500 group-hover/header:scale-105 shrink-0"
+           <div className="w-20 h-20 rounded-full bg-white flex items-center justify-center shadow-xl shadow-slate-200/50 border border-slate-50 transition-transform duration-500 group-hover/header:scale-105 shrink-0 overflow-hidden"
              style={{ color: cat.color }}>
-             {CATEGORY_ICON_MAP[cat.icon] || "📦"}
+             <CategoryIcon icon={cat.icon} color={cat.color} size={40} />
            </div>
            <div>
              <h3 className="font-black text-2xl text-slate-800 tracking-tight leading-none mb-2">{cat.name}</h3>
@@ -451,7 +420,6 @@ function CategoryDetailView({ cat, onBack }: { cat: CategoryDef; onBack: () => v
          </div>
       </div>
 
-      {/* Elite Control Strip */}
       <div className="flex gap-4 px-2 justify-center mt-2 mb-6">
          {[
            { id: 'edit', label: 'Edit Info', icon: Edit2, color: 'text-indigo-600', bg: 'bg-indigo-50', active: editing, onClick: () => setEditing(!editing) },
@@ -459,17 +427,10 @@ function CategoryDetailView({ cat, onBack }: { cat: CategoryDef; onBack: () => v
            { id: 'hide', label: cat.disabled ? 'Show' : 'Hide', icon: cat.disabled ? Eye : EyeOff, color: 'text-slate-600', bg: 'bg-slate-100', active: cat.disabled, onClick: () => toggle('disabled') },
            { id: 'delete', label: 'Delete', icon: Trash2, color: 'text-red-500', bg: 'bg-red-50', active: false, onClick: () => setConfirmDelete(true) }
          ].map(btn => (
-           <button 
-             key={btn.id}
-             onClick={btn.onClick}
-             className={cn(
-               "w-14 h-14 flex items-center justify-center rounded-full border transition-all duration-300",
-               btn.active 
-                 ? "bg-slate-900 text-white border-slate-900 shadow-lg shadow-slate-200" 
-                 : `bg-white border-slate-100 ${btn.color} hover:shadow-md hover:border-slate-200`
-             )}
-             title={btn.label}
-           >
+           <button key={btn.id} onClick={btn.onClick}
+             className={cn("w-14 h-14 flex items-center justify-center rounded-full border transition-all duration-300",
+               btn.active ? "bg-slate-900 text-white border-slate-900 shadow-lg shadow-slate-200" : `bg-white border-slate-100 ${btn.color} hover:shadow-md hover:border-slate-200`
+             )} title={btn.label}>
               <btn.icon className={cn("w-5 h-5", btn.active ? "text-white" : btn.color)} />
            </button>
          ))}
@@ -495,7 +456,6 @@ function CategoryDetailView({ cat, onBack }: { cat: CategoryDef; onBack: () => v
         </div>
       )}
 
-      {/* Re-designed Subcategory Manager */}
       {!editing && !confirmDelete && (
         <div className="bg-slate-50/50 rounded-[2rem] border border-slate-100 overflow-hidden shadow-inner p-1">
            <SubCatEditor cat={cat} onClose={() => {}} />
@@ -528,183 +488,95 @@ export function CategoryManagementModal({ onClose }: { onClose: () => void }) {
     })
     .sort((a, b) => (a.sortOrder ?? 99) - (b.sortOrder ?? 99));
 
-  // DnD
-  const onDragStart = (id: string) => setDragging(id);
-  const onDragOver = (e: React.DragEvent, id: string) => {
-    e.preventDefault(); setDragOver(id);
+  const dragProps = {
+    dragging, dragOver, 
+    onDragStart: (id: string) => setDragging(id),
+    onDragOver: (e: any, id: string) => { e.preventDefault(); setDragOver(id); },
+    onDrop: (targetId: string) => {
+      if (!dragging || dragging === targetId) return;
+      const all = [...categories];
+      const fromIdx = all.findIndex(c => c.id === dragging);
+      const toIdx = all.findIndex(c => c.id === targetId);
+      const [moved] = all.splice(fromIdx, 1);
+      all.splice(toIdx, 0, moved);
+      reorderCategories(all.map((c, i) => ({ ...c, sortOrder: i })));
+      setDragging(null); setDragOver(null);
+    },
+    onDragEnd: () => { setDragging(null); setDragOver(null); }
   };
-  const onDrop = (targetId: string) => {
-    if (!dragging || dragging === targetId) return;
-    const all = [...categories];
-    const fromIdx = all.findIndex(c => c.id === dragging);
-    const toIdx = all.findIndex(c => c.id === targetId);
-    if (fromIdx === -1 || toIdx === -1) return;
-    const [moved] = all.splice(fromIdx, 1);
-    all.splice(toIdx, 0, moved);
-    reorderCategories(all.map((c, i) => ({ ...c, sortOrder: i })));
-    setDragging(null); setDragOver(null);
-  };
-  const onDragEnd = () => { setDragging(null); setDragOver(null); };
-
-  const dragProps = { dragging, dragOver, onDragStart, onDragOver, onDrop, onDragEnd };
 
   const handleCreate = (patch: Partial<CategoryDef>) => {
-    const maxOrder = Math.max(0, ...categories.filter(c => c.type !== "income" && tab === "expense" || c.type === "income" && tab === "income").map(c => c.sortOrder ?? 0));
-    addCategory({
-      name: patch.name!,
-      icon: patch.icon || "others",
-      color: patch.color || "#6366f1",
-      classification: patch.classification || "want",
-      type: tab,
-      subcategories: [],
-      sortOrder: maxOrder + 1,
-    } as Omit<CategoryDef, "id">);
+    const maxOrder = Math.max(0, ...categories.filter(c => (tab === 'expense' ? c.type !== 'income' : c.type === 'income')).map(c => c.sortOrder ?? 0));
+    addCategory({ ...patch, type: tab, subcategories: [], sortOrder: maxOrder + 1 } as any);
     setShowNew(false);
     toast.success("Category created!");
-  };
-
-  const stats = {
-    total: visibleCats.length,
-    active: visibleCats.filter(c => !c.disabled).length,
-    favorites: visibleCats.filter(c => c.favorite).length,
   };
 
   return (
     <div className="fixed inset-0 z-[110] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4">
       <div className="bg-white rounded-3xl w-full max-w-lg shadow-2xl flex flex-col max-h-[90vh] overflow-hidden">
-
-        {/* Header */}
         <div className="px-6 pt-6 pb-4 border-b border-slate-100">
           <div className="flex items-center justify-between mb-4">
             <div>
               <h2 className="text-xl font-black text-slate-800">Categories</h2>
               <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-0.5">
-                {stats.active} active • {stats.favorites} favorites • {stats.total} total
+                {visibleCats.length} Categories • {tab} mode
               </p>
             </div>
             <div className="flex items-center gap-2">
-              <button onClick={() => setConfirmReset(true)}
-                className="p-2 rounded-xl text-slate-400 hover:text-amber-600 hover:bg-amber-50 transition-all" title="Reset to defaults">
-                <RotateCcw className="w-4 h-4" />
-              </button>
-              <button onClick={onClose} className="p-2 bg-slate-100 rounded-full text-slate-500 hover:bg-slate-200">
-                <X className="w-5 h-5" />
-              </button>
+              <button onClick={() => setConfirmReset(true)} className="p-2 text-slate-400 hover:text-amber-600 transition-all"><RotateCcw className="w-4 h-4" /></button>
+              <button onClick={onClose} className="p-2 bg-slate-100 rounded-full"><X className="w-5 h-5" /></button>
             </div>
           </div>
 
-          {/* Tabs */}
           <div className="flex gap-1 p-1 bg-slate-100 rounded-xl mb-3">
             {(["expense","income"] as const).map(t => (
-              <button key={t} onClick={() => setTab(t)}
-                className={cn("flex-1 py-1.5 rounded-lg text-xs font-bold uppercase tracking-wider transition-all",
-                  tab === t ? "bg-white text-slate-800 shadow-sm" : "text-slate-400 hover:text-slate-600")}>
+              <button key={t} onClick={() => { setTab(t); setSelectedCatId(null); }}
+                className={cn("flex-1 py-1.5 rounded-lg text-xs font-bold uppercase transition-all", tab === t ? "bg-white text-slate-800 shadow-sm" : "text-slate-400")}>
                 {t === "expense" ? "💸 Expense" : "💰 Income"}
               </button>
             ))}
           </div>
 
-          {/* Search */}
           <div className="flex gap-2">
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
-              <input value={search} onChange={e => setSearch(e.target.value)}
-                placeholder="Search categories..."
-                className="w-full pl-9 pr-3 py-2 text-sm bg-slate-50 rounded-xl border border-slate-100 focus:ring-2 focus:ring-indigo-500 outline-none"
-              />
+              <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search..." className="w-full pl-9 pr-3 py-2 text-sm bg-slate-50 rounded-xl border border-slate-100 outline-none" />
             </div>
-            <button onClick={() => setShowNew(v => !v)}
-              className={cn("px-3 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all",
-                showNew ? "bg-indigo-600 text-white" : "bg-indigo-50 text-indigo-600 hover:bg-indigo-100")}>
-              <Plus className="w-3.5 h-3.5" />
-              New
-            </button>
+            <button onClick={() => setShowNew(v => !v)} className="px-3 py-2 bg-indigo-600 text-white rounded-xl text-xs font-bold flex items-center gap-1.5"><Plus className="w-3.5 h-3.5" />New</button>
           </div>
         </div>
 
-        {/* Body */}
         <div className="flex-1 overflow-y-auto px-4 py-4 space-y-2">
-
-          {/* New category form */}
-          {showNew && (
-            <CategoryEditForm
-              cat={{ type: tab, classification: "want" }}
-              onSave={handleCreate}
-              onCancel={() => setShowNew(false)}
-              isNew
-            />
-          )}
-
-          {/* Classification legend */}
-          <div className="flex gap-2 flex-wrap mb-4 px-1 items-center">
+          {showNew && <CategoryEditForm cat={{ type: tab }} onSave={handleCreate} onCancel={() => setShowNew(false)} isNew />}
+          <div className="flex gap-2 flex-wrap mb-4 px-1">
             {CLASSIFICATIONS.map(c => (
-              <button 
-                key={c} 
-                onClick={() => setActiveFilter(prev => prev === c ? null : c)}
-                className={cn(
-                  "transition-all duration-300 hover:scale-105 active:scale-95 rounded-full", 
-                  activeFilter === c ? "ring-2 ring-offset-1 ring-indigo-400 scale-105" : 
-                  activeFilter ? "opacity-40 grayscale" : "opacity-100"
-                )}
-              >
+              <button key={c} onClick={() => setActiveFilter(prev => prev === c ? null : c)} className={cn("transition-all", activeFilter === c ? "ring-2 ring-indigo-400" : activeFilter ? "opacity-40 grayscale" : "")}>
                 <ClassBadge cls={c} />
               </button>
             ))}
-            <span className="text-[8px] text-slate-400 font-bold uppercase tracking-wider flex items-center gap-1 ml-auto">
-              <GripVertical className="w-3 h-3" /> Drag to reorder
-            </span>
           </div>
 
-          {/* Conditional View: Tiles Grid or Detail View */}
-          {selectedCat ? (
-            <CategoryDetailView cat={selectedCat} onBack={() => setSelectedCatId(null)} />
-          ) : (
-            <>
-              {visibleCats.length === 0 ? (
-                <div className="py-12 text-center text-slate-400">
-                  <Tag className="w-8 h-8 mx-auto mb-2 opacity-30" />
-                  <p className="text-sm font-semibold">No categories found</p>
-                </div>
-              ) : (
-                <div className="grid grid-cols-3 gap-3 animate-in fade-in duration-200">
-                  {visibleCats.map((cat, i) => (
-                    <CategoryTile 
-                      key={cat.id} 
-                      cat={cat} 
-                      index={i} 
-                      total={visibleCats.length} 
-                      dragProps={dragProps} 
-                      onClick={() => setSelectedCatId(cat.id)}
-                    />
-                  ))}
-                </div>
-              )}
-            </>
+          {selectedCat ? <CategoryDetailView cat={selectedCat} onBack={() => setSelectedCatId(null)} /> : (
+            <div className="grid grid-cols-3 gap-3 animate-in fade-in duration-200">
+              {visibleCats.map((cat, i) => <CategoryTile key={cat.id} cat={cat} dragProps={dragProps} onClick={() => setSelectedCatId(cat.id)} />)}
+            </div>
           )}
         </div>
 
-        {/* Footer */}
         <div className="px-6 py-4 border-t border-slate-100 flex justify-between items-center">
-          <p className="text-[9px] text-slate-300 font-bold uppercase tracking-widest">
-            <Sparkles className="w-3 h-3 inline mr-1" />AI auto-categorization uses these names
-          </p>
-          <button onClick={onClose}
-            className="px-5 py-2 bg-slate-800 text-white rounded-xl text-xs font-bold hover:bg-slate-900">
-            Done
-          </button>
+          <p className="text-[9px] text-slate-300 font-bold uppercase tracking-widest"><Sparkles className="w-3 h-3 inline mr-1" />Premium Iconography Enabled</p>
+          <button onClick={onClose} className="px-5 py-2 bg-slate-800 text-white rounded-xl text-xs font-bold hover:bg-slate-900 transition-all">Done</button>
         </div>
       </div>
 
-      {/* Reset confirm */}
       {confirmReset && (
         <div className="absolute inset-0 z-[120] flex items-center justify-center bg-black/40">
-          <div className="bg-white rounded-2xl p-6 w-80 shadow-2xl">
+          <div className="bg-white rounded-2xl p-6 w-80">
             <h3 className="font-bold text-slate-800 mb-2">Reset to Defaults?</h3>
-            <p className="text-sm text-slate-500 mb-4">All custom categories and changes will be lost.</p>
-            <div className="flex gap-3">
-              <button onClick={() => setConfirmReset(false)} className="flex-1 py-2 border border-slate-200 rounded-xl text-sm font-semibold text-slate-600">Cancel</button>
-              <button onClick={() => { resetCategories(); setSelectedCatId(null); setConfirmReset(false); toast.success("Categories reset!"); }}
-                className="flex-1 py-2 bg-red-600 text-white rounded-xl text-sm font-bold">Reset</button>
+            <div className="flex gap-3 mt-4">
+              <button onClick={() => setConfirmReset(false)} className="flex-1 py-2 border rounded-xl text-sm font-semibold">Cancel</button>
+              <button onClick={() => { resetCategories(); setSelectedCatId(null); setConfirmReset(false); toast.success("Reset!"); }} className="flex-1 py-2 bg-red-600 text-white rounded-xl text-sm font-bold">Reset</button>
             </div>
           </div>
         </div>

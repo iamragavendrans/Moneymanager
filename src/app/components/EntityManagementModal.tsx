@@ -9,8 +9,11 @@ import {
 import { cn, formatINR, getGridCols } from "../utils";
 import { useFinance, Entity, Transaction } from "../context/FinanceContext";
 import { format, differenceInDays, parseISO, isSameDay } from "date-fns";
-import { ImageWithFallback } from "./figma/ImageWithFallback";
 import { TransactionFormModal } from "./TransactionFormModal";
+import { BrandIcon } from "./BrandIcon";
+import { searchBrandfetchIcon, getBrandDomain } from "../utils/logoFetcher";
+import { toast } from "sonner";
+import { CategoryIcon } from "./CategoryIcon";
 
 const entityConfig: Record<string, { title: string, icon: any, desc: string, color: string }> = {
   shop: { title: "Shops & Merchants", icon: Store, desc: "Manage frequent payees", color: "text-blue-600 bg-blue-50" },
@@ -24,60 +27,25 @@ const entityConfig: Record<string, { title: string, icon: any, desc: string, col
   document: { title: "Documents & Tax", icon: FileText, desc: "Legal & tax related docs", color: "text-purple-600 bg-purple-50" },
 };
 
-const getCategoryIcon = (cat?: string, name?: string) => {
-  const search = (cat || name || "").toLowerCase();
-  if (search.includes('electri')) return <Zap className="w-5 h-5" />;
-  if (search.includes('water')) return <Droplets className="w-5 h-5" />;
-  if (search.includes('gas') || search.includes('cylinder')) return <Flame className="w-5 h-5" />;
-  if (search.includes('internet') || search.includes('wifi') || search.includes('broadband')) return <Wifi className="w-5 h-5" />;
-  if (search.includes('mobile') || search.includes('phone') || search.includes('recharge')) return <Smartphone className="w-5 h-5" />;
-  if (search.includes('rent')) return <Home className="w-5 h-5" />;
-  if (search.includes('dth') || search.includes('cable') || search.includes('tv')) return <Tv className="w-5 h-5" />;
-  if (search.includes('gym') || search.includes('fitness')) return <Dumbbell className="w-5 h-5" />;
-  if (search.includes('milk') || search.includes('dairy')) return <Milk className="w-5 h-5" />;
-  if (search.includes('news') || search.includes('paper')) return <Newspaper className="w-5 h-5" />;
-  if (search.includes('maint')) return <Wrench className="w-5 h-5" />;
-  if (search.includes('shop') || search.includes('store') || search.includes('market')) return <Store className="w-5 h-5" />;
-  if (search.includes('car') || search.includes('bike') || search.includes('vehicle')) return <Car className="w-5 h-5" />;
-  if (search.includes('home') || search.includes('house') || search.includes('flat') || search.includes('property')) return <Building className="w-5 h-5" />;
-  if (search.includes('box') || search.includes('stock') || search.includes('pantry')) return <Box className="w-5 h-5" />;
-  return <Repeat className="w-5 h-5" />;
+const EntityCategoryIcon = ({ cat, name, size = 20, className, withContainer = false }: { cat?: string, name?: string, size?: number, className?: string, withContainer?: boolean }) => {
+  const { categories } = useFinance();
+  const search = (cat || name || "");
+  const found = categories.find(c => c.name === search);
+  return <CategoryIcon icon={found?.icon || 'others'} color={found?.color} size={size} className={className} withContainer={withContainer} />;
 };
 
-const getBrandDomain = (name: string, url?: string, provider?: string) => {
-  const brandDomains: Record<string, string> = {
-    'amazon': 'amazon.in', 'swiggy': 'swiggy.com', 'zomato': 'zomato.com',
-    'jio': 'jio.com', 'max': 'maxfashion.in', 'tata': 'tata.com',
-    'reliance': 'reliance.com', 'flipkart': 'flipkart.com',
-    'bigbasket': 'bigbasket.com', 'blinkit': 'blinkit.com', 'zepto': 'zepto.co.in',
-    'netflix': 'netflix.com', 'spotify': 'spotify.com', 'airtel': 'airtel.in',
-    'vodafone': 'vi.in', 'vi': 'vi.in', 'act': 'actcorp.in', 'hotstar': 'hotstar.com',
-    'disney': 'disneyplus.com', 'prime': 'amazon.in', 'youtube': 'youtube.com',
-    'dunzo': 'dunzo.com', 'myntra': 'myntra.com', 'ajio': 'ajio.com',
-    'ola': 'olacabs.com', 'uber': 'uber.com', 'nykaa': 'nykaa.com'
-  };
-  
-  const n = name.toLowerCase();
-  const p = (provider || "").toLowerCase();
-  let domain = brandDomains[n] || brandDomains[p];
-  
-  if (!domain && url) {
-    try {
-      const cleanUrl = url.includes('://') ? url : `https://${url}`;
-      domain = new URL(cleanUrl).hostname.replace('www.', '');
-    } catch(e) {
-      if (url.includes('.')) domain = url.split('/')[0].replace('www.', '');
-    }
-  }
-  return domain;
-};
 
 export const EntityManagementModal = ({ type, onClose }: { type: string; onClose: () => void }) => {
-  const { entities, transactions, addEntity, updateEntity, deleteEntity, profile } = useFinance();
+  const { entities, transactions, addEntity, updateEntity, deleteEntity, profile, categories } = useFinance();
+  
+  const getCategoryData = (name: string) => {
+    return categories.find(c => c.name === name) || { icon: 'others', color: '#64748b' };
+  };
   const [view, setView] = useState<"list" | "details" | "form">("list");
   const [activeId, setActiveId] = useState<string | null>(null);
   const [editTxId, setEditTxId] = useState<string | null>(null);
   const [showAddTx, setShowAddTx] = useState(false);
+  const [isSearchingLogo, setIsSearchingLogo] = useState(false);
 
   const [formData, setFormData] = useState<any>({});
   const [showAdvanced, setShowAdvanced] = useState(false);
@@ -238,7 +206,6 @@ export const EntityManagementModal = ({ type, onClose }: { type: string; onClose
 
                     if (type === 'shop' || type === 'recurring' || type === 'subscription') {
                       const domain = getBrandDomain(ent.name, ent.url, ent.provider);
-                      logoUrl = domain && profile.logoDevToken ? `https://img.logo.dev/${domain}?token=${profile.logoDevToken}` : null;
                     } else {
                       const personTxns = transactions.filter(t => 
                         t.payee.toLowerCase() === ent.name.toLowerCase() || 
@@ -282,18 +249,23 @@ export const EntityManagementModal = ({ type, onClose }: { type: string; onClose
                           </div>
                         )}
                         
-                        <div className={cn("w-10 h-10 mb-2 flex items-center justify-center bg-slate-50 rounded-xl transition-transform group-hover:scale-110 overflow-hidden p-1.5 shadow-inner", type === 'person' && "rounded-full")}>
-                          {logoUrl ? (
-                            <ImageWithFallback src={logoUrl} alt={ent.name} className="w-full h-full object-contain" />
-                          ) : (
-                            <div className="text-indigo-600">
-                              {type === 'person' ? (
-                                <div className="text-sm font-black uppercase text-indigo-400">{ent.name.charAt(0)}</div>
-                              ) : (
-                                getCategoryIcon(ent.category, ent.name)
-                              )}
-                            </div>
-                          )}
+                        <div className="mb-2 transition-transform group-hover:scale-110">
+                          <BrandIcon 
+                            name={ent.name} 
+                            domain={getBrandDomain(ent.name, ent.url, ent.provider)} 
+                            logoUrl={ent.logoUrl}
+                            profile={profile} 
+                            className="w-full h-full object-contain"
+                            fallback={(
+                              <EntityCategoryIcon 
+                                cat={ent.category} 
+                                name={ent.name} 
+                                size={20} 
+                                withContainer 
+                                className={type === 'person' ? "rounded-full" : ""}
+                              />
+                            )}
+                          />
                         </div>
                         
                         <div className="w-full">
@@ -624,7 +596,7 @@ export const EntityManagementModal = ({ type, onClose }: { type: string; onClose
             <p className="text-[10px] text-slate-400 font-bold uppercase mt-1 tracking-tighter">{activeEntity.category || "General Asset"}</p>
           </div>
           <div className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm flex flex-col items-center justify-center text-indigo-600">
-             {getCategoryIcon(activeEntity.category, activeEntity.name)}
+             <EntityCategoryIcon cat={activeEntity.category} name={activeEntity.name} size={24} />
           </div>
         </div>
       );
@@ -637,7 +609,7 @@ export const EntityManagementModal = ({ type, onClose }: { type: string; onClose
             <p className="text-[10px] text-slate-400 font-bold uppercase mt-1 tracking-tighter">{activeEntity.category || "Consumable"}</p>
           </div>
           <div className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm flex flex-col items-center justify-center text-orange-600">
-             {getCategoryIcon(activeEntity.category, activeEntity.name)}
+             <EntityCategoryIcon cat={activeEntity.category} name={activeEntity.name} size={24} />
           </div>
         </div>
       );
@@ -648,45 +620,22 @@ export const EntityManagementModal = ({ type, onClose }: { type: string; onClose
         <div className="flex items-center justify-between mb-8">
            <div className="flex items-center gap-4">
              {(type === 'shop' || type === 'person' || type === 'recurring' || type === 'subscription' || type === 'asset' || type === 'inventory' || type === 'protection') && (
-               <div className={cn("w-16 h-16 bg-white rounded-2xl border border-slate-100 shadow-sm flex items-center justify-center overflow-hidden p-2", type === 'person' && "rounded-full")}>
-                  {(type === 'shop' || type === 'recurring' || type === 'subscription') ? (() => {
-                    const domain = getBrandDomain(activeEntity.name, activeEntity.url, activeEntity.provider);
-                    const logoUrl = domain && profile.logoDevToken ? `https://img.logo.dev/${domain}?token=${profile.logoDevToken}` : null;
-                    
-                    return (
-                      <div className="relative w-full h-full flex items-center justify-center">
-                        {logoUrl ? (
-                          <ImageWithFallback src={logoUrl} alt={activeEntity.name} className="w-full h-full object-contain" />
-                        ) : (
-                          <div className="text-2xl font-black text-slate-300 uppercase">
-                            {(type === 'recurring' || type === 'subscription') ? (() => {
-                              const cat = activeEntity.category?.toLowerCase();
-                              if (cat === 'electricity') return <Zap className="w-8 h-8 text-amber-500" />;
-                              if (cat === 'water') return <Droplets className="w-8 h-8 text-blue-500" />;
-                              if (cat === 'gas') return <Flame className="w-8 h-8 text-orange-500" />;
-                              if (cat === 'internet') return <Wifi className="w-8 h-8 text-indigo-500" />;
-                              if (cat === 'mobile') return <Smartphone className="w-8 h-8 text-rose-500" />;
-                              if (cat === 'rent') return <Home className="w-8 h-8 text-emerald-500" />;
-                              if (cat === 'dth' || cat === 'cable') return <Tv className="w-8 h-8 text-purple-500" />;
-                              if (cat === 'gym') return <Dumbbell className="w-8 h-8 text-blue-600" />;
-                              if (cat === 'milk') return <Milk className="w-8 h-8 text-sky-400" />;
-                              if (cat === 'newspaper') return <Newspaper className="w-8 h-8 text-slate-400" />;
-                              if (cat === 'maintenance') return <Wrench className="w-8 h-8 text-slate-500" />;
-                              return activeEntity.name.charAt(0);
-                            })() : (
-                              <div className="text-indigo-600">
-                                {activeEntity.name.toLowerCase().includes('shop') || type === 'shop' ? <Store className="w-8 h-8" /> : activeEntity.name.charAt(0)}
-                              </div>
-                            )}
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })() : (
-                    <div className="text-2xl font-black text-indigo-600 uppercase">
-                      {activeEntity.name.charAt(0)}
-                    </div>
-                  )}
+               <div className="flex-shrink-0">
+                  <BrandIcon 
+                    name={activeEntity.name} 
+                    domain={getBrandDomain(activeEntity.name, activeEntity.url, activeEntity.provider)} 
+                    profile={profile} 
+                    className="w-16 h-16 object-contain"
+                    fallback={(
+                      <EntityCategoryIcon 
+                        cat={activeEntity.category} 
+                        name={activeEntity.name} 
+                        size={28} 
+                        withContainer 
+                        className={type === 'person' ? "rounded-full" : ""}
+                      />
+                    )}
+                  />
                 </div>
              )}
              <div>
@@ -761,6 +710,26 @@ export const EntityManagementModal = ({ type, onClose }: { type: string; onClose
               placeholder={type === 'asset' ? "e.g. My Car, Luxury Watch" : type === 'inventory' ? "e.g. Rice Bag, Shampoo" : "e.g. Amazon, Rahul"}
               className="w-full text-sm font-semibold bg-slate-50 px-3 py-2.5 rounded-xl border-0 focus:ring-2 focus:ring-indigo-600 outline-none"
             />
+            {profile.brandfetchClientId && formData.name && (type === 'shop' || type === 'recurring' || type === 'subscription') && (
+              <button
+                type="button"
+                disabled={isSearchingLogo}
+                onClick={async () => {
+                  setIsSearchingLogo(true);
+                  const url = await searchBrandfetchIcon(formData.name || "", profile.brandfetchClientId || "");
+                  if (url) {
+                    setFormData({ ...formData, logoUrl: url });
+                    toast.success("Logo found via Brandfetch!");
+                  } else {
+                    toast.error("No logo found for this brand.");
+                  }
+                  setIsSearchingLogo(false);
+                }}
+                className="mt-2 text-[9px] font-black px-3 py-1.5 bg-amber-50 border border-amber-100 rounded-lg text-amber-700 hover:bg-amber-100 transition-all flex items-center gap-1.5"
+              >
+                {isSearchingLogo ? "Searching..." : "✨ Search Brandfetch for Logo"}
+              </button>
+            )}
           </div>
 
           {type === "shop" && (
@@ -885,7 +854,7 @@ export const EntityManagementModal = ({ type, onClose }: { type: string; onClose
                 {formData.category && !showAdvanced ? (
                   <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100 flex items-center gap-4">
                     <div className="w-12 h-12 rounded-xl bg-white border border-slate-100 flex items-center justify-center text-indigo-600 shadow-sm">
-                      {getCategoryIcon(formData.category, formData.name)}
+                      <EntityCategoryIcon cat={formData.category} name={formData.name} size={24} />
                     </div>
                     <div>
                       <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1">Selected Type</p>
@@ -1009,7 +978,7 @@ export const EntityManagementModal = ({ type, onClose }: { type: string; onClose
                   {formData.category && !showAdvanced ? (
                     <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100 flex items-center gap-4">
                       <div className="w-12 h-12 rounded-xl bg-white border border-slate-100 flex items-center justify-center text-indigo-600 shadow-sm">
-                        {getCategoryIcon(formData.category, formData.name)}
+                        <EntityCategoryIcon cat={formData.category} name={formData.name} size={24} />
                       </div>
                       <div>
                         <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1">Selected Category</p>

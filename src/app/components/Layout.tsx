@@ -51,7 +51,7 @@ export const Layout = () => {
           </div>
           <h1 className="text-xl font-bold text-slate-900 tracking-tight">MoneyManager</h1>
         </div>
-        
+
         <nav className="flex-1 px-4 py-4 space-y-1">
           {navItems.map((item) => (
             <NavLink
@@ -88,14 +88,14 @@ export const Layout = () => {
         {/* Mobile Header */}
         <header className="md:hidden flex items-center justify-between px-4 py-3 bg-white border-b border-slate-200 z-10 sticky top-0">
           <div className="flex items-center gap-2">
-             <div className="w-7 h-7 rounded-lg bg-indigo-600 flex items-center justify-center text-white font-bold text-sm">
+            <div className="w-7 h-7 rounded-lg bg-indigo-600 flex items-center justify-center text-white font-bold text-sm">
               ₹
             </div>
             <span className="font-bold text-lg">{getPageTitle()}</span>
           </div>
-          <img 
-            src="/profile.png" 
-            alt="Profile" 
+          <img
+            src="/profile.png"
+            alt="Profile"
             className="w-8 h-8 rounded-full border border-slate-200 object-cover bg-indigo-100"
             onError={(e) => { e.currentTarget.style.display = 'none' }}
           />
@@ -105,9 +105,9 @@ export const Layout = () => {
         <header className="hidden md:flex items-center justify-between px-8 py-5 bg-white/80 backdrop-blur-md border-b border-slate-200 sticky top-0 z-10">
           <h2 className="text-2xl font-bold text-slate-800 tracking-tight">{getPageTitle()}</h2>
           <div className="flex items-center gap-4">
-            <img 
-              src="/profile.png" 
-              alt="Profile" 
+            <img
+              src="/profile.png"
+              alt="Profile"
               className="w-9 h-9 rounded-full border-2 border-slate-100 object-cover shadow-sm bg-indigo-100"
               onError={(e) => { e.currentTarget.style.display = 'none' }}
             />
@@ -118,7 +118,7 @@ export const Layout = () => {
         <div className="flex-1 overflow-y-auto pb-40 md:pb-6">
           <Outlet />
         </div>
-        
+
         {/* Mobile Floating Action Button */}
         <button
           onClick={currentAction.action}
@@ -129,7 +129,7 @@ export const Layout = () => {
       </main>
 
       {/* Mobile Bottom Nav */}
-      <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 pb-6 z-30" style={{paddingBottom: 'max(1.5rem, env(safe-area-inset-bottom))'}}>
+      <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 pb-6 z-30" style={{ paddingBottom: 'max(1.5rem, env(safe-area-inset-bottom))' }}>
         <div className="grid grid-cols-5 items-center h-16 px-1">
           {navItems.map((item) => (
             <NavLink

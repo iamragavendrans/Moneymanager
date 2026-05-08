@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { X, Briefcase, User, MapPin, Phone, Mail, Calendar, Home, Building } from "lucide-react";
 import { useFinance } from "../context/FinanceContext";
 import { toast } from "sonner";
+import { LocationInput } from "./LocationInput";
 
 export const ProfileManagementModal = ({ onClose }: { onClose: () => void }) => {
   const { profile, updateProfile } = useFinance();
@@ -16,6 +17,8 @@ export const ProfileManagementModal = ({ onClose }: { onClose: () => void }) => 
     homeLocation: profile.homeLocation || "",
     currentStayName: profile.currentStayName || "",
     currentStayLocation: profile.currentStayLocation || "",
+    logoDevToken: profile.logoDevToken || "",
+    brandfetchClientId: profile.brandfetchClientId || "",
   });
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -98,14 +101,14 @@ export const ProfileManagementModal = ({ onClose }: { onClose: () => void }) => 
                   placeholder="Acme Inc."
                 />
               </div>
-              <div className="space-y-1.5">
-                <label className="text-xs font-bold text-slate-500 flex items-center gap-1.5"><MapPin className="w-3.5 h-3.5 text-emerald-500" /> Work Location</label>
-                <input 
-                  type="text" value={formData.employerLocation} onChange={e => setFormData({...formData, employerLocation: e.target.value})}
-                  className="w-full bg-slate-50 border-0 px-4 py-3 rounded-xl text-sm font-semibold focus:ring-2 focus:ring-emerald-600 outline-none"
-                  placeholder="Whitefield, Bangalore"
-                />
-              </div>
+              <LocationInput 
+                label="Work Location"
+                value={formData.employerLocation}
+                onChange={val => setFormData({...formData, employerLocation: val})}
+                accentColor="emerald"
+                icon={<MapPin className="w-3.5 h-3.5 text-emerald-500" />}
+                placeholder="e.g. Whitefield, Bangalore"
+              />
             </div>
           </div>
 
@@ -114,14 +117,14 @@ export const ProfileManagementModal = ({ onClose }: { onClose: () => void }) => 
             <h3 className="text-[10px] font-black text-rose-600 uppercase tracking-[0.2em]">Residential Mapping</h3>
             
             <div className="space-y-4">
-              <div className="space-y-1.5">
-                <label className="text-xs font-bold text-slate-500 flex items-center gap-1.5"><Home className="w-3.5 h-3.5 text-rose-500" /> Home Location (Permanent)</label>
-                <input 
-                  type="text" value={formData.homeLocation} onChange={e => setFormData({...formData, homeLocation: e.target.value})}
-                  className="w-full bg-slate-50 border-0 px-4 py-3 rounded-xl text-sm font-semibold focus:ring-2 focus:ring-rose-600 outline-none"
-                  placeholder="Street, City, State"
-                />
-              </div>
+              <LocationInput 
+                label="Home Location (Permanent)"
+                value={formData.homeLocation}
+                onChange={val => setFormData({...formData, homeLocation: val})}
+                accentColor="rose"
+                icon={<Home className="w-3.5 h-3.5 text-rose-500" />}
+                placeholder="Street, City, State"
+              />
 
               <div className="p-4 bg-slate-50/50 rounded-2xl border border-slate-100 space-y-4">
                 <div className="flex items-center justify-between">
@@ -137,18 +140,19 @@ export const ProfileManagementModal = ({ onClose }: { onClose: () => void }) => 
                       placeholder="e.g. Zolo Stay"
                     />
                   </div>
-                  <div className="space-y-1.5">
-                    <label className="text-xs font-bold text-slate-500 flex items-center gap-1.5"><MapPin className="w-3.5 h-3.5 text-rose-400" /> Stay Location</label>
-                    <input 
-                      type="text" value={formData.currentStayLocation} onChange={e => setFormData({...formData, currentStayLocation: e.target.value})}
-                      className="w-full bg-white border border-slate-200 px-4 py-3 rounded-xl text-sm font-semibold focus:ring-2 focus:ring-rose-600 outline-none"
-                      placeholder="e.g. HSR Layout"
-                    />
-                  </div>
+                  <LocationInput 
+                    label="Stay Location"
+                    value={formData.currentStayLocation}
+                    onChange={val => setFormData({...formData, currentStayLocation: val})}
+                    accentColor="rose"
+                    icon={<MapPin className="w-3.5 h-3.5 text-rose-400" />}
+                    placeholder="e.g. HSR Layout"
+                  />
                 </div>
               </div>
             </div>
           </div>
+          
         </form>
 
         <div className="p-4 bg-slate-50 border-t border-slate-100 flex items-center gap-3 shrink-0">

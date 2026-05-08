@@ -4,6 +4,7 @@ import { format, addMonths } from "date-fns";
 import { motion, AnimatePresence } from "framer-motion";
 import { useFinance, Account } from "../context/FinanceContext";
 import { cn, getGridCols, formatINR } from "../utils";
+import { searchBrandfetchIcon } from "../utils/logoFetcher";
 import { toast } from "sonner";
 
 const ACCOUNT_TYPES = [
@@ -95,6 +96,7 @@ export const AccountManagementModal = ({ accId, onClose }: { accId?: string | nu
   const [isManualLogo, setIsManualLogo] = useState(false);
   const [logoError, setLogoError] = useState(false);
   const [showUrlInput, setShowUrlInput] = useState(false);
+  const [isSearchingLogo, setIsSearchingLogo] = useState(false);
   
   // Type-specific fields
   const [cardNumber, setCardNumber] = useState("");
@@ -529,6 +531,24 @@ export const AccountManagementModal = ({ accId, onClose }: { accId?: string | nu
                                 {domain.split('.')[0]}
                               </button>
                             ))}
+                            <button
+                              type="button"
+                              disabled={isSearchingLogo || !name}
+                              onClick={async () => {
+                                if (!profile.brandfetchClientId || !name) return;
+                                setIsSearchingLogo(true);
+                                const url = await searchBrandfetchIcon(name, profile.brandfetchClientId);
+                                if (url) {
+                                  setLogoUrl(url);
+                                  setIsManualLogo(true);
+                                  setLogoError(false);
+                                }
+                                setIsSearchingLogo(false);
+                              }}
+                              className="text-[9px] font-black px-2 py-1 bg-amber-50 border border-amber-200 rounded-lg text-amber-700 hover:bg-amber-600 hover:text-white transition-all ml-auto flex items-center gap-1"
+                            >
+                              {isSearchingLogo ? "Searching..." : "✨ Search Brandfetch"}
+                            </button>
                           </div>
                         </div>
                       )}

@@ -5,9 +5,10 @@ import { Search, Filter, ArrowUpRight, ArrowDownRight, Wallet, ChevronDown, Chev
 import { useFinance, Transaction } from "../context/FinanceContext";
 import { TransactionFormModal } from "../components/TransactionFormModal";
 import { formatINR, cn } from "../utils";
+import { CategoryIcon } from "../components/CategoryIcon";
 
 export const Transactions = () => {
-  const { transactions, deleteTransaction, updateTransaction, accounts } = useFinance();
+  const { transactions, deleteTransaction, updateTransaction, accounts, categories: ctxCategories } = useFinance();
   const [searchParams, setSearchParams] = useSearchParams();
   const startParam = searchParams.get("start");
   const endParam = searchParams.get("end");
@@ -200,6 +201,10 @@ export const Transactions = () => {
     if (expandedGroups.size === 0) setIsAllExpanded(false);
     else if (expandedGroups.size >= actualGroupCount && actualGroupCount > 0) setIsAllExpanded(true);
   }, [expandedGroups, actualGroupCount]);
+
+  const getCategoryData = (name: string) => {
+    return ctxCategories.find(c => c.name === name) || { icon: 'others', color: '#64748b' };
+  };
 
   // Bulk helpers
   const toggleBulk = (id: string) => {
@@ -507,16 +512,13 @@ export const Transactions = () => {
                                 {bulkSelected.has(pg.transactions[0]?.id) && <CheckCheck className="w-3 h-3 text-white" />}
                               </div>
                             )}
-                            <div className={cn(
-                              "w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 transition-transform group-hover:scale-105",
-                              pg.type === 'expense' ? 'bg-red-50 text-red-600' :
-                                pg.type === 'income' ? 'bg-emerald-50 text-emerald-600' :
-                                  'bg-blue-50 text-blue-600'
-                            )}>
-                              {pg.type === 'expense' ? <ArrowDownRight className="w-5 h-5" /> :
-                                pg.type === 'income' ? <ArrowUpRight className="w-5 h-5" /> :
-                                  <Wallet className="w-5 h-5" />}
-                            </div>
+                            <CategoryIcon 
+                              icon={getCategoryData(pg.transactions[0].category).icon} 
+                              color={getCategoryData(pg.transactions[0].category).color} 
+                              size={22} 
+                              withContainer
+                              className="group-hover:scale-105"
+                            />
                             <div className="flex-1 min-w-0">
                               <div className="flex items-center gap-2">
                                 <p className="font-bold text-slate-800 truncate">{pg.payee}</p>

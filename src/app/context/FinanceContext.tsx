@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useEffect, useState } from "react";
 import { format, subDays, subMonths, startOfMonth, endOfMonth } from "date-fns";
 import { seedAllData } from "../utils/seedData";
-import { CategoryDef, DEFAULT_EXPENSE_CATEGORIES, DEFAULT_INCOME_CATEGORIES } from "../utils/categories";
+import { CategoryDef, DEFAULT_EXPENSE_CATEGORIES, DEFAULT_INCOME_CATEGORIES, CATEGORY_ICON_MAP } from "../utils/categories";
 
 export type TransactionType = "expense" | "income" | "transfer";
 
@@ -50,6 +50,7 @@ export interface Profile {
   currentStayName?: string;
   currentStayLocation?: string;
   logoDevToken?: string;
+  brandfetchClientId?: string;
   taxRegime?: "old" | "new";
   baseCurrency?: string;
   maskBalances?: boolean;
@@ -196,34 +197,75 @@ const FinanceContext = createContext<FinanceContextType | undefined>(undefined);
 
 export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [transactions, setTransactions] = useState<Transaction[]>(() => {
-    const saved = localStorage.getItem("finance_txns");
-    const raw: Transaction[] = saved ? JSON.parse(saved) : [];
-    return raw;
+    try {
+      const saved = localStorage.getItem("finance_txns");
+      if (!saved || saved === "undefined" || saved === "null") return [];
+      const parsed = JSON.parse(saved);
+      return Array.isArray(parsed) ? parsed : [];
+    } catch (e) { return []; }
   });
 
   const [accounts, setAccounts] = useState<Account[]>(() => {
-    const saved = localStorage.getItem("finance_accounts");
-    return saved ? JSON.parse(saved) : [];
+    try {
+      const saved = localStorage.getItem("finance_accounts");
+      if (!saved || saved === "undefined" || saved === "null") return [];
+      const parsed = JSON.parse(saved);
+      return Array.isArray(parsed) ? parsed : [];
+    } catch (e) { return []; }
   });
 
   const [investments, setInvestments] = useState<Investment[]>(() => {
-    const saved = localStorage.getItem("finance_investments");
-    return saved ? JSON.parse(saved) : [];
+    try {
+      const saved = localStorage.getItem("finance_investments");
+      if (!saved || saved === "undefined" || saved === "null") return [];
+      const parsed = JSON.parse(saved);
+      return Array.isArray(parsed) ? parsed : [];
+    } catch (e) { return []; }
   });
 
   const [entities, setEntities] = useState<Entity[]>(() => {
-    const saved = localStorage.getItem("finance_entities");
-    return saved ? JSON.parse(saved) : [];
+    try {
+      const saved = localStorage.getItem("finance_entities");
+      if (!saved || saved === "undefined" || saved === "null") return [];
+      const parsed = JSON.parse(saved);
+      return Array.isArray(parsed) ? parsed : [];
+    } catch (e) { return []; }
   });
 
   const [profile, setProfile] = useState<Profile>(() => {
     const saved = localStorage.getItem("finance_profile");
-    return saved ? JSON.parse(saved) : { employerName: "Acme Corp", logoDevToken: "pk_E7r5x7Z9Z7Z7Z7Z7Z7Z7Z7" };
+    const baseProfile = saved ? JSON.parse(saved) : { 
+      employerName: "Acme Corp", 
+    };
+    // Always ensure hardcoded keys are present
+    return {
+      ...baseProfile,
+      brandfetchClientId: "1idsKu59XkpClBMM0Wa",
+      logoDevToken: baseProfile.logoDevToken || "" // Keep existing or empty if not provided
+    };
   });
 
   const [categories, setCategories] = useState<CategoryDef[]>(() => {
-    const saved = localStorage.getItem("finance_categories");
-    return saved ? JSON.parse(saved) : [...DEFAULT_EXPENSE_CATEGORIES, ...DEFAULT_INCOME_CATEGORIES];
+    const defaults = [...DEFAULT_EXPENSE_CATEGORIES, ...DEFAULT_INCOME_CATEGORIES];
+    try {
+      const saved = localStorage.getItem("finance_categories");
+      const currentVersion = localStorage.getItem("finance_cat_version");
+      
+      // Migration: If version is old or missing, perform a reset/update
+      if (currentVersion !== "elite_v3") {
+        localStorage.setItem("finance_cat_version", "elite_v3");
+        if (saved && saved !== "undefined" && saved !== "null") {
+          localStorage.setItem("finance_categories", JSON.stringify(defaults));
+          return defaults;
+        }
+      }
+
+      if (!saved || saved === "undefined" || saved === "null") return defaults;
+      const parsed = JSON.parse(saved);
+      return Array.isArray(parsed) ? parsed : defaults;
+    } catch (e) {
+      return defaults;
+    }
   });
 
   useEffect(() => { localStorage.setItem("finance_txns", JSON.stringify(transactions)); }, [transactions]);

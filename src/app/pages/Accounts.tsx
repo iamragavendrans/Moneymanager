@@ -580,7 +580,7 @@ export const Accounts = () => {
                     <div className="flex items-end justify-between mt-auto">
                       <div>
                         <h4 className="text-white/50 text-[7px] uppercase font-bold tracking-widest mb-1">Cardholder Name</h4>
-                        <p className="text-white font-bold tracking-widest text-xs uppercase drop-shadow-sm truncate max-w-[180px]">{acc.accountHolderName || profile.userName || 'CARDHOLDER'}</p>
+                        <p className="text-white font-bold tracking-widest text-xs uppercase drop-shadow-sm truncate max-w-[180px]">{acc.accountHolderName || `${profile.firstName || ""} ${profile.lastName || ""}`.trim() || 'CARDHOLDER'}</p>
                       </div>
                       {acc.expiryDate && (
                         <div className="text-right">
