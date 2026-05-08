@@ -72,8 +72,6 @@ export const Settings = () => {
   const [confirmReset, setConfirmReset] = useState(false);
   const [confirmWipe, setConfirmWipe] = useState(false);
   const [showProfileModal, setShowProfileModal] = useState(false);
-  const [showBudgetsModal, setShowBudgetsModal] = useState(false);
-  const [showLogoModal, setShowLogoModal] = useState(false);
   const [wipePhase, setWipePhase] = useState(1);
   const [showCategoriesModal, setShowCategoriesModal] = useState(false);
   const [showPinModal, setShowPinModal] = useState(false);
@@ -125,31 +123,7 @@ export const Settings = () => {
     input.click();
   };
 
-  const handleExportCSV = () => {
-    if (transactions.length === 0) {
-      toast.error('No transactions to export');
-      return;
-    }
-    const headers = ['Date', 'Payee', 'Amount', 'Type', 'Category', 'Account', 'Mode', 'Status', 'Notes'];
-    const rows = transactions.map(tx => [
-      tx.date,
-      `"${tx.payee.replace(/"/g, '""')}"`,
-      tx.amount,
-      tx.type,
-      `"${tx.category.replace(/"/g, '""')}"`,
-      accounts.find(a => a.id === tx.account_id)?.name || tx.account_id,
-      tx.mode || 'UPI',
-      tx.status || 'cleared',
-      `"${(tx.notes || '').replace(/"/g, '""')}"`
-    ]);
-    const csvContent = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url; a.download = `moneymanager-transactions-${new Date().toISOString().split('T')[0]}.csv`;
-    a.click(); URL.revokeObjectURL(url);
-    toast.success('CSV Exported!');
-  };
+
 
   const handleReminderToggle = async (key: 'bills' | 'dailyLog' | 'overdue') => {
     const turningOn = !reminders[key];
@@ -222,21 +196,12 @@ export const Settings = () => {
 
   return (
     <div className="p-4 md:p-8 max-w-4xl mx-auto space-y-12 pb-24">
-      <div className="flex items-center justify-between">
-        <h2 className="text-3xl font-black text-slate-800 tracking-tight">Settings</h2>
-        <div className="flex items-center gap-3 bg-white px-4 py-2 rounded-2xl border border-slate-100 shadow-sm">
-           <img src="/profile.png" alt="P" className="w-8 h-8 rounded-full bg-indigo-100" />
-           <div className="text-left">
-             <p className="text-[10px] font-black text-slate-800 leading-none">{profile.userName || "Guest"}</p>
-             <p className="text-[8px] font-bold text-slate-400 uppercase mt-1 tracking-tighter">Pro Member</p>
-           </div>
-        </div>
-      </div>
+
 
       {/* 1. Categories */}
       <div>
         <SectionHeader icon={Tags} title="Categories" desc="Structure & Tagging Insights" />
-        <div className={cn("grid gap-3", getGridCols(4))}>
+        <div className="grid grid-cols-3 gap-3">
           <SettingCell icon={Tags} title="Categories" sub="Master List" color="text-emerald-600" bg="bg-emerald-50" onClick={() => setShowCategoriesModal(true)} />
           <SettingCell
             icon={Layers} title="Sub Categories" sub={subCatsEnabled ? "Enabled" : "Disabled"}
@@ -245,7 +210,6 @@ export const Settings = () => {
             onToggle={() => { setSubCatsEnabled(v => !v); toast.success(subCatsEnabled ? 'Sub categories hidden in forms' : 'Sub categories enabled in forms'); }}
           />
           <SettingCell icon={PieChart} title="Classification" sub="Needs / Wants" color="text-emerald-600" bg="bg-emerald-50" onClick={() => toast.info('Need / Want / Invest / Discretionary — auto-set when you pick a category in the transaction form')} />
-          <SettingCell icon={Target} title="Budgeting" sub="Monthly Limits" color="text-indigo-600" bg="bg-indigo-50" onClick={() => setShowBudgetsModal(true)} />
         </div>
       </div>
 
@@ -292,21 +256,20 @@ export const Settings = () => {
       {/* 5. Profile */}
       <div>
         <SectionHeader icon={Users} title="Profile" desc="Data Sync & Portability" />
-        <div className={cn("grid gap-3", getGridCols(4))}>
+        <div className="grid grid-cols-3 gap-3">
           <SettingCell
             icon={Cloud} title="Drive Sync" sub="Auto Backup" color="text-blue-600" bg="bg-blue-50"
             active={sync.drive} onToggle={handleDriveSync}
           />
           <SettingCell icon={Upload} title="Restore" sub="From JSON" color="text-blue-600" bg="bg-blue-50" onClick={handleRestore} />
           <SettingCell icon={Download} title="Backup" sub="To JSON" color="text-blue-600" bg="bg-blue-50" onClick={handleExport} />
-          <SettingCell icon={FileJson} title="Spreadsheet" sub="Export CSV" color="text-emerald-600" bg="bg-emerald-50" onClick={handleExportCSV} />
         </div>
       </div>
 
       {/* 6. Privacy & Security */}
       <div>
         <SectionHeader icon={Shield} title="Vault Security" desc="Access Control & Biometrics" />
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-2 gap-3">
           <SettingCell
             icon={Fingerprint} title="Biometric Lock" sub={locks.biometric ? "Active" : "Disabled"} color="text-indigo-600" bg="bg-indigo-50"
             active={locks.biometric} 
@@ -324,32 +287,16 @@ export const Settings = () => {
             active={hasPin} 
             onClick={() => setShowPinModal(true)}
           />
-          <SettingCell
-            icon={Lock} title="Hide Balances" sub={profile.maskBalances ? "Masked" : "Visible"} color="text-indigo-600" bg="bg-indigo-50"
-            active={profile.maskBalances} onToggle={() => updateProfile({ maskBalances: !profile.maskBalances })}
-          />
         </div>
       </div>
 
-      {/* 7. Brand & Identity */}
-      <div>
-        <SectionHeader icon={Palette} title="Brand" desc="Personalize Visual Identity" />
-        <div className="grid grid-cols-3 gap-3">
-          <SettingCell
-            icon={Palette} title="API Token" sub="Logo.dev Config" color="text-indigo-600" bg="bg-indigo-50"
-            onClick={() => setShowLogoModal(true)}
-          />
-          <SettingCell icon={LayoutTemplate} title="Theme" sub="Accent Color" color="text-indigo-600" bg="bg-indigo-50" onClick={handleTheme} />
-          <SettingCell icon={Store} title="Merchant Logos" sub="Auto Fetching" color="text-indigo-600" bg="bg-indigo-50" active={true} />
-        </div>
-      </div>
+
 
       {/* 8. Danger Zone */}
       <div>
         <SectionHeader icon={AlertTriangle} title="Danger Zone" desc="Destructive System Actions" />
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-2 gap-3">
           <SettingCell icon={Database} title="Reset" sub="Keep Accounts" color="text-red-600" bg="bg-red-50" onClick={() => setConfirmReset(true)} />
-          <SettingCell icon={Database} title="Seed" sub="2 Year History" color="text-red-600" bg="bg-red-50" onClick={() => { resetData(); toast.success('Seed data loaded!'); }} />
           <SettingCell icon={LogOut} title="Wipe" sub="Nuclear Reset" color="text-red-600" bg="bg-red-50" onClick={() => { setWipePhase(1); setConfirmWipe(true); }} />
         </div>
       </div>
@@ -358,23 +305,7 @@ export const Settings = () => {
         <p className="text-[10px] font-black text-slate-300 uppercase tracking-[0.3em]">MoneyManager v1.2.0 • Pro Edition</p>
       </div>
 
-      {/* Logo Modal */}
-      {showLogoModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4">
-          <div className="bg-white rounded-3xl p-6 w-full max-w-sm shadow-2xl">
-            <h3 className="font-bold text-xl text-slate-800 mb-2">Logo.dev API Token</h3>
-            <p className="text-xs text-slate-500 mb-4">Required for high-definition merchant logos.</p>
-            <input
-              type="password"
-              value={profile.logoDevToken || ''}
-              onChange={(e) => updateProfile({ logoDevToken: e.target.value })}
-              placeholder="pk_xxxxxxxxxxxxxxxx"
-              className="w-full text-sm font-mono bg-slate-50 border px-4 py-3 rounded-xl focus:ring-2 focus:ring-indigo-600 outline-none mb-4"
-            />
-            <button onClick={() => setShowLogoModal(false)} className="w-full py-3 bg-indigo-600 text-white rounded-xl font-bold">Save & Close</button>
-          </div>
-        </div>
-      )}
+
 
       {showCategoriesModal && (
         <CategoryManagementModal onClose={() => setShowCategoriesModal(false)} />
@@ -473,48 +404,6 @@ export const Settings = () => {
       {showProfileModal && (
         <ProfileManagementModal onClose={() => setShowProfileModal(false)} />
       )}
-      {showBudgetsModal && (
-        <BudgetManagementModal onClose={() => setShowBudgetsModal(false)} />
-      )}
-    </div>
-  );
-};
-
-const BudgetManagementModal = ({ onClose }: { onClose: () => void }) => {
-  const { categories, profile, updateBudget } = useFinance();
-  const expenseCats = categories.filter(c => c.type !== 'income');
-  
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4">
-      <div className="bg-white rounded-3xl p-6 w-full max-w-md shadow-2xl animate-in zoom-in-95 duration-200 flex flex-col max-h-[80vh]">
-        <div className="flex justify-between items-center mb-6">
-          <h3 className="font-bold text-xl text-slate-800">Monthly Budgets</h3>
-          <button onClick={onClose} className="p-2 bg-slate-100 rounded-full text-slate-500"><X className="w-5 h-5" /></button>
-        </div>
-        <div className="overflow-y-auto flex-1 space-y-4 pr-2 custom-scrollbar">
-          {expenseCats.map(cat => (
-            <div key={cat.id} className="flex items-center gap-4 bg-slate-50 p-3 rounded-2xl border border-slate-100">
-              <div className="flex-1">
-                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{cat.name}</p>
-                <div className="flex items-center gap-2 mt-1">
-                  <span className="text-lg font-bold text-slate-400">₹</span>
-                  <input
-                    type="number"
-                    value={profile.budgets?.[cat.name] || ''}
-                    onChange={(e) => updateBudget(cat.name, Number(e.target.value))}
-                    placeholder="No limit"
-                    className="w-full bg-transparent text-lg font-black text-slate-800 focus:outline-none placeholder:text-slate-200"
-                  />
-                </div>
-              </div>
-              <div className={cn("w-10 h-10 rounded-xl flex items-center justify-center", (profile.budgets?.[cat.name] || 0) > 0 ? "bg-indigo-100 text-indigo-600" : "bg-slate-100 text-slate-400")}>
-                <Target className="w-5 h-5" />
-              </div>
-            </div>
-          ))}
-        </div>
-        <button onClick={onClose} className="mt-6 w-full py-4 bg-indigo-600 text-white rounded-2xl font-bold shadow-lg shadow-indigo-200 active:scale-95 transition-all">Save Changes</button>
-      </div>
     </div>
   );
 };

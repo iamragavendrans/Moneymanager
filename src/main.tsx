@@ -4,10 +4,11 @@
   import "./styles/index.css";
   import { Toaster } from "sonner";
   import React from "react";
+  import { Capacitor } from "@capacitor/core";
   import { CapacitorUpdater } from "@capgo/capacitor-updater";
 
   // Tell Capgo the current bundle loaded successfully so it isn't rolled back
-  if ((window as any).Capacitor?.isNativePlatform()) {
+  if (Capacitor.isNativePlatform()) {
     CapacitorUpdater.notifyAppReady();
   }
 

@@ -26,7 +26,7 @@ export const Layout = () => {
       case "/transactions": return "Transactions";
       case "/accounts": return "Accounts";
       case "/investments": return "Investments";
-      case "/settings": return "Preferences";
+      case "/settings": return "Settings";
       default: return "Money Tracker";
     }
   };

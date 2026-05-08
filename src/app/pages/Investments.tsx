@@ -5,34 +5,15 @@ import { differenceInDays, parseISO, format } from "date-fns";
 import { useFinance } from "../context/FinanceContext";
 import { InvestmentManagementModal } from "../components/InvestmentManagementModal";
 
-// Default seed data used when context investments list is empty
-const defaultInvestments = {
-  marketLinked: [
-    { id: '1', name: "Parag Parikh Flexi Cap", units: 1540.5, avgNav: 45.2, currentNav: 68.4, isSIP: true },
-    { id: '2', name: "UTI Nifty 50 Index Fund", units: 250, avgNav: 150.0, currentNav: 215.5, isSIP: true },
-    { id: '3', name: "HDFC Bank (Direct Equity)", units: 50, avgNav: 1450.0, currentNav: 1410.0, isSIP: false },
-  ],
-  fixedIncome: [
-    { id: '1', name: "SBI Tax Saver FD (80C)", principal: 150000, current: 172000, rate: 7.1, startDate: "2023-04-01", maturityDate: "2028-04-01" },
-    { id: '2', name: "EPF (Provident Fund)", principal: 850000, current: 980000, rate: 8.15, startDate: "2019-06-01", maturityDate: "2050-01-01" },
-  ],
-  gold: [
-    { id: '1', name: "Sovereign Gold Bond 2023", grams: 50, avgPrice: 5923, currentPrice: 7250 },
-    { id: '2', name: "Digital Gold (PhonePe)", grams: 12.5, avgPrice: 6100, currentPrice: 7100 },
-  ],
-  realEstate: [
-    { id: '1', name: "2BHK Apartment, Bangalore", propertyValue: 8500000, loanOutstanding: 6200000 },
-  ]
-};
+
 
 export const Investments = () => {
   const { investments: contextInvestments } = useFinance();
   const [showAddModal, setShowAddModal] = React.useState(false);
   const [editingId, setEditingId] = React.useState<string | null>(null);
 
-  // Use context investments when available, otherwise use defaults
+  // Use context investments
   const inv = useMemo(() => {
-    if (contextInvestments.length === 0) return defaultInvestments;
     return {
       marketLinked: contextInvestments.filter(i => i.category === 'marketLinked'),
       fixedIncome: contextInvestments.filter(i => i.category === 'fixedIncome'),

@@ -5,12 +5,8 @@ import { FinanceProvider } from "./context/FinanceContext";
 import { LockScreen } from "./components/LockScreen";
 
 export default function App() {
-  const [unlocked, setUnlocked] = useState(false);
   const securityEnabled = localStorage.getItem('s_biometric') === 'true';
-
-  useEffect(() => {
-    if (!securityEnabled) setUnlocked(true);
-  }, [securityEnabled]);
+  const [unlocked, setUnlocked] = useState(!securityEnabled);
 
   if (!unlocked) {
     return <LockScreen onUnlock={() => setUnlocked(true)} />;
