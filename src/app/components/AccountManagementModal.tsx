@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from "react";
-import { X, Building2, CreditCard, Wallet, Smartphone, Banknote, TrendingUp, Utensils, PiggyBank, HandCoins, Check, Trash2, ArrowLeft, Gem } from "lucide-react";
+import { X, Building2, CreditCard, Wallet, Smartphone, Banknote, TrendingUp, Utensils, PiggyBank, HandCoins, Check, Trash2, ArrowLeft, Gem, CalendarDays, CheckCircle2 } from "lucide-react";
+import { format, addMonths } from "date-fns";
 import { motion, AnimatePresence } from "framer-motion";
 import { useFinance, Account } from "../context/FinanceContext";
-import { cn, getGridCols } from "../utils";
+import { cn, getGridCols, formatINR } from "../utils";
 import { toast } from "sonner";
 
 const ACCOUNT_TYPES = [
@@ -15,6 +16,7 @@ const ACCOUNT_TYPES = [
   { id: "investment", label: "Invest", icon: TrendingUp },
   { id: "pf", label: "PF", icon: PiggyBank },
   { id: "asset", label: "Assets", icon: Gem },
+  { id: "chit", label: "Chit", icon: PiggyBank },
 ];
 
 const BRAND_MAP: Record<string, string> = {
@@ -83,7 +85,13 @@ export const AccountManagementModal = ({ accId, onClose }: { accId?: string | nu
   const [emiDate, setEmiDate] = useState("");
   const [monthlyContribution, setMonthlyContribution] = useState("");
   const [employeeId, setEmployeeId] = useState("");
+  const [maturityAmount, setMaturityAmount] = useState("");
+  const [maturityDate, setMaturityDate] = useState("");
   const [logoUrl, setLogoUrl] = useState("");
+  const [paidMonths, setPaidMonths] = useState<string>("");
+  const [startDate, setStartDate] = useState<string>(format(new Date(), 'yyyy-MM-dd'));
+  const [paymentSchedule, setPaymentSchedule] = useState<Account['paymentSchedule']>([]);
+  const [showScheduleModal, setShowScheduleModal] = useState(false);
   const [isManualLogo, setIsManualLogo] = useState(false);
   const [logoError, setLogoError] = useState(false);
   const [showUrlInput, setShowUrlInput] = useState(false);
@@ -133,6 +141,12 @@ export const AccountManagementModal = ({ accId, onClose }: { accId?: string | nu
       setBranch(existingAcc.branch || "");
       setEmployerName(existingAcc.employerName || "");
       setEmployerLocation(existingAcc.employerLocation || "");
+      setMaturityAmount(existingAcc.maturityAmount?.toString() || "");
+      setMaturityAmount(existingAcc.maturityAmount?.toString() || "");
+      setMaturityDate(existingAcc.maturityDate || "");
+      setPaidMonths(existingAcc.paidMonths?.toString() || "");
+      setStartDate(existingAcc.startDate || format(new Date(), 'yyyy-MM-dd'));
+      setPaymentSchedule(existingAcc.paymentSchedule || []);
     }
   }, [existingAcc]);
 
@@ -261,6 +275,42 @@ export const AccountManagementModal = ({ accId, onClose }: { accId?: string | nu
     fetchIFSC();
   }, [ifsc]);
 
+  // Auto-calc for Chit
+  useEffect(() => {
+    if (type === 'chit') {
+      const mat = Number(maturityAmount);
+      const tenure = Number(tenureMonths);
+      if (mat && tenure && !emiAmount) {
+        setEmiAmount((mat / tenure).toFixed(0));
+      }
+    }
+  }, [maturityAmount, tenureMonths, type]);
+
+  const calculateEMI = () => {
+    const p = Math.abs(Number(balance));
+    const r = Number(interestRate) / (12 * 100);
+    const n = Number(tenureMonths);
+    if (p && r && n) {
+      const emi = (p * r * Math.pow(1 + r, n)) / (Math.pow(1 + r, n) - 1);
+      setEmiAmount(emi.toFixed(0));
+      toast.success(`Calculated EMI: ₹${emi.toFixed(0)}`);
+    } else {
+      toast.error("Please enter Balance (Principal), Interest Rate, and Tenure");
+    }
+  };
+
+  const calculateChitAverage = () => {
+    const total = Number(maturityAmount);
+    const n = Number(tenureMonths);
+    if (total && n) {
+      const avg = total / n;
+      setEmiAmount(avg.toFixed(0));
+      toast.success(`Average Contribution: ₹${avg.toFixed(0)}`);
+    } else {
+      toast.error("Please enter Maturity Amount and Tenure");
+    }
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!name) {
@@ -269,6 +319,10 @@ export const AccountManagementModal = ({ accId, onClose }: { accId?: string | nu
     }
 
     const finalBalance = balance === "" ? 0 : Number(balance);
+
+    const finalPaidMonths = paymentSchedule.length > 0 
+      ? paymentSchedule.filter(s => s.paid).length 
+      : Number(paidMonths) || 0;
 
     const data: any = {
       name,
@@ -297,6 +351,14 @@ export const AccountManagementModal = ({ accId, onClose }: { accId?: string | nu
       emiDate: emiDate ? Number(emiDate) : undefined,
       monthlyContribution: monthlyContribution ? Number(monthlyContribution) : undefined,
       employeeId: employeeId || undefined,
+      maturityAmount: maturityAmount ? Number(maturityAmount) : undefined,
+      maturityDate: maturityDate || undefined,
+      paidMonths: finalPaidMonths,
+      startDate: startDate || undefined,
+      paymentSchedule: paymentSchedule.length > 0 ? paymentSchedule : Array.from({ length: Number(tenureMonths) || 0 }).map((_, i) => ({
+        amount: Number(emiAmount) || 0,
+        paid: i < finalPaidMonths
+      })),
       logoUrl: logoUrl || undefined,
     };
 
@@ -311,7 +373,7 @@ export const AccountManagementModal = ({ accId, onClose }: { accId?: string | nu
   };
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 md:p-6 bg-slate-900/40 backdrop-blur-sm animate-in fade-in duration-200">
+    <div className="fixed inset-0 z-[1000] flex items-center justify-center p-4 md:p-6 bg-slate-900/40 backdrop-blur-sm animate-in fade-in duration-200">
       <div className="bg-white rounded-3xl w-full max-w-lg shadow-2xl flex flex-col max-h-[95vh] overflow-hidden animate-in zoom-in-95 duration-200">
         <div className="p-6 border-b border-slate-100 flex items-center justify-between bg-slate-50/50 shrink-0">
           <div className="flex items-center gap-4">
@@ -326,8 +388,14 @@ export const AccountManagementModal = ({ accId, onClose }: { accId?: string | nu
             <div>
               <h2 className="text-xl font-bold text-slate-800">
                 {isEdit 
-                  ? (type === 'credit_card' || type === 'debit' ? "Edit Card Settings" : "Edit Account")
-                  : (step === "type" ? "Add New Account" : (type === 'credit_card' || type === 'debit' ? "Add New Card" : "Add New Account"))}
+                  ? (() => {
+                      if (type === 'credit_card' || type === 'debit') return "Edit Card Settings";
+                      if (type === 'wallet') return "Edit Wallet";
+                      if (type === 'investment') return "Edit Investment";
+                      if (type === 'chit') return "Edit Chit Fund";
+                      return "Edit Account Settings";
+                    })()
+                  : (step === "type" ? "Add New Account" : (type === 'credit_card' || type === 'debit' ? "Add New Card" : `Add New ${type.replace('_', ' ')}`))}
               </h2>
               <p className="text-xs text-slate-500 font-medium mt-0.5">
                 {step === "type" ? "Select account category" : (type === 'credit_card' || type === 'debit' ? "Configure your card details" : "Configure your financial instrument")}
@@ -466,6 +534,7 @@ export const AccountManagementModal = ({ accId, onClose }: { accId?: string | nu
                       )}
 
                       {/* ROW 2: Balance & Type */}
+                      {type !== 'chit' && (
                       <div className="grid grid-cols-2 gap-4">
                         <div>
                           <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5 px-1">
@@ -497,6 +566,7 @@ export const AccountManagementModal = ({ accId, onClose }: { accId?: string | nu
                           )}
                         </div>
                       </div>
+                      )}
 
                       {/* TOGGLE TO EXPAND: Advanced Details */}
                       {type === 'bank' && (
@@ -752,8 +822,11 @@ export const AccountManagementModal = ({ accId, onClose }: { accId?: string | nu
                           </div>
                         </div>
                         <div className="grid grid-cols-2 gap-4">
-                          <div>
-                            <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5 px-1">EMI Amount</label>
+                          <div className="relative">
+                            <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5 px-1 flex justify-between">
+                              <span>EMI Amount</span>
+                              <button type="button" onClick={calculateEMI} className="text-indigo-600 hover:underline">Auto-calc</button>
+                            </label>
                             <input
                               type="number" value={emiAmount} onChange={e => setEmiAmount(e.target.value)}
                               placeholder="e.g. 15000"
@@ -768,6 +841,35 @@ export const AccountManagementModal = ({ accId, onClose }: { accId?: string | nu
                               className="w-full text-sm font-bold bg-slate-50 px-4 py-3.5 rounded-2xl border-2 border-transparent focus:border-indigo-600 focus:bg-white outline-none transition-all shadow-inner"
                             />
                           </div>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-4">
+                           <div>
+                              <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5 px-1">Start Date</label>
+                              <input
+                                type="date" value={startDate} onChange={e => setStartDate(e.target.value)}
+                                className="w-full text-sm font-bold bg-slate-50 px-4 py-3.5 rounded-2xl border-2 border-transparent focus:border-indigo-600 focus:bg-white outline-none transition-all shadow-inner"
+                              />
+                           </div>
+                           <div className="flex items-end">
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  if (paymentSchedule.length === 0 || paymentSchedule.length !== Number(tenureMonths)) {
+                                    const newSchedule = Array.from({ length: Number(tenureMonths) || 0 }).map((_, i) => ({
+                                      amount: i < Number(paidMonths) ? (Math.abs(Number(balance)) / (Number(paidMonths) || 1)) : (Number(emiAmount) || 0),
+                                      paid: i < Number(paidMonths)
+                                    }));
+                                    setPaymentSchedule(newSchedule);
+                                  }
+                                  setShowScheduleModal(true);
+                                }}
+                                className="w-full py-4 bg-indigo-50 text-indigo-600 font-black text-[10px] uppercase tracking-widest rounded-2xl border border-indigo-100 hover:bg-indigo-100 transition-all flex items-center justify-center gap-2"
+                              >
+                                <CalendarDays className="w-4 h-4" />
+                                {paymentSchedule.filter(s => s.paid).length} / {tenureMonths || 0} Paid
+                              </button>
+                           </div>
                         </div>
                       </div>
                     )}
@@ -790,6 +892,178 @@ export const AccountManagementModal = ({ accId, onClose }: { accId?: string | nu
                             placeholder="Optional"
                             className="w-full text-sm font-semibold bg-slate-50 px-4 py-3.5 rounded-2xl border-2 border-transparent focus:border-indigo-600 focus:bg-white outline-none transition-all shadow-inner"
                           />
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Section: Chit Details */}
+                    {type === 'chit' && (
+                      <div className="space-y-4 pt-2 border-t border-slate-50 animate-in slide-in-from-top-2">
+                        <div className="grid grid-cols-2 gap-4">
+                          <div>
+                            <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5 px-1">Maturity Amount</label>
+                            <input
+                              type="number" value={maturityAmount} onChange={e => setMaturityAmount(e.target.value)}
+                              placeholder="e.g. 100000"
+                              className="w-full text-sm font-bold bg-slate-50 px-4 py-3.5 rounded-2xl border-2 border-transparent focus:border-indigo-600 focus:bg-white outline-none transition-all shadow-inner"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5 px-1">Tenure (Months)</label>
+                            <input
+                              type="number" value={tenureMonths} 
+                              onChange={e => {
+                                const val = e.target.value;
+                                setTenureMonths(val);
+                                const tNum = Number(val) || 0;
+                                const pNum = Number(paidMonths) || 0;
+                                // Always rebuild schedule for reactivity in modal UI
+                                const newSchedule = Array.from({ length: tNum }).map((_, i) => ({
+                                  amount: Number(emiAmount) || 0,
+                                  paid: i < pNum
+                                }));
+                                setPaymentSchedule(newSchedule);
+                              }}
+                              placeholder="e.g. 20"
+                              className="w-full text-sm font-bold bg-slate-50 px-4 py-3.5 rounded-2xl border-2 border-transparent focus:border-indigo-600 focus:bg-white outline-none transition-all shadow-inner"
+                            />
+                          </div>
+                        </div>
+                        <div className="grid grid-cols-2 gap-4">
+                          <div>
+                            <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5 px-1">Current Balance (Total Paid)</label>
+                            <input
+                              type="number" value={balance} onChange={e => setBalance(e.target.value)}
+                              placeholder="e.g. 24000"
+                              className="w-full text-sm font-bold bg-slate-50 px-4 py-3.5 rounded-2xl border-2 border-transparent focus:border-indigo-600 focus:bg-white outline-none transition-all shadow-inner"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5 px-1">Paid Months</label>
+                            <input
+                              type="number" value={paidMonths} 
+                              onChange={e => {
+                                const val = e.target.value;
+                                setPaidMonths(val);
+                                const num = Number(val) || 0;
+                                if (type === 'chit' && emiAmount) {
+                                  setBalance((num * Number(emiAmount)).toString());
+                                }
+                                // Always sync schedule for reactivity in modal UI
+                                const tNum = Number(tenureMonths) || 0;
+                                if (tNum > 0) {
+                                  const newSchedule = Array.from({ length: tNum }).map((_, i) => ({
+                                    amount: Number(emiAmount) || 0,
+                                    paid: i < num
+                                  }));
+                                  setPaymentSchedule(newSchedule);
+                                }
+                              }}
+                              placeholder="e.g. 3"
+                              className="w-full text-sm font-bold bg-slate-50 px-4 py-3.5 rounded-2xl border-2 border-transparent focus:border-indigo-600 focus:bg-white outline-none transition-all shadow-inner"
+                            />
+                          </div>
+                        </div>
+                        <div className="grid grid-cols-2 gap-4">
+                          <div className="relative">
+                            <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5 px-1 flex justify-between">
+                              <span>Monthly Payment</span>
+                              <button type="button" onClick={calculateChitAverage} className="text-indigo-600 hover:underline">Recalc</button>
+                            </label>
+                            <div className="relative flex items-center">
+                              <span className="absolute left-4 text-slate-400 font-bold text-sm">₹</span>
+                              <input
+                                type="number" value={emiAmount} 
+                                onChange={e => {
+                                  const val = e.target.value;
+                                  setEmiAmount(val);
+                                  const emi = Number(val) || 0;
+                                  const pNum = Number(paidMonths) || 0;
+                                  
+                                  // Sync balance
+                                  if (type === 'chit' && pNum > 0) {
+                                    setBalance((pNum * emi).toString());
+                                  }
+                                  
+                                  // Always sync schedule amounts for reactivity
+                                  const tNum = Number(tenureMonths) || 0;
+                                  if (tNum > 0) {
+                                    const newSchedule = Array.from({ length: tNum }).map((_, i) => ({
+                                      amount: emi,
+                                      paid: i < pNum
+                                    }));
+                                    setPaymentSchedule(newSchedule);
+                                  }
+                                }}
+                                placeholder="e.g. 5000"
+                                className="w-full text-sm font-bold bg-slate-50 pl-8 pr-4 py-3.5 rounded-2xl border-2 border-transparent focus:border-indigo-600 focus:bg-white outline-none transition-all shadow-inner"
+                              />
+                            </div>
+                          </div>
+                          <div>
+                            <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5 px-1">Payment Day (1-31)</label>
+                            <input
+                              type="number" min="1" max="31" value={emiDate} onChange={e => setEmiDate(e.target.value)}
+                              placeholder="e.g. 5"
+                              className="w-full text-sm font-bold bg-slate-50 px-4 py-3.5 rounded-2xl border-2 border-transparent focus:border-indigo-600 focus:bg-white outline-none transition-all shadow-inner"
+                            />
+                          </div>
+                        </div>
+                        <div className="grid grid-cols-2 gap-4">
+                          <div>
+                            <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5 px-1">Start Date</label>
+                            <input
+                              type="date" value={startDate} onChange={e => setStartDate(e.target.value)}
+                              className="w-full text-sm font-bold bg-slate-50 px-4 py-3.5 rounded-2xl border-2 border-transparent focus:border-indigo-600 focus:bg-white outline-none transition-all shadow-inner"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5 px-1">Maturity Date</label>
+                            <input
+                              type="date" value={maturityDate} onChange={e => setMaturityDate(e.target.value)}
+                              className="w-full text-sm font-bold bg-slate-50 px-4 py-3.5 rounded-2xl border-2 border-transparent focus:border-indigo-600 focus:bg-white outline-none transition-all shadow-inner"
+                            />
+                          </div>
+                        </div>
+
+                        {/* Payment Schedule Trigger: Progress Bar Style */}
+                        <div className="pt-4">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              if (paymentSchedule.length === 0 || paymentSchedule.length !== Number(tenureMonths)) {
+                                const newSchedule = Array.from({ length: Number(tenureMonths) || 0 }).map((_, i) => ({
+                                  amount: i < Number(paidMonths) ? (Number(balance) / (Number(paidMonths) || 1)) : (Number(emiAmount) || 0),
+                                  paid: i < Number(paidMonths)
+                                }));
+                                setPaymentSchedule(newSchedule);
+                              }
+                              setShowScheduleModal(true);
+                            }}
+                            className="w-full p-6 bg-slate-50 rounded-[2rem] border-2 border-slate-100 hover:border-indigo-200 transition-all flex flex-col gap-4 group text-left"
+                          >
+                            <div className="flex justify-between items-center">
+                               <div className="flex items-center gap-3">
+                                  <div className="w-10 h-10 rounded-2xl bg-indigo-600 text-white flex items-center justify-center shadow-lg shadow-indigo-200 group-hover:scale-110 transition-transform">
+                                     <CalendarDays className="w-5 h-5" />
+                                  </div>
+                                  <div>
+                                     <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Payment Progress</p>
+                                     <p className="text-sm font-black text-slate-900">{paymentSchedule.filter(s => s.paid).length} / {tenureMonths || 0} Months Paid</p>
+                                  </div>
+                               </div>
+                               <div className="text-right">
+                                  <p className="text-[10px] font-black text-indigo-600 uppercase tracking-widest group-hover:translate-x-1 transition-transform">Manage Schedule →</p>
+                               </div>
+                            </div>
+                            
+                            <div className="h-3 w-full bg-white rounded-full overflow-hidden p-0.5 border border-slate-100">
+                               <div 
+                                 className="h-full bg-indigo-600 rounded-full transition-all duration-500 shadow-[0_0_10px_rgba(79,70,229,0.3)]"
+                                 style={{ width: `${Math.min(Math.round((paymentSchedule.filter(s => s.paid).length / (Number(tenureMonths) || 1)) * 100), 100)}%` }}
+                               />
+                            </div>
+                          </button>
                         </div>
                       </div>
                     )}
@@ -819,6 +1093,107 @@ export const AccountManagementModal = ({ accId, onClose }: { accId?: string | nu
                     </button>
                   </div>
                 </form>
+
+                {/* NESTED MODAL: Payment Schedule */}
+                <AnimatePresence>
+                  {showScheduleModal && (
+                    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+                      <motion.div 
+                        initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                        onClick={() => setShowScheduleModal(false)}
+                        className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm"
+                      />
+                      <motion.div 
+                        initial={{ scale: 0.95, opacity: 0, y: 20 }}
+                        animate={{ scale: 1, opacity: 1, y: 0 }}
+                        exit={{ scale: 0.95, opacity: 0, y: 20 }}
+                        className="relative w-full max-w-lg bg-white rounded-[2.5rem] shadow-2xl overflow-hidden flex flex-col max-h-[85vh]"
+                      >
+                        <div className="p-8 border-b border-slate-100 flex items-center justify-between bg-indigo-50/30">
+                          <div>
+                            <h3 className="text-xl font-black text-slate-900">Payment Schedule</h3>
+                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">Mark installments as paid</p>
+                          </div>
+                          <button onClick={() => setShowScheduleModal(false)} className="w-10 h-10 rounded-full bg-white shadow-sm flex items-center justify-center hover:bg-slate-50 transition-colors">
+                            <X className="w-5 h-5 text-slate-400" />
+                          </button>
+                        </div>
+
+                        <div className="p-8 overflow-y-auto flex-1 custom-scrollbar space-y-4">
+                          <div className="grid grid-cols-1 gap-2">
+                            {paymentSchedule.map((item, idx) => {
+                               const monthName = format(addMonths(new Date(startDate), idx), 'MMMM yyyy');
+                               return (
+                                <div 
+                                  key={idx} 
+                                  onClick={() => {
+                                    const newSchedule = [...paymentSchedule];
+                                    newSchedule[idx].paid = !newSchedule[idx].paid;
+                                    setPaymentSchedule(newSchedule);
+                                    // Keep paidMonths in sync
+                                    const count = newSchedule.filter(s => s.paid).length;
+                                    setPaidMonths(count.toString());
+                                  }}
+                                  className={cn(
+                                    "group flex items-center gap-4 p-4 rounded-2xl border-2 transition-all cursor-pointer",
+                                    item.paid 
+                                      ? "bg-emerald-50 border-emerald-100" 
+                                      : "bg-slate-50 border-transparent hover:border-slate-200"
+                                  )}
+                                >
+                                  <div className={cn(
+                                    "w-10 h-10 rounded-xl flex items-center justify-center transition-all",
+                                    item.paid ? "bg-emerald-500 text-white" : "bg-white border border-slate-200 text-slate-300"
+                                  )}>
+                                    {item.paid ? <Check className="w-6 h-6 stroke-[3]" /> : <div className="w-3 h-3 rounded-full border-2 border-current opacity-30" />}
+                                  </div>
+                                  <div className="flex-1">
+                                    <p className="text-sm font-black text-slate-900 leading-none">{monthName}</p>
+                                    <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mt-1">Month {idx + 1}</p>
+                                  </div>
+                                  <div className="text-right">
+                                    <div className="relative" onClick={(e) => e.stopPropagation()}>
+                                      <span className="absolute left-2 top-1/2 -translate-y-1/2 text-slate-400 font-bold text-[10px]">₹</span>
+                                      <input 
+                                        type="number"
+                                        value={item.amount}
+                                        onChange={(e) => {
+                                          const newSchedule = [...paymentSchedule];
+                                          newSchedule[idx].amount = Number(e.target.value);
+                                          setPaymentSchedule(newSchedule);
+                                        }}
+                                        className="w-24 bg-white border border-slate-200 rounded-lg py-1 pl-5 pr-2 text-xs font-black text-slate-900 focus:outline-none focus:border-indigo-600 transition-all"
+                                      />
+                                    </div>
+                                  </div>
+                                </div>
+                               );
+                            })}
+                          </div>
+                        </div>
+
+                        <div className="p-6 bg-slate-50 border-t border-slate-100 flex gap-4">
+                           <button 
+                            onClick={() => {
+                              const total = paymentSchedule.filter(s => s.paid).reduce((a, b) => a + b.amount, 0);
+                              setBalance(total.toString());
+                              toast.success(`Balance updated to ₹${total}`);
+                            }}
+                            className="flex-1 bg-white border border-slate-200 text-slate-600 font-black text-[10px] uppercase tracking-widest py-4 rounded-2xl hover:bg-slate-100 transition-all"
+                           >
+                             Sync Paid Balance
+                           </button>
+                           <button 
+                            onClick={() => setShowScheduleModal(false)}
+                            className="flex-1 bg-indigo-600 text-white font-black text-[10px] uppercase tracking-widest py-4 rounded-2xl shadow-lg shadow-indigo-600/20 hover:bg-indigo-700 transition-all"
+                           >
+                             Done Editing
+                           </button>
+                        </div>
+                      </motion.div>
+                    </div>
+                  )}
+                </AnimatePresence>
               </motion.div>
             )}
           </AnimatePresence>

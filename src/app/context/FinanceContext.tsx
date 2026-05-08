@@ -61,7 +61,7 @@ export interface Profile {
 export interface Account {
   id: string;
   name: string;
-  type: "bank" | "UPI" | "wallet" | "cash" | "credit_card" | "loan" | "investment" | "meal_card" | "pf" | "debit" | "asset";
+  type: "bank" | "UPI" | "wallet" | "cash" | "credit_card" | "loan" | "investment" | "meal_card" | "pf" | "debit" | "asset" | "chit";
   subType?: string; // Salary, Checking, Savings, etc.
   balance: number;
   currency: string;
@@ -87,6 +87,11 @@ export interface Account {
   logoUrl?: string;
   upiId?: string;
   walletMobile?: string;
+  maturityAmount?: number;
+  maturityDate?: string;
+  paidMonths?: number;
+  startDate?: string;
+  paymentSchedule?: { amount: number; paid: boolean; month?: string }[];
 }
 
 export interface Investment {

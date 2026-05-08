@@ -3,7 +3,7 @@ import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContai
 import { ArrowUpRight, ArrowDownRight, Eye, EyeOff, LayoutGrid, ChevronDown, TrendingUp, X, Check, Clock, ChevronLeft, ChevronRight } from "lucide-react";
 import { format, subDays, getDaysInMonth, getDay, startOfMonth, endOfMonth, startOfWeek, endOfWeek, subWeeks, eachDayOfInterval, addWeeks, subMonths, addMonths, subYears, addYears, addDays, differenceInCalendarDays, isSameDay, isSameMonth, endOfDay, startOfYear, endOfYear } from "date-fns";
 import { useFinance, Transaction, Account } from "../context/FinanceContext";
-import { formatINR } from "../utils";
+import { formatINR, cn } from "../utils";
 import { CATEGORY_CLASSIFICATION } from "../utils/categories";
 import { Link, useNavigate } from "react-router";
 import { TransactionFormModal } from "../components/TransactionFormModal";
@@ -274,25 +274,43 @@ export const Dashboard = () => {
     return format(addMonths(base, 1), 'yyyy-MM-dd');
   };
 
-  const handleMarkPaid = (item: { entityId: string; title: string; amount: number; category: string; frequency?: string }) => {
+  const handleMarkPaid = (item: any) => {
     if (paidEntityIds.has(item.entityId)) {
       setPaidEntityIds(prev => { const s = new Set(prev); s.delete(item.entityId); return s; });
       return;
     }
-    addTransaction({
-      amount: item.amount,
-      type: 'expense',
-      category: item.category || 'Bills',
-      account_id: accounts[0]?.id || '',
-      payee: item.title,
-      date: format(new Date(), 'yyyy-MM-dd'),
-      notes: `Auto-logged from upcoming: ${item.title}`,
-      tags: ['recurring'],
-      mode: 'UPI',
-      status: 'cleared',
-    });
-    const nextDue = calculateNextDue(item.entityId, item.frequency || 'monthly');
-    if (nextDue) updateEntity(item.entityId, { nextDue, status: 'active' });
+
+    const account = accounts.find(a => a.id === item.entityId);
+    if (account && (account.type === 'loan' || account.type === 'chit')) {
+      addTransaction({
+        amount: item.amount,
+        type: 'transfer',
+        category: 'Transfer',
+        account_id: accounts.find(a => a.type === 'bank')?.id || accounts[0]?.id || '',
+        to_account_id: account.id,
+        payee: `${account.type === 'loan' ? 'EMI' : 'Payment'}: ${account.name}`,
+        date: format(new Date(), 'yyyy-MM-dd'),
+        notes: `Auto-logged ${account.type === 'loan' ? 'EMI' : 'contribution'} for ${account.name}`,
+        tags: [account.type],
+        status: 'cleared',
+      });
+    } else {
+      addTransaction({
+        amount: item.amount,
+        type: 'expense',
+        category: item.category || 'Bills',
+        account_id: accounts.find(a => a.type === 'bank')?.id || accounts[0]?.id || '',
+        payee: item.title,
+        date: format(new Date(), 'yyyy-MM-dd'),
+        notes: `Auto-logged from upcoming: ${item.title}`,
+        tags: ['recurring'],
+        mode: 'UPI',
+        status: 'cleared',
+      });
+      const nextDue = calculateNextDue(item.entityId, item.frequency || 'monthly');
+      if (nextDue) updateEntity(item.entityId, { nextDue, status: 'active' });
+    }
+    
     setPaidEntityIds(prev => new Set([...prev, item.entityId]));
     toast.success(`${formatINR(item.amount)} logged for ${item.title}`);
   };
@@ -306,34 +324,61 @@ export const Dashboard = () => {
   const upcomingItems = useMemo(() => {
     const today = new Date();
     const cutoff = addDays(today, 14);
-    return entities
+    
+    // 1. Entities (Subscriptions/Recurring)
+    const entityItems = entities
       .filter(e => (e.type === 'subscription' || e.type === 'recurring') && e.nextDue && e.amount)
       .filter(e => new Date(e.nextDue!) <= cutoff)
-      .sort((a, b) => new Date(a.nextDue!).getTime() - new Date(b.nextDue!).getTime())
+      .map(e => ({
+        id: e.id,
+        entityId: e.id,
+        title: e.name,
+        dueRaw: new Date(e.nextDue!),
+        amount: e.amount || 0,
+        category: e.category || 'Bills',
+        frequency: e.frequency,
+        status: e.status === 'paused' ? 'hold' : 'pending',
+        icon: e.name.charAt(0).toUpperCase()
+      }));
+
+    // 2. Loans & Chits
+    const accountItems = accounts
+      .filter(a => (a.type === 'loan' || a.type === 'chit') && a.emiAmount && a.emiDate)
+      .map(a => {
+        const nextDue = new Date(today.getFullYear(), today.getMonth(), a.emiDate!);
+        if (nextDue < today) nextDue.setMonth(nextDue.getMonth() + 1);
+        return {
+          id: a.id,
+          entityId: a.id,
+          title: a.name,
+          dueRaw: nextDue,
+          amount: a.emiAmount || 0,
+          category: a.type === 'loan' ? 'EMI' : 'Chit',
+          frequency: 'monthly',
+          status: 'pending' as const,
+          icon: a.type === 'loan' ? '🏦' : '🐷'
+        };
+      })
+      .filter(item => item.dueRaw <= cutoff);
+
+    return [...entityItems, ...accountItems]
+      .sort((a, b) => a.dueRaw.getTime() - b.dueRaw.getTime())
       .slice(0, 5)
-      .map(e => {
-        const due = new Date(e.nextDue!);
-        const diff = differenceInCalendarDays(due, today);
+      .map(item => {
+        const diff = differenceInCalendarDays(item.dueRaw, today);
         const isOverdue = diff < 0;
         const badge = isOverdue
           ? `Overdue ${Math.abs(diff)}d`
           : diff === 0 ? 'Due Today' : `Due in ${diff}d`;
         return {
-          id: e.id,
-          entityId: e.id,
-          title: e.name,
+          ...item,
           due: isOverdue ? `Overdue by ${Math.abs(diff)} days` : diff === 0 ? 'Due Today' : `Due in ${diff} days`,
-          amt: formatINR(e.amount || 0),
+          amt: formatINR(item.amount),
           badge,
           type: (isOverdue || diff <= 3 ? 'danger' : 'warning') as string,
-          icon: e.name.charAt(0).toUpperCase(),
-          status: e.status === 'paused' ? 'hold' : 'pending',
-          amount: e.amount || 0,
-          category: e.category || 'Bills',
-          frequency: e.frequency,
         };
       });
-  }, [entities]);
+  }, [entities, accounts]);
 
   const scheduledItems = useMemo(() => {
     return entities
