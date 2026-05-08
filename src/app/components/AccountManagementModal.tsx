@@ -90,7 +90,7 @@ export const AccountManagementModal = ({ accId, onClose }: { accId?: string | nu
   const [logoUrl, setLogoUrl] = useState("");
   const [paidMonths, setPaidMonths] = useState<string>("");
   const [startDate, setStartDate] = useState<string>(format(new Date(), 'yyyy-MM-dd'));
-  const [paymentSchedule, setPaymentSchedule] = useState<Account['paymentSchedule']>([]);
+  const [paymentSchedule, setPaymentSchedule] = useState<{ amount: number; paid: boolean; month?: string }[]>([]);
   const [showScheduleModal, setShowScheduleModal] = useState(false);
   const [isManualLogo, setIsManualLogo] = useState(false);
   const [logoError, setLogoError] = useState(false);
@@ -153,7 +153,7 @@ export const AccountManagementModal = ({ accId, onClose }: { accId?: string | nu
   // Autofill employer from profile if Salary account
   useEffect(() => {
     if (subType === 'Salary' && !employerName && !isEdit) {
-      setEmployerName(profile.companyName || profile.employer || "");
+      setEmployerName(profile.employerName || "");
     }
   }, [subType, employerName, isEdit, profile]);
 

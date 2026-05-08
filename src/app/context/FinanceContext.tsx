@@ -41,17 +41,15 @@ export interface EmployerRecord {
 export interface Profile {
   firstName?: string;
   lastName?: string;
-  userName?: string;
-  userEmail?: string;
-  companyName: string;
-  currentEmployerFrom?: string;
-  currentEmployerTo?: string;
-  currentLocation?: string;
-  salaryCurrency?: string;
-  pastEmployers?: EmployerRecord[];
+  mobileNumber?: string;
+  emailId?: string;
+  dob?: string;
+  employerName?: string;
+  employerLocation?: string;
+  homeLocation?: string;
+  currentStayName?: string;
+  currentStayLocation?: string;
   logoDevToken?: string;
-  salaryBand?: string;
-  employer?: string;
   taxRegime?: "old" | "new";
   baseCurrency?: string;
   maskBalances?: boolean;
@@ -220,7 +218,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
   const [profile, setProfile] = useState<Profile>(() => {
     const saved = localStorage.getItem("finance_profile");
-    return saved ? JSON.parse(saved) : { companyName: "Acme Corp", logoDevToken: "pk_E7r5x7Z9Z7Z7Z7Z7Z7Z7Z7" };
+    return saved ? JSON.parse(saved) : { employerName: "Acme Corp", logoDevToken: "pk_E7r5x7Z9Z7Z7Z7Z7Z7Z7Z7" };
   });
 
   const [categories, setCategories] = useState<CategoryDef[]>(() => {
@@ -363,7 +361,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
     setAccounts([]);
     setEntities([]);
     setInvestments([]);
-    setProfile({ companyName: "Acme Corp" });
+    setProfile({ employerName: "Acme Corp" });
     setCategories([...DEFAULT_EXPENSE_CATEGORIES, ...DEFAULT_INCOME_CATEGORIES]);
   };
 

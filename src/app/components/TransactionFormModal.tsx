@@ -198,11 +198,11 @@ export const TransactionFormModal: React.FC<{
   React.useEffect(() => {
     // Initial population for salary transactions
     if (!txId && !initialData?.payee && type === 'income' && category === 'Salary') {
-      if (profile.companyName) {
-        setPayee(profile.companyName);
+      if (profile.employerName) {
+        setPayee(profile.employerName || "");
       }
     }
-  }, [type, category, profile.companyName, txId, initialData]);
+  }, [type, category, profile.employerName, txId, initialData]);
 
   React.useEffect(() => {
     const currentAmt = Number(amount) || 0;
@@ -278,7 +278,7 @@ export const TransactionFormModal: React.FC<{
       const defaultCat = categories[newType as 'expense' | 'income'][0];
       setCategory(defaultCat);
       if (newType === 'income' && defaultCat === 'Salary') {
-        setPayee(profile.companyName);
+        setPayee(profile.employerName || "");
       }
     }
   };
@@ -289,7 +289,7 @@ export const TransactionFormModal: React.FC<{
     setCustomSubCat("");
     setSubCategory("");
     if (type === 'income' && newCat === 'Salary') {
-      setPayee(profile.companyName);
+      setPayee(profile.employerName || "");
     }
     const cls = getClassification(newCat);
     if (cls) setNeedWant(cls as any);
