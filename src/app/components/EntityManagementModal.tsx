@@ -14,6 +14,8 @@ import { BrandIcon } from "./BrandIcon";
 import { searchBrandfetchIcon, getBrandDomain } from "../utils/logoFetcher";
 import { toast } from "sonner";
 import { CategoryIcon } from "./CategoryIcon";
+import { LocationInput } from "./LocationInput";
+
 
 const entityConfig: Record<string, { title: string, icon: any, desc: string, color: string }> = {
   shop: { title: "Shops & Merchants", icon: Store, desc: "Manage frequent payees", color: "text-blue-600 bg-blue-50" },
@@ -57,13 +59,19 @@ export const EntityManagementModal = ({ type, onClose }: { type: string; onClose
   // --- Actions ---
   const handleAddNew = () => {
     setActiveId(null);
-    setFormData({ status: 'active' });
+    setFormData({ 
+      status: 'active',
+      mode: type === 'shop' ? 'offline' : undefined 
+    });
     setView("form");
   };
 
   const handleEdit = (ent: Entity) => {
     setActiveId(ent.id);
-    setFormData({ ...ent });
+    setFormData({ 
+      mode: ent.type === 'shop' ? (ent.mode || 'offline') : ent.mode,
+      ...ent 
+    });
     setView("form");
   };
 
@@ -744,12 +752,20 @@ export const EntityManagementModal = ({ type, onClose }: { type: string; onClose
                 </div>
                 <div>
                   <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">{formData.mode === 'online' ? 'Website URL' : 'Location'}</label>
-                  <input
-                    type="text" value={formData.mode === 'online' ? (formData.url || "") : (formData.location || "")} 
-                    onChange={(e) => setFormData(formData.mode === 'online' ? {...formData, url: e.target.value} : {...formData, location: e.target.value})}
-                    placeholder={formData.mode === 'online' ? "https://..." : "Map Link or Area"}
-                    className="w-full text-sm font-semibold bg-slate-50 px-3 py-2.5 rounded-xl border-0 focus:ring-2 focus:ring-indigo-600 outline-none"
-                  />
+                  {formData.mode === 'online' ? (
+                    <input
+                      type="text" value={formData.url || ""} 
+                      onChange={(e) => setFormData({...formData, url: e.target.value})}
+                      placeholder="https://..."
+                      className="w-full text-sm font-semibold bg-slate-50 px-3 py-2.5 rounded-xl border-0 focus:ring-2 focus:ring-indigo-600 outline-none"
+                    />
+                  ) : (
+                    <LocationInput 
+                      value={formData.location || ""} 
+                      onChange={(val) => setFormData({...formData, location: val})}
+                      placeholder="Map Link or Area"
+                    />
+                  )}
                 </div>
               </div>
             </>

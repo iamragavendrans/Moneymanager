@@ -14,10 +14,9 @@ const ACCOUNT_TYPES = [
   { id: "cash", label: "Cash", icon: Banknote },
   { id: "debit", label: "Debit", icon: CreditCard },
   { id: "loan", label: "Loan", icon: HandCoins },
-  { id: "investment", label: "Invest", icon: TrendingUp },
+  { id: "chit", label: "Chit", icon: PiggyBank },
   { id: "pf", label: "PF", icon: PiggyBank },
   { id: "asset", label: "Assets", icon: Gem },
-  { id: "chit", label: "Chit", icon: PiggyBank },
 ];
 
 const BRAND_MAP: Record<string, string> = {
