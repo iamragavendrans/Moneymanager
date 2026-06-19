@@ -20,7 +20,13 @@ export const LockScreen: React.FC<LockScreenProps> = ({ onUnlock }) => {
       if (success) {
         onUnlock();
       } else {
-        setError("Authentication failed.");
+        const hasPin = !!localStorage.getItem('s_pin');
+        if (hasPin) {
+          setMode('pin');
+          setError("Biometric authentication failed. Use your PIN instead.");
+        } else {
+          setError("Authentication failed.");
+        }
       }
     } catch (err) {
       setMode('pin');
@@ -44,9 +50,7 @@ export const LockScreen: React.FC<LockScreenProps> = ({ onUnlock }) => {
   useEffect(() => {
     const hasPin = !!localStorage.getItem('s_pin');
     if (!hasPin) {
-      // If security is enabled but no PIN is set, something is wrong or it's a first-time setup
-      // We'll let them through but they should set one in settings.
-      // Actually, we'll force them to the biometric mode.
+      // Biometric-only security can still authenticate without a PIN fallback.
     }
     handleBiometric();
   }, []);
@@ -143,7 +147,7 @@ export const LockScreen: React.FC<LockScreenProps> = ({ onUnlock }) => {
 
       <div className="absolute bottom-10 text-slate-600 flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.2em]">
         <Lock className="w-3 h-3" />
-        End-to-End Encryption Active
+        Local App Lock Active
       </div>
     </div>
   );

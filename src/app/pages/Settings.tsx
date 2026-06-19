@@ -62,7 +62,7 @@ const WipeConfirmInput = ({ onConfirm, onCancel }: { onConfirm: () => void; onCa
 };
 
 export const Settings = () => {
-  const { resetData, wipeData, restoreData, transactions, accounts, investments, entities, profile, updateProfile } = useFinance();
+  const { resetData, wipeData, restoreData, transactions, accounts, investments, entities, profile, categories, updateProfile } = useFinance();
 
   const getStoredBool = (key: string, def: boolean) => {
     const v = localStorage.getItem(key); return v === null ? def : v === 'true';
@@ -81,7 +81,7 @@ export const Settings = () => {
   const [pinStep, setPinStep] = useState<'view' | 'set' | 'confirm'>('view');
   const [pinInput, setPinInput] = useState('');
   const [pinConfirm, setPinConfirm] = useState('');
-  const [hasPin] = useState(() => !!localStorage.getItem('s_pin'));
+  const [hasPin, setHasPin] = useState(() => !!localStorage.getItem('s_pin'));
   const [twoFactor, setTwoFactor] = useState(() => getStoredBool('s_2fa', false));
 
   useEffect(() => { localStorage.setItem('s_biometric', String(locks.biometric)); }, [locks.biometric]);
@@ -94,7 +94,26 @@ export const Settings = () => {
   useEffect(() => { localStorage.setItem('s_subcats', String(subCatsEnabled)); }, [subCatsEnabled]);
 
   const handleExport = () => {
-    const data = { transactions, accounts, investments, entities, exportedAt: new Date().toISOString() };
+    const settings = {
+      biometric: locks.biometric,
+      hideBalances: locks.hideBalances,
+      drive: sync.drive,
+      reminders,
+      subCatsEnabled,
+      twoFactor,
+      hasPin: !!localStorage.getItem('s_pin'),
+    };
+    const data = {
+      schemaVersion: 1,
+      exportedAt: new Date().toISOString(),
+      transactions,
+      accounts,
+      investments,
+      entities,
+      profile,
+      categories,
+      settings,
+    };
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -112,12 +131,23 @@ export const Settings = () => {
       if (!file) return;
       try {
         const text = await file.text();
-        const data = JSON.parse(text);
+        const parsed = JSON.parse(text);
+        const data = parsed.data || parsed;
         if (!data.transactions && !data.accounts) {
           toast.error('Invalid backup file format');
           return;
         }
         restoreData(data);
+        if (data.settings) {
+          const restoredSettings = data.settings;
+          if (typeof restoredSettings.biometric === 'boolean') setLocks(s => ({ ...s, biometric: restoredSettings.biometric }));
+          if (typeof restoredSettings.hideBalances === 'boolean') setLocks(s => ({ ...s, hideBalances: restoredSettings.hideBalances }));
+          if (typeof restoredSettings.drive === 'boolean') setSync(s => ({ ...s, drive: restoredSettings.drive }));
+          if (restoredSettings.reminders) setReminders(r => ({ ...r, ...restoredSettings.reminders }));
+          if (typeof restoredSettings.subCatsEnabled === 'boolean') setSubCatsEnabled(restoredSettings.subCatsEnabled);
+          if (typeof restoredSettings.twoFactor === 'boolean') setTwoFactor(restoredSettings.twoFactor);
+          setHasPin(!!localStorage.getItem('s_pin'));
+        }
         toast.success('Data restored successfully!');
       } catch {
         toast.error('Failed to read backup file');
@@ -160,7 +190,6 @@ export const Settings = () => {
 
   const handleDriveSync = () => {
     toast.info('Google Drive sync requires account integration — coming soon');
-    setSync(s => ({ ...s, drive: !s.drive }));
   };
 
   const handlePinSave = () => {
@@ -168,6 +197,7 @@ export const Settings = () => {
     if (pinStep === 'set') { setPinStep('confirm'); return; }
     if (pinInput !== pinConfirm) { toast.error('PINs do not match'); setPinInput(''); setPinConfirm(''); setPinStep('set'); return; }
     localStorage.setItem('s_pin', pinInput);
+    setHasPin(true);
     setTwoFactor(true);
     toast.success('PIN set! App will lock on next visit.');
     setShowPinModal(false);
@@ -176,6 +206,7 @@ export const Settings = () => {
 
   const handlePinClear = () => {
     localStorage.removeItem('s_pin');
+    setHasPin(false);
     setTwoFactor(false);
     toast.success('PIN removed');
     setShowPinModal(false);

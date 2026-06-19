@@ -38,7 +38,7 @@ const EntityCategoryIcon = ({ cat, name, size = 20, className, withContainer = f
 
 
 export const EntityManagementModal = ({ type, onClose }: { type: string; onClose: () => void }) => {
-  const { entities, transactions, addEntity, updateEntity, deleteEntity, profile, categories } = useFinance();
+  const { entities, transactions, accounts, addEntity, updateEntity, deleteEntity, profile, categories } = useFinance();
   
   const getCategoryData = (name: string) => {
     return categories.find(c => c.name === name) || { icon: 'others', color: '#64748b' };
@@ -395,7 +395,6 @@ export const EntityManagementModal = ({ type, onClose }: { type: string; onClose
       const accountUsage: Record<string, number> = {};
       expenses.forEach(t => { accountUsage[t.account_id] = (accountUsage[t.account_id] || 0) + 1; });
       const topAccountId = Object.entries(accountUsage).sort((a,b) => b[1] - a[1])[0]?.[0];
-      const { accounts } = useFinance();
       const topAccount = accounts.find(a => a.id === topAccountId);
 
       stats = (
