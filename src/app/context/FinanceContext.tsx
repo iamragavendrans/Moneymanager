@@ -143,7 +143,7 @@ export interface Entity {
   expiry?: string;
   expiryDate?: string;
   balance?: number;
-  status?: "active" | "paused";
+  status?: "active" | "paused" | "terminated";
   provider?: string;
   quantity?: number;
   unit?: string;
@@ -184,7 +184,7 @@ interface FinanceContextType {
   getTotalIncome: (month?: Date) => number;
   resetData: () => void;
   wipeData: () => void;
-  restoreData: (data: { transactions?: Transaction[]; accounts?: Account[]; investments?: Investment[]; entities?: Entity[]; profile?: Partial<Profile> }) => void;
+  restoreData: (data: { transactions?: Transaction[]; accounts?: Account[]; investments?: Investment[]; entities?: Entity[]; profile?: Partial<Profile>; categories?: CategoryDef[] }) => void;
   updateCategory: (id: string, patch: Partial<CategoryDef>) => void;
   addCategory: (cat: Omit<CategoryDef, "id">) => void;
   deleteCategory: (id: string) => void;
@@ -407,12 +407,13 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
     setCategories([...DEFAULT_EXPENSE_CATEGORIES, ...DEFAULT_INCOME_CATEGORIES]);
   };
 
-  const restoreData = (data: { transactions?: Transaction[]; accounts?: Account[]; investments?: Investment[]; entities?: Entity[]; profile?: Partial<Profile> }) => {
+  const restoreData = (data: { transactions?: Transaction[]; accounts?: Account[]; investments?: Investment[]; entities?: Entity[]; profile?: Partial<Profile>; categories?: CategoryDef[] }) => {
     if (data.transactions) setTransactions(data.transactions);
     if (data.accounts) setAccounts(data.accounts);
     if (data.investments) setInvestments(data.investments);
     if (data.entities) setEntities(data.entities);
     if (data.profile) setProfile(prev => ({ ...prev, ...data.profile }));
+    if (Array.isArray(data.categories)) setCategories(data.categories);
   };
 
   return (
